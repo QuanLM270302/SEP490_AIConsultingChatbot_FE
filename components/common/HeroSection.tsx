@@ -1,8 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui";
+import Link from "next/link";
 
-export function Hero() {
+export function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-blue-50 to-white dark:from-zinc-900 dark:to-zinc-950">
       <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
@@ -16,9 +17,11 @@ export function Hero() {
             Tìm kiếm nhanh, trả lời chính xác, tăng năng suất làm việc.
           </p>
           <div className="mt-10 flex items-center justify-center gap-4">
-            <Button size="lg" variant="primary">
-              Dùng thử miễn phí
-            </Button>
+            <Link href="/register">
+              <Button size="lg" variant="primary">
+                Dùng thử miễn phí
+              </Button>
+            </Link>
             <Button size="lg" variant="outline">
               Xem demo
             </Button>
@@ -28,7 +31,6 @@ export function Hero() {
           </p>
         </div>
 
-        {/* Hero Image/Animation */}
         <div className="mt-16 sm:mt-24">
           <div className="relative rounded-xl bg-zinc-900/5 p-2 ring-1 ring-inset ring-zinc-900/10 dark:bg-zinc-800/50 dark:ring-zinc-800 lg:rounded-2xl lg:p-4">
             <div className="aspect-video rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 shadow-2xl" />

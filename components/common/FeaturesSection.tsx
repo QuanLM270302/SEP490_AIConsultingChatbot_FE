@@ -40,7 +40,7 @@ const features = [
   },
 ];
 
-export function Features() {
+export function FeaturesSection() {
   return (
     <section id="features" className="bg-white py-24 dark:bg-zinc-950 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">

@@ -1,19 +1,20 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui";
 import { Menu, X } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
-export function Navbar() {
+export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md dark:bg-zinc-950/80">
       <nav className="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8" aria-label="Global">
         <div className="flex lg:flex-1">
-          <a href="#" className="-m-1.5 p-1.5">
+          <Link href="/" className="-m-1.5 p-1.5">
             <span className="text-2xl font-bold text-blue-600">AI Chatbot</span>
-          </a>
+          </Link>
         </div>
         <div className="flex lg:hidden">
           <button
@@ -44,12 +45,16 @@ export function Navbar() {
           </a>
         </div>
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-4">
-          <Button variant="ghost" size="sm">
-            Đăng nhập
-          </Button>
-          <Button variant="primary" size="sm">
-            Dùng thử miễn phí
-          </Button>
+          <Link href="/login">
+            <Button variant="ghost" size="sm">
+              Đăng nhập
+            </Button>
+          </Link>
+          <Link href="/register">
+            <Button variant="primary" size="sm">
+              Dùng thử miễn phí
+            </Button>
+          </Link>
         </div>
       </nav>
 
@@ -82,12 +87,16 @@ export function Navbar() {
               Tài liệu
             </a>
             <div className="mt-4 space-y-2">
-              <Button variant="ghost" size="md" className="w-full">
-                Đăng nhập
-              </Button>
-              <Button variant="primary" size="md" className="w-full">
-                Dùng thử miễn phí
-              </Button>
+              <Link href="/login" className="block">
+                <Button variant="ghost" size="md" className="w-full">
+                  Đăng nhập
+                </Button>
+              </Link>
+              <Link href="/register" className="block">
+                <Button variant="primary" size="md" className="w-full">
+                  Dùng thử miễn phí
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

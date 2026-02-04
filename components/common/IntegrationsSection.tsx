@@ -15,7 +15,7 @@ const integrations = [
   { name: "Zendesk", logo: "🎧" },
 ];
 
-export function Integrations() {
+export function IntegrationsSection() {
   return (
     <section id="integrations" className="bg-zinc-50 py-24 dark:bg-zinc-900 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">

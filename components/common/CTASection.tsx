@@ -1,6 +1,7 @@
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui";
+import Link from "next/link";
 
-export function CTA() {
+export function CTASection() {
   return (
     <section className="bg-white py-24 dark:bg-zinc-950 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -13,16 +14,17 @@ export function CTA() {
             không cần kiến thức kỹ thuật phức tạp.
           </p>
           <div className="mt-10 flex items-center justify-center gap-4">
-            <Button size="lg" variant="primary">
-              Bắt đầu miễn phí
-            </Button>
+            <Link href="/register">
+              <Button size="lg" variant="primary">
+                Bắt đầu miễn phí
+              </Button>
+            </Link>
             <Button size="lg" variant="outline">
               Liên hệ sales
             </Button>
           </div>
         </div>
 
-        {/* Stats */}
         <div className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-8 sm:grid-cols-3">
           <div className="text-center">
             <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">95%</p>
