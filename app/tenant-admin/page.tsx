@@ -1,16 +1,28 @@
-export default function TenantAdminPage() {
+import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
+import { OrganizationStats } from "@/components/tenant-admin/OrganizationStats";
+import { EmployeeOverview } from "@/components/tenant-admin/EmployeeOverview";
+import { DepartmentOverview } from "@/components/tenant-admin/DepartmentOverview";
+
+export default function TenantAdminDashboard() {
   return (
-    <main className="min-h-screen bg-zinc-50 px-6 py-10 text-zinc-900 dark:bg-black dark:text-zinc-50">
-      <div className="mx-auto max-w-5xl space-y-4">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Tenant Admin
-        </h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Manage your organization&apos;s spaces, users, and chatbot settings
-          here.
-        </p>
+    <TenantAdminLayout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
+            Organization Dashboard
+          </h1>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            Quản lý nhân viên và cấu trúc tổ chức
+          </p>
+        </div>
+
+        <OrganizationStats />
+        
+        <div className="grid gap-8 lg:grid-cols-2">
+          <EmployeeOverview />
+          <DepartmentOverview />
+        </div>
       </div>
-    </main>
+    </TenantAdminLayout>
   );
 }
-
