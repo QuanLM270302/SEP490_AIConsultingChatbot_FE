@@ -1,0 +1,40 @@
+import Link from "next/link";
+import { HandRaisedIcon, StarIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
+
+export function EmployeeHeader() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-3 text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            Chào mừng trở lại!{" "}
+            <HandRaisedIcon className="h-8 w-8 text-green-500" />
+          </h1>
+          <p className="mt-2 text-lg text-zinc-600 dark:text-zinc-400">
+            Hệ thống tư vấn nội bộ AI của bạn
+          </p>
+        </div>
+        <Link
+          href="/subscription"
+          className="group hidden items-center gap-3 sm:flex"
+        >
+          <div className="flex items-center gap-3 rounded-2xl border-2 border-zinc-200 bg-linear-to-br from-white to-zinc-50 px-5 py-3 shadow-md transition-all hover:border-green-400 hover:shadow-lg dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-950">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-amber-400 to-amber-500 text-white shadow-lg shadow-amber-500/30">
+              <StarIcon className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                Gói hiện tại
+              </p>
+              <p className="text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                Starter
+              </p>
+            </div>
+            <ArrowRightIcon className="h-5 w-5 text-zinc-400 transition group-hover:text-green-500 dark:text-zinc-500" />
+          </div>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
