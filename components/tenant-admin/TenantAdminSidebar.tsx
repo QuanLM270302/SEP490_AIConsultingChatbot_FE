@@ -10,6 +10,7 @@ import {
   Shield,
   X,
 } from "lucide-react";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 const navigation = [
   { name: "Dashboard", href: "/tenant-admin", icon: LayoutDashboard },

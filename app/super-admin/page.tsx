@@ -1,20 +1,28 @@
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
+import { PlatformStats } from "@/components/super-admin/PlatformStats";
+import { SystemHealth } from "@/components/super-admin/SystemHealth";
+import { RecentActivity } from "@/components/super-admin/RecentActivity";
 
-export default function SuperAdminPage() {
+export default function SuperAdminDashboard() {
   return (
-    <div className="flex min-h-screen bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-50">
-      <AppSidebar links={[{ href: "/super-admin", label: "Home" }]} />
-      <main className="flex-1 px-6 py-10">
-      <div className="mx-auto max-w-5xl space-y-4">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Super Admin
-        </h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          This area is reserved for global platform configuration, tenant
-          management, and high-level analytics.
-        </p>
+    <SuperAdminLayout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
+            Platform Dashboard
+          </h1>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            Quản lý và giám sát toàn bộ nền tảng
+          </p>
+        </div>
+
+        <PlatformStats />
+        
+        <div className="grid gap-8 lg:grid-cols-2">
+          <SystemHealth />
+          <RecentActivity />
+        </div>
       </div>
-    </main>
-    </div>
+    </SuperAdminLayout>
   );
 }
