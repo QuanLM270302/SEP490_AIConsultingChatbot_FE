@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { login } from "@/lib/api/auth";
+import { setAuth } from "@/lib/auth-store";
 
 type AuthMode = "login" | "register";
 
@@ -18,23 +22,54 @@ const AUTH_ROLES: { value: UserRole; label: string }[] = [
   { value: "content-manager", label: "Content Manager" },
 ];
 
-export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
-  const [role, setRole] = useState<UserRole>("employee");
+/** Map backend role (e.g. ROLE_EMPLOYEE) to app path */
+function roleToPath(roles: string[]): string {
+  const role = roles[0] ?? "";
+  if (role.includes("SUPER_ADMIN")) return "/super-admin";
+  if (role.includes("TENANT_ADMIN")) return "/tenant-admin";
+  if (role.includes("CONTENT_MANAGER")) return "/content-manager";
+  if (role.includes("EMPLOYEE")) return "/employee";
+  return "/employee";
+}
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
+  const router = useRouter();
+  const [role, setRole] = useState<UserRole>("employee");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // TODO: Call your auth API here; the backend should return the user's role
-    // based on the account, and then you can redirect by role on success.
-    console.log(
-      `${mode.toUpperCase()} with email/password${
-        showRoleSelector ? ` as ${role}` : ""
-      }`
-    );
+    setError(null);
+
+    if (mode === "register") {
+      // Register not implemented in backend auth; keep placeholder behavior
+      console.log("Register with email/password as", role);
+      return;
+    }
+
+    if (mode === "login") {
+      setLoading(true);
+      try {
+        const data = await login({ email, password });
+        setAuth(data);
+        const path = roleToPath(data.roles);
+        router.push(path);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Login failed");
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   return (
-    <div className="w-full max-w-md space-y-6 rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="space-y-1 text-center">
+    <div className="w-full space-y-6">
+      <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           {mode === "login" ? "Welcome back" : "Create your account"}
         </h1>
@@ -45,6 +80,14 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {error && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200"
+          >
+            {error}
+          </div>
+        )}
         {showRoleSelector && (
           <div className="space-y-1.5 text-left">
             <label
@@ -78,6 +121,8 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
             id="email"
             type="email"
             required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
             placeholder="you@company.com"
           />
@@ -94,6 +139,8 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
             id="password"
             type="password"
             required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
             placeholder="••••••••"
           />
@@ -111,6 +158,8 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
               id="confirmPassword"
               type="password"
               required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
               placeholder="••••••••"
             />
@@ -126,23 +175,23 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
               />
               <span>Remember me</span>
             </label>
-            <button
-              type="button"
+            <Link
+              href="/forgot-password"
               className="font-medium text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
             >
               Forgot password?
-            </button>
+            </Link>
           </div>
         )}
 
         <button
           type="submit"
-          className="flex w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus-visible:ring-zinc-50"
+          disabled={loading}
+          className="flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-60"
         >
-          {mode === "login" ? "Login" : "Create account"}
+          {loading ? "Signing in…" : mode === "login" ? "Login" : "Create account"}
         </button>
       </form>
     </div>
   );
 }
-
