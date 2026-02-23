@@ -57,3 +57,19 @@ export function clearAuth(): void {
 export function isAuthenticated(): boolean {
   return !!getAccessToken();
 }
+
+/** Refresh accessToken using refreshToken; updates storage on success. Returns true if new tokens set. */
+export async function refreshAuth(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const refresh = getRefreshToken();
+  if (!refresh) return false;
+  try {
+    const { refreshAccessToken } = await import("@/lib/api/auth");
+    const data = await refreshAccessToken(refresh);
+    setAuth(data);
+    return true;
+  } catch {
+    clearAuth();
+    return false;
+  }
+}
