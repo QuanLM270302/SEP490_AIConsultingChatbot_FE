@@ -27,8 +27,9 @@ export function AppHeader() {
   const homeHref = roles.length ? roleToPath(roles) : "/employee";
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:px-6">
-      <div className="flex items-center gap-8">
+    <header className="sticky top-0 z-50 shrink-0 border-b border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center gap-6">
         <Link
           href={homeHref}
           className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50"
@@ -66,6 +67,7 @@ export function AppHeader() {
         <div className="[&_button]:w-auto! [&_button]:rounded-lg! [&_button]:px-3! [&_button]:py-2!">
           <LogoutButton />
         </div>
+      </div>
       </div>
     </header>
   );
