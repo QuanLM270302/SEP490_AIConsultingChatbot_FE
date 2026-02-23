@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/api/auth";
 import { setAuth } from "@/lib/auth-store";
+import { roleToPath } from "@/lib/auth-routes";
 
 type AuthMode = "login" | "register";
 
@@ -21,16 +22,6 @@ const AUTH_ROLES: { value: UserRole; label: string }[] = [
   { value: "employee", label: "Employee" },
   { value: "content-manager", label: "Content Manager" },
 ];
-
-/** Map backend role (e.g. ROLE_EMPLOYEE) to app path */
-function roleToPath(roles: string[]): string {
-  const role = roles[0] ?? "";
-  if (role.includes("SUPER_ADMIN")) return "/super-admin";
-  if (role.includes("TENANT_ADMIN")) return "/tenant-admin";
-  if (role.includes("CONTENT_MANAGER")) return "/content-manager";
-  if (role.includes("EMPLOYEE")) return "/employee";
-  return "/employee";
-}
 
 export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
   const router = useRouter();

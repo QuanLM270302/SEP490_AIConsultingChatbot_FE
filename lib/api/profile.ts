@@ -1,4 +1,5 @@
 import { PROFILE_BASE } from "./config";
+import { fetchWithAuth } from "./fetchWithAuth";
 import type {
   UserProfileResponse,
   UpdateProfileRequest,
@@ -22,32 +23,19 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return data as T;
 }
 
-function authHeaders(accessToken: string): HeadersInit {
-  return {
-    ...JSON_HEADERS,
-    Authorization: `Bearer ${accessToken}`,
-  };
-}
-
-/** GET /api/v1/profile/me */
-export async function getProfile(
-  accessToken: string
-): Promise<UserProfileResponse> {
-  const res = await fetch(`${PROFILE_BASE}/me`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+/** GET /api/v1/profile/me — uses token from store, retries with refresh on 401 */
+export async function getProfile(): Promise<UserProfileResponse> {
+  const res = await fetchWithAuth(`${PROFILE_BASE}/me`, { method: "GET" });
   return handleResponse<UserProfileResponse>(res);
 }
 
 /** PUT /api/v1/profile/update */
 export async function updateProfile(
-  accessToken: string,
   body: UpdateProfileRequest
 ): Promise<UserProfileResponse> {
-  const res = await fetch(`${PROFILE_BASE}/update`, {
+  const res = await fetchWithAuth(`${PROFILE_BASE}/update`, {
     method: "PUT",
-    headers: authHeaders(accessToken),
+    headers: JSON_HEADERS,
     body: JSON.stringify(body),
   });
   return handleResponse<UserProfileResponse>(res);
@@ -55,12 +43,11 @@ export async function updateProfile(
 
 /** POST /api/v1/profile/change-password */
 export async function changePassword(
-  accessToken: string,
   body: ChangePasswordRequest
 ): Promise<MessageResponse> {
-  const res = await fetch(`${PROFILE_BASE}/change-password`, {
+  const res = await fetchWithAuth(`${PROFILE_BASE}/change-password`, {
     method: "POST",
-    headers: authHeaders(accessToken),
+    headers: JSON_HEADERS,
     body: JSON.stringify(body),
   });
   return handleResponse<MessageResponse>(res);

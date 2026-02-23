@@ -35,7 +35,17 @@ export async function login(body: LoginRequest): Promise<JwtResponse> {
   return handleResponse<JwtResponse>(res);
 }
 
-/** POST /api/v1/auth/logout — requires Authorization: Bearer <accessToken> */
+/** POST /api/v1/auth/refresh — body: { refreshToken } */
+export async function refreshAccessToken(refreshToken: string): Promise<JwtResponse> {
+  const res = await fetch(`${AUTH_BASE}/refresh`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ refreshToken }),
+  });
+  return handleResponse<JwtResponse>(res);
+}
+
+/** POST /api/v1/auth/logout — requires Authorization: Bearer <accessToken>; server invalidates refreshToken */
 export async function logout(accessToken: string): Promise<MessageResponse> {
   const res = await fetch(`${AUTH_BASE}/logout`, {
     method: "POST",

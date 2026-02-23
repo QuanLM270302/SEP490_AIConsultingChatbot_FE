@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/layout/AppSidebar";
-import { getAccessToken } from "@/lib/auth-store";
+import { getStoredUser } from "@/lib/auth-store";
 import {
   getProfile,
   updateProfile,
@@ -14,7 +13,6 @@ import type {
   UpdateProfileRequest,
   ChangePasswordRequest,
 } from "@/types/profile";
-import { getStoredUser } from "@/lib/auth-store";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -35,7 +33,6 @@ function formatDateTime(iso: string | null): string {
 }
 
 export default function ProfilePage() {
-  const router = useRouter();
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,12 +55,7 @@ export default function ProfilePage() {
   const mustChangePassword = getStoredUser()?.mustChangePassword ?? false;
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-    getProfile(token)
+    getProfile()
       .then((data) => {
         setProfile(data);
         setPhoneNumber(data.phoneNumber ?? "");
@@ -72,12 +64,10 @@ export default function ProfilePage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load profile"))
       .finally(() => setLoading(false));
-  }, [router]);
+  }, []);
 
   const handleUpdate = async (e: FormEvent) => {
     e.preventDefault();
-    const token = getAccessToken();
-    if (!token) return;
     setUpdateError(null);
     setUpdateSuccess(false);
     setUpdateLoading(true);
@@ -87,7 +77,7 @@ export default function ProfilePage() {
         dateOfBirth: dateOfBirth ? dateOfBirth : null,
         address: address.trim() || null,
       };
-      const updated = await updateProfile(token, body);
+      const updated = await updateProfile(body);
       setProfile(updated);
       setUpdateSuccess(true);
     } catch (err) {
@@ -103,8 +93,6 @@ export default function ProfilePage() {
       setPasswordError("New password and confirmation do not match.");
       return;
     }
-    const token = getAccessToken();
-    if (!token) return;
     setPasswordError(null);
     setPasswordSuccess(false);
     setPasswordLoading(true);
@@ -113,7 +101,7 @@ export default function ProfilePage() {
         oldPassword: mustChangePassword ? undefined : (oldPassword || undefined),
         newPassword,
       };
-      await changePassword(token, body);
+      await changePassword(body);
       setPasswordSuccess(true);
       setOldPassword("");
       setNewPassword("");
