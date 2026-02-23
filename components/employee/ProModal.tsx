@@ -54,7 +54,7 @@ export function ProModal({ isOpen, onClose }: ProModalProps) {
               </p>
             </div>
             <Link
-              href="/subscription"
+              href="/employee/subscription"
               className="rounded-xl bg-green-600 px-6 py-3 font-semibold text-white transition hover:bg-green-700"
             >
               Đăng ký ngay

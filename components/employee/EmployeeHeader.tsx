@@ -15,7 +15,7 @@ export function EmployeeHeader() {
           </p>
         </div>
         <Link
-          href="/subscription"
+          href="/employee/subscription"
           className="group hidden items-center gap-3 sm:flex"
         >
           <div className="flex items-center gap-3 rounded-2xl border-2 border-zinc-200 bg-linear-to-br from-white to-zinc-50 px-5 py-3 shadow-md transition-all hover:border-green-400 hover:shadow-lg dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-950">

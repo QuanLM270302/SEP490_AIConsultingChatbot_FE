@@ -50,7 +50,7 @@ export function ProSection() {
 
         <div className="flex flex-wrap items-center gap-4">
           <Link
-            href="/subscription"
+            href="/employee/subscription"
             className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-green-600 shadow-lg transition hover:scale-105 hover:shadow-xl"
           >
             Nâng cấp ngay <ArrowRightIcon className="ml-1 inline h-4 w-4" />
