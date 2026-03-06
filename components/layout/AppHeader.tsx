@@ -28,8 +28,8 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 shrink-0 border-b border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-      <div className="flex items-center gap-6">
+      <div className="flex h-12 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="flex min-w-0 shrink-0 items-center gap-4 sm:gap-6">
         <Link
           href={homeHref}
           className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50"
@@ -56,7 +56,7 @@ export function AppHeader() {
           })}
         </nav>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <Link
           href="/profile"
           className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
