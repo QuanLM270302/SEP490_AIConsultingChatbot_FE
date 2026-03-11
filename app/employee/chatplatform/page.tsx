@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import type { Message } from "@/types/chat";
-import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AIBoxSidebar } from "@/components/chat/AIBoxSidebar";
 import { ChatHistorySidebar } from "@/components/chat/ChatHistorySidebar";
 import { ChatHeader } from "@/components/chat/ChatHeader";
 import { ChatMessageList } from "@/components/chat/ChatMessageList";
 import { ChatInput } from "@/components/chat/ChatInput";
+import { useRouter } from "next/navigation";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
 export default function ChatPlatform() {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -98,7 +100,6 @@ export default function ChatPlatform() {
 
   return (
     <div className="flex min-h-screen bg-zinc-950 text-zinc-50">
-      <AppSidebar links={[{ href: "/employee", label: "Home" }, { href: "/employee/chatplatform", label: "Chat" }]} />
       <AIBoxSidebar />
 
       <div className="flex flex-1">
@@ -110,6 +111,16 @@ export default function ChatPlatform() {
         />
 
         <main className="flex flex-1 flex-col bg-zinc-950">
+          <div className="flex items-center gap-3 px-6 pt-6">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="inline-flex items-center gap-2 rounded-full border border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-600 hover:bg-zinc-900"
+            >
+              <ArrowLeftIcon className="h-4 w-4" />
+              <span>Quay lại</span>
+            </button>
+          </div>
           <ChatHeader />
 
           <div className="flex-1 overflow-y-auto px-6 py-8">
