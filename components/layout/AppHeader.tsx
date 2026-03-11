@@ -10,13 +10,13 @@ import { roleToPath, hasAllowedRole } from "@/lib/auth-routes";
 const ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
 const ROLE_TENANT_ADMIN = "ROLE_TENANT_ADMIN";
 const ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
-const ROLE_CONTENT_MANAGER = "ROLE_CONTENT_MANAGER";
+const ROLE_STAFF = "ROLE_STAFF";
 
 const navLinks = [
   { href: "/employee", label: "Employee", roles: [ROLE_EMPLOYEE] },
   { href: "/tenant-admin", label: "Tenant Admin", roles: [ROLE_TENANT_ADMIN] },
   { href: "/super-admin", label: "Super Admin", roles: [ROLE_SUPER_ADMIN] },
-  { href: "/content-manager", label: "Content Manager", roles: [ROLE_CONTENT_MANAGER] },
+  { href: "/staff", label: "Staff", roles: [ROLE_STAFF] },
 ];
 
 export function AppHeader() {

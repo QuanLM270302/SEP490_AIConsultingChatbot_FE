@@ -75,7 +75,7 @@ export function MetricsSection() {
 
           <div className="flex-1 rounded-3xl bg-white p-4 shadow-sm shadow-green-50 dark:bg-zinc-950 dark:shadow-black/40">
             <p className="text-xs font-medium text-zinc-400">
-              Document Uploads (Content Managers)
+              Document Uploads (Tenant Admin)
             </p>
             <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
               1875+

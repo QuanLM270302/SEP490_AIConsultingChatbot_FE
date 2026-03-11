@@ -5,10 +5,10 @@
 const ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
 const ROLE_TENANT_ADMIN = "ROLE_TENANT_ADMIN";
 const ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
-const ROLE_CONTENT_MANAGER = "ROLE_CONTENT_MANAGER";
+const ROLE_STAFF = "ROLE_STAFF";
 
 /** Paths that don't require login (guest + general dashboard) */
-export const PUBLIC_PATHS = ["/", "/login", "/register", "/forgot-password"];
+export const PUBLIC_PATHS = ["/", "/login", "/forgot-password"];
 
 /** Path -> allowed roles (empty = any authenticated) */
 export const PATH_ALLOWED_ROLES: Record<string, string[]> = {
@@ -18,7 +18,7 @@ export const PATH_ALLOWED_ROLES: Record<string, string[]> = {
   "/employee": [ROLE_EMPLOYEE],
   "/tenant-admin": [ROLE_TENANT_ADMIN],
   "/super-admin": [ROLE_SUPER_ADMIN],
-  "/content-manager": [ROLE_CONTENT_MANAGER],
+  "/staff": [ROLE_STAFF],
 };
 
 /** First segment of path for role check (e.g. /tenant-admin/roles -> /tenant-admin) */
@@ -32,7 +32,7 @@ export function roleToPath(roles: string[]): string {
   const role = roles[0] ?? "";
   if (role.includes("SUPER_ADMIN")) return "/super-admin";
   if (role.includes("TENANT_ADMIN")) return "/tenant-admin";
-  if (role.includes("CONTENT_MANAGER")) return "/content-manager";
+  if (role.includes("STAFF")) return "/staff";
   if (role.includes("EMPLOYEE")) return "/employee";
   return "/employee";
 }
