@@ -1,22 +1,12 @@
 import { AuthForm } from "@/components/auth/AuthForm";
-import Link from "next/link";
 
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left: Login form */}
       <div className="flex w-full flex-col items-center justify-center border-zinc-200 bg-white px-6 py-12 dark:border-zinc-800 dark:bg-zinc-900 lg:w-1/2 lg:border-r lg:px-12 lg:py-16">
-        <div className="w-full max-w-sm space-y-4">
+        <div className="w-full max-w-sm">
           <AuthForm mode="login" />
-          <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
-            Not have an account?{" "}
-            <Link
-              href="/register"
-              className="font-medium text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-400"
-            >
-              Register
-            </Link>
-          </p>
         </div>
       </div>
 
