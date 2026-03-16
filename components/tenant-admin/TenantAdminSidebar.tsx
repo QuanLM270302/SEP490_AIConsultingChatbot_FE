@@ -8,19 +8,20 @@ import {
   Users,
   Building,
   Shield,
-  CreditCard,
   FileText,
+  BarChart3,
+  CreditCard,
   X,
 } from "lucide-react";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 
 const navigation = [
   { name: "Dashboard", href: "/tenant-admin", icon: LayoutDashboard },
-  { name: "Nhân viên", href: "/tenant-admin/employees", icon: Users },
-  { name: "Phòng ban", href: "/tenant-admin/departments", icon: Building },
+  { name: "Employees", href: "/tenant-admin/employees", icon: Users },
+  { name: "Departments", href: "/tenant-admin/departments", icon: Building },
   { name: "Roles & Permissions", href: "/tenant-admin/roles", icon: Shield },
-  { name: "Subscription", href: "/tenant-admin/subscription", icon: CreditCard },
   { name: "Documents", href: "/tenant-admin/documents", icon: FileText },
+  { name: "AI Analytics", href: "/tenant-admin/analytics", icon: BarChart3 },
+  { name: "Subscription", href: "/tenant-admin/subscription", icon: CreditCard },
 ];
 
 interface TenantAdminSidebarProps {
@@ -53,11 +54,11 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
             {/* Logo */}
             <div className="flex items-center justify-between">
               <Link href="/tenant-admin" className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-green-500 text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-green-400 to-green-600 text-white shadow-lg shadow-green-500/30">
                   <Building className="h-5 w-5" />
                 </div>
                 <span className="text-lg font-semibold text-zinc-900 dark:text-white">
-                  Organization
+                  Tenant Admin
                 </span>
               </Link>
               <button
@@ -71,7 +72,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
             {/* Navigation */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Organization Menu
+                Management
               </p>
             </div>
 
@@ -103,41 +104,45 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
                 );
               })}
             </nav>
+          </div>
 
-            {/* Organization Info */}
-            <div className="space-y-3 rounded-2xl bg-zinc-50 p-4 text-xs text-zinc-600 shadow-sm dark:bg-zinc-900 dark:text-zinc-300">
+          {/* Organization Info & Usage Limits */}
+          <div className="space-y-4">
+            <div className="space-y-3 rounded-2xl bg-linear-to-br from-green-50 to-emerald-50 p-4 text-xs dark:from-green-950/30 dark:to-emerald-950/30">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-zinc-800 dark:text-zinc-100">
-                  Organization
+                  Current Plan
                 </p>
-                <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600 dark:text-green-400">
-                  Active
+                <span className="rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                  Standard
                 </span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 text-zinc-600 dark:text-zinc-400">
                 <div className="flex items-center justify-between">
-                  <span>Employees</span>
-                  <span>156</span>
+                  <span>Users</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white">120 / 200</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/50 dark:bg-zinc-900/50">
+                  <div className="h-full w-[60%] rounded-full bg-linear-to-r from-green-400 to-green-600" />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Departments</span>
-                  <span>8</span>
+                  <span>Storage</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white">2.3 / 10 GB</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>Active Roles</span>
-                  <span>12</span>
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/50 dark:bg-zinc-900/50">
+                  <div className="h-full w-[23%] rounded-full bg-linear-to-r from-blue-400 to-blue-600" />
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Back to home */}
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
-          >
-            ← Về trang chủ
-          </Link>
+            {/* Back to home */}
+            <Link
+              href="/"
+              className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
+            >
+              ← Về trang chủ
+            </Link>
+          </div>
         </div>
       </aside>
     </>
