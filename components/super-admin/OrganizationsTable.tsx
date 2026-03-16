@@ -3,10 +3,11 @@
 import { MoreVertical } from "lucide-react";
 
 const organizations = [
-  { id: 1, name: "Công ty TNHH ABC", users: 45, status: "active", plan: "Enterprise", createdAt: "2024-01-15" },
-  { id: 2, name: "Tập đoàn XYZ", users: 120, status: "active", plan: "Enterprise", createdAt: "2024-02-01" },
-  { id: 3, name: "Công ty DEF", users: 28, status: "active", plan: "Business", createdAt: "2024-02-10" },
-  { id: 4, name: "Startup GHI", users: 12, status: "trial", plan: "Trial", createdAt: "2024-02-28" },
+  { id: 1, name: "Công ty TNHH ABC", users: 45, documents: 1250, aiQueries: 8420, status: "active", plan: "Enterprise", createdAt: "2024-01-15" },
+  { id: 2, name: "Tập đoàn XYZ", users: 120, documents: 3840, aiQueries: 24680, status: "active", plan: "Enterprise", createdAt: "2024-02-01" },
+  { id: 3, name: "Công ty DEF", users: 28, documents: 680, aiQueries: 4520, status: "active", plan: "Business", createdAt: "2024-02-10" },
+  { id: 4, name: "Startup GHI", users: 12, documents: 240, aiQueries: 1850, status: "trial", plan: "Trial", createdAt: "2024-02-28" },
+  { id: 5, name: "Công ty JKL", users: 8, documents: 120, aiQueries: 680, status: "suspended", plan: "Business", createdAt: "2024-01-20" },
 ];
 
 export function OrganizationsTable() {
@@ -21,6 +22,12 @@ export function OrganizationsTable() {
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
                 Người dùng
+              </th>
+              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+                Documents
+              </th>
+              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+                AI Queries
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
                 Trạng thái
@@ -48,14 +55,22 @@ export function OrganizationsTable() {
                   <div className="text-sm text-zinc-900 dark:text-white">{org.users}</div>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">
+                  <div className="text-sm text-zinc-900 dark:text-white">{org.documents.toLocaleString()}</div>
+                </td>
+                <td className="whitespace-nowrap px-6 py-4">
+                  <div className="text-sm text-zinc-900 dark:text-white">{org.aiQueries.toLocaleString()}</div>
+                </td>
+                <td className="whitespace-nowrap px-6 py-4">
                   <span
                     className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
                       org.status === "active"
                         ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : org.status === "trial"
+                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : "bg-red-500/10 text-red-600 dark:text-red-400"
                     }`}
                   >
-                    {org.status === "active" ? "Hoạt động" : "Dùng thử"}
+                    {org.status === "active" ? "Hoạt động" : org.status === "trial" ? "Dùng thử" : "Tạm ngưng"}
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">
