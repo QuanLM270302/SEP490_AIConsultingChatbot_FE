@@ -1,40 +1,37 @@
 "use client";
 
-import { Users, Building2, FileText, MessageSquare, CreditCard } from "lucide-react";
+import { FileText, Upload, Eye, TrendingUp } from "lucide-react";
 
 const stats = [
   {
-    name: "Total Users",
-    value: "120",
-    icon: Users,
-  },
-  {
-    name: "Departments",
-    value: "6",
-    icon: Building2,
-  },
-  {
-    name: "Documents",
+    name: "Total Documents",
     value: "480",
+    change: "+24 this month",
     icon: FileText,
   },
   {
-    name: "AI Queries Today",
-    value: "1,250",
-    icon: MessageSquare,
+    name: "Uploaded Today",
+    value: "12",
+    change: "+3 from yesterday",
+    icon: Upload,
   },
   {
-    name: "Subscription",
-    value: "Standard",
-    subtitle: "Active",
-    icon: CreditCard,
-    status: "active",
+    name: "Most Referenced",
+    value: "HR Policy",
+    change: "324 queries",
+    icon: Eye,
+  },
+  {
+    name: "Storage Used",
+    value: "2.3GB",
+    change: "23% of 10GB",
+    icon: TrendingUp,
   },
 ];
 
-export function OrganizationStats() {
+export function DocumentStats() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
@@ -50,12 +47,9 @@ export function OrganizationStats() {
                 <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
                   {stat.value}
                 </p>
-                {stat.status && (
-                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-semibold text-green-600 dark:text-green-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                    {stat.subtitle}
-                  </span>
-                )}
+                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  {stat.change}
+                </p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-green-500/10">
                 <Icon className="h-5 w-5 text-green-500" />
