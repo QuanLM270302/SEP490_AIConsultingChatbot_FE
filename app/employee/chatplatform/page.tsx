@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 "use client";
 
 import { useState } from "react";
@@ -97,8 +98,14 @@ export default function ChatPlatform() {
   const handleSelectExample = (example: string) => {
     setCurrentQuestion(example);
   };
+=======
+import { AppHeader } from "@/components/layout/AppHeader";
+import { ChatLayout } from "@/components/chat/ChatLayout";
+>>>>>>> origin/dev
 
+export default function ChatPlatformPage() {
   return (
+<<<<<<< HEAD
     <div className="flex min-h-screen bg-zinc-950 text-zinc-50">
       <AIBoxSidebar />
 
@@ -140,7 +147,11 @@ export default function ChatPlatform() {
           />
         </main>
       </div>
+=======
+    <div className="flex min-h-screen flex-col">
+      {/* <AppHeader /> */}
+      <ChatLayout />
+>>>>>>> origin/dev
     </div>
   );
 }
-
