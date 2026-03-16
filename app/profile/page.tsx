@@ -312,7 +312,13 @@ export default function ProfilePage() {
                 )}
                 <div>
                   <label htmlFor="newPassword" className={labelClass}>New password</label>
-                  <input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className={inputClass} placeholder="Min 8 chars, upper, lower, number, special" />
+                  <input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className={inputClass}
+                  />
                 </div>
                 <div>
                   <label htmlFor="confirmNew" className={labelClass}>Confirm new password</label>

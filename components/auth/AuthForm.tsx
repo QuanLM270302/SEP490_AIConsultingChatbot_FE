@@ -7,9 +7,9 @@ import { login } from "@/lib/api/auth";
 import { setAuth } from "@/lib/auth-store";
 import { roleToPath } from "@/lib/auth-routes";
 
-type AuthMode = "login" | "register";
+type AuthMode = "login";
 
-type UserRole = "super-admin" | "tenant-admin" | "employee" | "content-manager";
+type UserRole = "super-admin" | "tenant-admin" | "employee" | "staff";
 
 interface AuthFormProps {
   mode: AuthMode;
@@ -20,7 +20,7 @@ const AUTH_ROLES: { value: UserRole; label: string }[] = [
   { value: "super-admin", label: "Super Admin" },
   { value: "tenant-admin", label: "Tenant Admin" },
   { value: "employee", label: "Employee" },
-  { value: "content-manager", label: "Content Manager" },
+  { value: "staff", label: "Staff" },
 ];
 
 export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
@@ -28,19 +28,12 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
   const [role, setRole] = useState<UserRole>("employee");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
-
-    if (mode === "register") {
-      // Register not implemented in backend auth; keep placeholder behavior
-      console.log("Register with email/password as", role);
-      return;
-    }
 
     if (mode === "login") {
       setLoading(true);
@@ -62,11 +55,11 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
     <div className="w-full space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {mode === "login" ? "Welcome back" : "Create your account"}
+          {"Welcome back"}
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Enter your credentials to{" "}
-          {mode === "login" ? "access" : "start using"} the internal consultant chatbot.
+          access the internal consultant chatbot.
         </p>
       </div>
 
@@ -137,26 +130,6 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
           />
         </div>
 
-        {mode === "register" && (
-          <div className="space-y-1.5 text-left">
-            <label
-              htmlFor="confirmPassword"
-              className="block text-sm font-medium text-zinc-800 dark:text-zinc-200"
-            >
-              Confirm password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
-              placeholder="••••••••"
-            />
-          </div>
-        )}
-
         {mode === "login" && (
           <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400">
             <label className="inline-flex items-center gap-2">
@@ -180,7 +153,7 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
           disabled={loading}
           className="flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-60"
         >
-          {loading ? "Signing in…" : mode === "login" ? "Login" : "Create account"}
+          {loading ? "Signing in…" : "Login"}
         </button>
       </form>
     </div>

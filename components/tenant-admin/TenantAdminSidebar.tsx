@@ -8,6 +8,8 @@ import {
   Users,
   Building,
   Shield,
+  CreditCard,
+  FileText,
   X,
 } from "lucide-react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -17,6 +19,8 @@ const navigation = [
   { name: "Nhân viên", href: "/tenant-admin/employees", icon: Users },
   { name: "Phòng ban", href: "/tenant-admin/departments", icon: Building },
   { name: "Roles & Permissions", href: "/tenant-admin/roles", icon: Shield },
+  { name: "Subscription", href: "/tenant-admin/subscription", icon: CreditCard },
+  { name: "Documents", href: "/tenant-admin/documents", icon: FileText },
 ];
 
 interface TenantAdminSidebarProps {

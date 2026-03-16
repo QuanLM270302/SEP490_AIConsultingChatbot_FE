@@ -9,10 +9,9 @@
 
 ### 1.1 Xác thực và phân quyền
 - **Đăng nhập** (`/login`): Form đăng nhập, giao diện 2 cột (form + panel trang trí).
-- **Đăng ký** (`/register`): Trang đăng ký tài khoản.
 - **Quên mật khẩu** (`/forgot-password`): Luồng khôi phục mật khẩu.
 - **AuthGuard**: Bảo vệ route theo role, refresh token, chuyển hướng theo quyền.
-- **Phân quyền theo role**: `ROLE_EMPLOYEE`, `ROLE_CONTENT_MANAGER`, `ROLE_TENANT_ADMIN`, `ROLE_SUPER_ADMIN`; map path → role trong `lib/auth-routes.ts`.
+- **Phân quyền theo role**: `ROLE_EMPLOYEE`, `ROLE_STAFF`, `ROLE_TENANT_ADMIN`, `ROLE_SUPER_ADMIN`; map path → role trong `lib/auth-routes.ts`.
 - **API auth**: Login, refresh, lưu token/user trong store (`lib/auth-store.ts`, `lib/api/auth.ts`).
 
 ### 1.2 Trang chủ / Dashboard
@@ -28,16 +27,9 @@
   - *Hiện dùng dữ liệu mẫu / simulate API.*
 - **Subscription** (`/employee/subscription`): Chọn gói (Starter, Standard, Enterprise), SubscriptionTiers, block “Đề xuất” gửi thông báo tới Tenant Admin.
 
-### 1.4 Khu vực Content Manager
-- **Trang chủ Content Manager** (`/content-manager`):  
-  - ContentManagerHeader, ContentManagerStatsCards.  
-  - **ContentManagerActionCards** với 5 chức năng:  
-    1. Quản lý tài liệu (upload, chỉnh sửa, phân loại, xóa).  
-    2. Gắn thẻ tài liệu (HR, IT, Operations, Finance…).  
-    3. Ingestion & Re-indexing.  
-    4. Quy tắc hiển thị (nội dung nhạy cảm).  
-    5. Analytics & Insights (FAQ, thống kê, hiệu suất).  
-  - Các card dùng icon, màu, mô tả và link (link hiện trỏ `#` – chưa có trang đích).
+### 1.4 Khu vực Staff
+- **Staff Dashboard** (`/staff`):  
+  - Các card chức năng chính: Review Tenant Requests, Approve / Reject Tenant, Assign Subscriptions, Monitor Platform Activity, Send Notifications.
 
 ### 1.5 Khu vực Tenant Admin
 - **Layout**: TenantAdminLayout, TenantAdminSidebar, DashboardHeader.
@@ -61,7 +53,7 @@
 - **Subscription** (`/subscription`): Redirect sang `/employee/subscription`.
 
 ### 1.8 Giao diện và hạ tầng
-- **Layout**: AppHeader, AppSidebar (dùng cho employee, content-manager).
+- **Layout**: AppHeader, AppSidebar (dùng cho employee).
 - **UI cơ bản**: Button, Input, Select (`components/ui`).
 - **Auth**: AuthForm, LogoutButton.
 - **Công nghệ**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, Heroicons, Lucide.
@@ -108,15 +100,15 @@
 
 | Hạng mục              | Trạng thái   | Ghi chú ngắn                                      |
 |-----------------------|-------------|---------------------------------------------------|
-| Auth (login, register, forgot, guard) | ✅ Hoàn thành | Có API, phân quyền theo role                      |
+| Auth (login, forgot, guard) | ✅ Hoàn thành | Có API, phân quyền theo role                      |
 | Home / Dashboard      | ✅ Hoàn thành | Guest + Super Admin view                          |
 | Employee (home, chat, subscription) | ✅ Hoàn thành | Chat đang mock API                                |
-| Content Manager home  | ✅ Hoàn thành | 5 action cards, link chưa có trang đích          |
+| Staff home            | ✅ Hoàn thành | Card chức năng theo use case Staff                |
 | Tenant Admin          | ✅ Hoàn thành | Dashboard, employees, departments, roles         |
 | Super Admin           | ✅ Hoàn thành | Đủ trang con theo sidebar                        |
 | Profile               | ✅ Hoàn thành | Xem/sửa thông tin, đổi mật khẩu                   |
 | Chat API thật         | 🔄 Đang làm | Thay mock bằng backend RAG                        |
-| Trang con Content Manager | 📋 Chuẩn bị | Documents, tags, re-index, rules, analytics       |
+| Trang con Staff           | 📋 Chuẩn bị | Chi tiết màn duyệt tenant, gán subscription       |
 | Subscription flow     | 📋 Chuẩn bị | Đề xuất nâng cấp, thông báo Tenant Admin          |
 
 Nếu cần bổ sung thêm mục (ví dụ: i18n, dark mode cố định, responsive từng trang) hoặc đính kèm tiến độ theo sprint, có thể cập nhật trực tiếp vào file này.
