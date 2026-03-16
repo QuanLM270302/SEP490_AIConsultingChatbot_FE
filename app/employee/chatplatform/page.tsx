@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 "use client";
 
 import { useState } from "react";
@@ -11,7 +10,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
-export default function ChatPlatform() {
+export default function ChatPlatformPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -44,6 +43,8 @@ export default function ChatPlatform() {
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,9 +85,7 @@ export default function ChatPlatform() {
 
   const handleRate = (messageId: string, rating: "helpful" | "not-helpful") => {
     setMessages(
-      messages.map((msg) =>
-        msg.id === messageId ? { ...msg, rating } : msg
-      )
+      messages.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
     );
   };
 
@@ -98,25 +97,12 @@ export default function ChatPlatform() {
   const handleSelectExample = (example: string) => {
     setCurrentQuestion(example);
   };
-=======
-import { AppHeader } from "@/components/layout/AppHeader";
-import { ChatLayout } from "@/components/chat/ChatLayout";
->>>>>>> origin/dev
 
-export default function ChatPlatformPage() {
   return (
-<<<<<<< HEAD
     <div className="flex min-h-screen bg-zinc-950 text-zinc-50">
       <AIBoxSidebar />
 
       <div className="flex flex-1">
-        <ChatHistorySidebar
-          messages={messages}
-          selectedMessage={selectedMessage}
-          onSelectMessage={setSelectedMessage}
-          onNewChat={handleNewChat}
-        />
-
         <main className="flex flex-1 flex-col bg-zinc-950">
           <div className="flex items-center gap-3 px-6 pt-6">
             <button
@@ -126,6 +112,13 @@ export default function ChatPlatformPage() {
             >
               <ArrowLeftIcon className="h-4 w-4" />
               <span>Quay lại</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsHistoryOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-600 hover:bg-zinc-900"
+            >
+              Lịch sử chat
             </button>
           </div>
           <ChatHeader />
@@ -147,11 +140,16 @@ export default function ChatPlatformPage() {
           />
         </main>
       </div>
-=======
-    <div className="flex min-h-screen flex-col">
-      {/* <AppHeader /> */}
-      <ChatLayout />
->>>>>>> origin/dev
+
+      <ChatHistorySidebar
+        open={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        onSelectChat={(chatId) => {
+          setCurrentChatId(chatId || null);
+          // Khi chọn chat khác có thể thêm logic load lịch sử sau
+        }}
+        currentChatId={currentChatId}
+      />
     </div>
   );
 }
