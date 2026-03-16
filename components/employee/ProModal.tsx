@@ -47,18 +47,20 @@ export function ProModal({ isOpen, onClose }: ProModalProps) {
           </div>
           <div className="flex items-center justify-between rounded-xl bg-green-50 p-4 dark:bg-green-900/20">
             <div>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">Giá</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                299.000đ
-                <span className="text-sm font-normal text-zinc-500">/tháng</span>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Gói Pro được quản lý ở cấp tổ chức
+              </p>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Vui lòng liên hệ Tenant Admin nếu bạn muốn đề xuất nâng cấp.
               </p>
             </div>
-            <Link
-              href="/employee/subscription"
-              className="rounded-xl bg-green-600 px-6 py-3 font-semibold text-white transition hover:bg-green-700"
+            <button
+              type="button"
+              className="rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-700"
+              onClick={onClose}
             >
-              Đăng ký ngay
-            </Link>
+              Đã hiểu
+            </button>
           </div>
         </div>
       </div>

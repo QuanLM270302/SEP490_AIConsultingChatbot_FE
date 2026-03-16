@@ -18,9 +18,9 @@ export function DashboardHeader() {
             document-grounded answers.
           </p>
         </div>
-        <div className="w-full max-w-sm space-y-3 md:text-right">
+          <div className="w-full max-w-sm space-y-3 md:text-right">
           <p className="text-xs font-medium opacity-90">
-            Multi-tenant SaaS • Employees, Content Managers, Platform Admins
+            Multi-tenant SaaS • Employees, Staff, Platform Admins
           </p>
           <div className="flex flex-wrap gap-2 md:justify-end">
             <button className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-green-600 shadow-sm shadow-green-200">
@@ -29,7 +29,7 @@ export function DashboardHeader() {
             </button>
             <button className="inline-flex items-center gap-2 rounded-full bg-green-700/80 px-4 py-1.5 text-xs font-semibold text-white shadow-sm shadow-green-800/70">
               <DocumentIcon className="h-4 w-4" />
-              Upload Documents (Content Manager)
+              Upload Documents (Tenant Admin)
             </button>
             <button className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-xs font-semibold text-white shadow-sm shadow-green-900/40">
               <ShieldCheckIcon className="h-4 w-4" />

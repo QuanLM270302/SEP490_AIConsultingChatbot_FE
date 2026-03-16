@@ -4,7 +4,7 @@ import { AIUsageChart } from "@/components/tenant-admin/AIUsageChart";
 import { EmployeeOverview } from "@/components/tenant-admin/EmployeeOverview";
 import { DepartmentOverview } from "@/components/tenant-admin/DepartmentOverview";
 import Link from "next/link";
-import { Users, Building, Shield, FileUp } from "lucide-react";
+import { Users, Building, Shield, CreditCard, FileText } from "lucide-react";
 
 export default function TenantAdminPage() {
   const quickLinks = [
@@ -30,11 +30,18 @@ export default function TenantAdminPage() {
       color: "bg-emerald-500",
     },
     {
+      title: "Subscription",
+      description: "Quản lý gói & nâng cấp tổ chức",
+      href: "/tenant-admin/subscription",
+      icon: CreditCard,
+      color: "bg-teal-500",
+    },
+    {
       title: "Documents",
-      description: "Quản lý tài liệu",
+      description: "Quản lý tài liệu, categories & tags",
       href: "/tenant-admin/documents",
-      icon: FileUp,
-      color: "bg-blue-500",
+      icon: FileText,
+      color: "bg-sky-500",
     },
   ];
 

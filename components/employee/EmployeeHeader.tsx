@@ -14,25 +14,19 @@ export function EmployeeHeader() {
             Hệ thống tư vấn nội bộ AI của bạn
           </p>
         </div>
-        <Link
-          href="/employee/subscription"
-          className="group hidden items-center gap-3 sm:flex"
-        >
-          <div className="flex items-center gap-3 rounded-2xl border-2 border-zinc-200 bg-linear-to-br from-white to-zinc-50 px-5 py-3 shadow-md transition-all hover:border-green-400 hover:shadow-lg dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-950">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-amber-400 to-amber-500 text-white shadow-lg shadow-amber-500/30">
-              <StarIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                Gói hiện tại
-              </p>
-              <p className="text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-                Starter
-              </p>
-            </div>
-            <ArrowRightIcon className="h-5 w-5 text-zinc-400 transition group-hover:text-green-500 dark:text-zinc-500" />
+        <div className="hidden items-center gap-3 rounded-2xl border-2 border-zinc-200 bg-linear-to-br from-white to-zinc-50 px-5 py-3 shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-950 sm:flex">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-amber-400 to-amber-500 text-white shadow-lg shadow-amber-500/30">
+            <StarIcon className="h-6 w-6" />
           </div>
-        </Link>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Gói hiện tại
+            </p>
+            <p className="text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+              Do Tenant Admin quản lý
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -8,12 +8,11 @@ import {
   Users,
   Building,
   Shield,
-  FileText,      // Thêm dòng này
-  BarChart3,     // Thêm dòng này
-  CreditCard,    // Thêm dòng này
+  FileText,
+  BarChart3,
+  CreditCard,
   X,
 } from "lucide-react";
-
 
 const navigation = [
   { name: "Dashboard", href: "/tenant-admin", icon: LayoutDashboard },
@@ -24,8 +23,6 @@ const navigation = [
   { name: "AI Analytics", href: "/tenant-admin/analytics", icon: BarChart3 },
   { name: "Subscription", href: "/tenant-admin/subscription", icon: CreditCard },
 ];
-
-
 
 interface TenantAdminSidebarProps {
   open: boolean;
