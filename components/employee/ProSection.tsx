@@ -49,16 +49,13 @@ export function ProSection() {
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
-          <Link
-            href="/employee/subscription"
-            className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-green-600 shadow-lg transition hover:scale-105 hover:shadow-xl"
-          >
-            Nâng cấp ngay <ArrowRightIcon className="ml-1 inline h-4 w-4" />
-          </Link>
+          <div className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-green-600 shadow-lg">
+            Liên hệ Tenant Admin để nâng cấp{" "}
+            <ArrowRightIcon className="ml-1 inline h-4 w-4" />
+          </div>
           <div className="text-sm opacity-80">
-            <span className="font-semibold">Chỉ từ</span>{" "}
-            <span className="text-xl font-bold">299.000đ</span>
-            <span className="opacity-70">/tháng</span>
+            <span className="font-semibold">Gợi ý gói</span>{" "}
+            <span className="text-xl font-bold">Starter/Standard/Enterprise</span>
           </div>
         </div>
       </div>
