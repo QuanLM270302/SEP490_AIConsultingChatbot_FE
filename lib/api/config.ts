@@ -14,3 +14,4 @@ export const CATEGORIES_BASE = `${KNOWLEDGE_BASE}/categories`;
 export const TAGS_BASE = `${KNOWLEDGE_BASE}/tags`;
 export const CHATBOT_BASE = `${API_BASE_URL}/api/v1/chatbot`;
 export const TENANT_ADMIN_BASE = `${API_BASE_URL}/api/v1/tenant-admin`;
+export const STAFF_BASE = `${API_BASE_URL}/api/v1/staff`;
