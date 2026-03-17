@@ -1,6 +1,4 @@
 import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
-import { PricingTiers } from "@/components/super-admin/PricingTiers";
-import { SubscriptionPlans } from "@/components/super-admin/SubscriptionPlans";
 import { SubscriptionPlansTable } from "@/components/super-admin/SubscriptionPlansTable";
 
 export default function PricingPage() {
@@ -12,12 +10,10 @@ export default function PricingPage() {
             Subscription Tiers & Plans (API 04)
           </h1>
           <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Quản lý các gói dịch vụ, cấu trúc giá và CRUD subscription plans
+            Quản lý các gói dịch vụ theo dữ liệu API (không dùng data ảo).
           </p>
         </div>
 
-        <PricingTiers />
-        <SubscriptionPlans />
         <SubscriptionPlansTable />
       </div>
     </SuperAdminLayout>

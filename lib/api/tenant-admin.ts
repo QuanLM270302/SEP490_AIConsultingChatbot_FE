@@ -28,6 +28,7 @@ export interface TenantAnalyticsResponse {
 export interface UserResponse {
   id: string;
   email?: string;
+  contactEmail?: string;
   fullName?: string;
   departmentId?: number;
   departmentName?: string;

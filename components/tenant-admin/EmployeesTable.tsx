@@ -190,7 +190,14 @@ export function EmployeesTable() {
                 users.map((user) => (
                   <tr key={user.id} className="transition hover:bg-zinc-50 dark:hover:bg-zinc-900">
                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-zinc-900 dark:text-white">{user.fullName ?? "—"}</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-xs text-zinc-600 dark:text-zinc-400">{user.email ?? "—"}</td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <div className="text-xs text-zinc-600 dark:text-zinc-400">{user.email ?? "—"}</div>
+                      {user.contactEmail ? (
+                        <div className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-500">
+                          Contact: {user.contactEmail}
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">{user.departmentName ?? "—"}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">{user.roleName ?? "—"}</td>
                     <td className="whitespace-nowrap px-6 py-4">
@@ -288,6 +295,7 @@ function DetailModal({ user, onClose }: { user: UserResponse; onClose: () => voi
         <dl className="mt-4 space-y-2 text-sm">
           <div><dt className="text-zinc-500">Họ tên</dt><dd className="font-medium text-zinc-900 dark:text-white">{user.fullName ?? "—"}</dd></div>
           <div><dt className="text-zinc-500">Email</dt><dd className="font-medium text-zinc-900 dark:text-white">{user.email ?? "—"}</dd></div>
+          <div><dt className="text-zinc-500">Contact email</dt><dd className="font-medium text-zinc-900 dark:text-white">{user.contactEmail ?? "—"}</dd></div>
           <div><dt className="text-zinc-500">Phòng ban</dt><dd className="font-medium text-zinc-900 dark:text-white">{user.departmentName ?? "—"}</dd></div>
           <div><dt className="text-zinc-500">Vai trò</dt><dd className="font-medium text-zinc-900 dark:text-white">{user.roleName ?? "—"}</dd></div>
           <div><dt className="text-zinc-500">Trạng thái</dt><dd className="font-medium text-zinc-900 dark:text-white">{user.status ?? "—"}</dd></div>

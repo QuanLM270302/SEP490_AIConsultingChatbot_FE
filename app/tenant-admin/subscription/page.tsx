@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { SubscriptionHeader } from "@/components/subscription/SubscriptionHeader";
 import { SubscriptionTabs } from "@/components/subscription/SubscriptionTabs";
-import { SubscriptionTiers } from "@/components/subscription/SubscriptionTiers";
 import { SubscriptionInfo } from "@/components/tenant-admin/SubscriptionInfo";
 import { BillingHistory } from "@/components/tenant-admin/BillingHistory";
 import { getMySubscription, selectPlan } from "@/lib/api/subscription";
@@ -12,6 +11,7 @@ import { getPaymentHistory, getPaymentStatus } from "@/lib/api/payment";
 import type { MySubscriptionResponse } from "@/lib/api/subscription";
 import type { SelectPlanResponse } from "@/lib/api/subscription";
 import type { BillingCycle } from "@/lib/api/subscription";
+import type { SubscriptionTier } from "@/lib/api/subscription";
 
 type TabId = "plans" | "billing" | "history";
 
@@ -21,7 +21,7 @@ export default function TenantAdminSubscriptionPage() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [payments, setPayments] = useState<Awaited<ReturnType<typeof getPaymentHistory>>>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<"Starter" | "Standard" | "Enterprise">("Starter");
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("STARTER");
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("MONTHLY");
   const [paymentPending, setPaymentPending] = useState<SelectPlanResponse | null>(null);
   const [selectPlanLoading, setSelectPlanLoading] = useState(false);
@@ -51,19 +51,23 @@ export default function TenantAdminSubscriptionPage() {
     if (activeTab === "history") loadPayments();
   }, [activeTab]);
 
-  const tierToApi: Record<string, "STARTER" | "STANDARD" | "ENTERPRISE"> = {
-    Starter: "STARTER",
-    Standard: "STANDARD",
-    Enterprise: "ENTERPRISE",
-  };
-
   const handleConfirmPay = async () => {
     setSelectPlanError(null);
     setSelectPlanLoading(true);
     try {
-      const apiTier = tierToApi[selectedTier];
-      if (!apiTier) throw new Error("Chọn gói trước khi thanh toán");
-      const data = await selectPlan(apiTier, billingCycle);
+      if (subscription && !subscription.isTrial && subscription.status === "ACTIVE") {
+        if (subscription.cancelledAt) {
+          const until = subscription.endDate
+            ? new Date(subscription.endDate).toLocaleDateString("vi-VN")
+            : "hết kỳ";
+          throw new Error(
+            `Gói hiện tại đã hủy nhưng vẫn còn hiệu lực đến ${until}. Bạn chỉ có thể mua gói mới sau khi gói hiện tại hết hạn.`
+          );
+        }
+        throw new Error("Tenant đang có gói trả phí đang active. Vui lòng hủy gói hiện tại trước.");
+      }
+      if (!selectedTier) throw new Error("Chọn gói trước khi thanh toán");
+      const data = await selectPlan(selectedTier, billingCycle);
       setPaymentPending(data);
     } catch (e) {
       setSelectPlanError(e instanceof Error ? e.message : "Chọn gói thất bại");
@@ -101,10 +105,7 @@ export default function TenantAdminSubscriptionPage() {
                 onUpdated={handleSubscriptionUpdated}
               />
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-                <h3 className="mb-2 font-semibold text-zinc-900 dark:text-white">Gói dịch vụ</h3>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Chọn gói bên dưới và thanh toán qua QR / chuyển khoản. Sau khi thanh toán thành công, gói sẽ được kích hoạt.
-                </p>
+                <h3 className="mb-2 font-semibold text-zinc-900 dark:text-white">Thanh toán gói subscription</h3>
               </div>
             </div>
             {paymentPending && (
@@ -114,13 +115,17 @@ export default function TenantAdminSubscriptionPage() {
                 onSuccess={handleSubscriptionUpdated}
               />
             )}
-            <section className="mb-8">
-              <SubscriptionTiers
-                selectedTier={selectedTier}
-                onTierSelect={setSelectedTier}
-              />
-            </section>
             <div className="mb-8 flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Tier:</span>
+              <select
+                value={selectedTier}
+                onChange={(e) => setSelectedTier(e.target.value as SubscriptionTier)}
+                className="rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+              >
+                <option value="STARTER">STARTER</option>
+                <option value="STANDARD">STANDARD</option>
+                <option value="ENTERPRISE">ENTERPRISE</option>
+              </select>
               <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Chu kỳ thanh toán:</span>
               <select
                 value={billingCycle}
@@ -133,11 +138,14 @@ export default function TenantAdminSubscriptionPage() {
               </select>
               <button
                 type="button"
-                disabled={selectPlanLoading}
+                disabled={
+                  selectPlanLoading ||
+                  (!!subscription && !subscription.isTrial && subscription.status === "ACTIVE")
+                }
                 onClick={handleConfirmPay}
                 className="rounded-xl bg-green-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
               >
-                {selectPlanLoading ? "Đang xử lý…" : "Thanh toán gói " + selectedTier}
+                {selectPlanLoading ? "Đang xử lý…" : `Tạo thanh toán (${selectedTier})`}
               </button>
               {selectPlanError && <p className="text-sm text-red-600 dark:text-red-400">{selectPlanError}</p>}
             </div>

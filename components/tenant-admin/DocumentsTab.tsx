@@ -23,6 +23,7 @@ import type {
 import { listCategoriesFlat } from "@/lib/api/categories";
 import { listTagsActive } from "@/lib/api/tags";
 import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
+import { getTenantActiveDepartments, getTenantRoles, type DepartmentResponse, type RoleResponse } from "@/lib/api/tenant-admin";
 import {
   Upload,
   Trash2,
@@ -32,6 +33,7 @@ import {
   History,
   X,
   ChevronDown,
+  Check,
 } from "lucide-react";
 
 const VISIBILITY_LABELS: Record<DocumentVisibility, string> = {
@@ -45,6 +47,12 @@ export function DocumentsTab() {
   const [deleted, setDeleted] = useState<DeletedDocumentResponse[]>([]);
   const [categories, setCategories] = useState<DocumentCategoryResponse[]>([]);
   const [tags, setTags] = useState<DocumentTagResponse[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
+  const [uploadVisibility, setUploadVisibility] = useState<DocumentVisibility>("COMPANY_WIDE");
+  const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<number[]>([]);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
@@ -52,20 +60,25 @@ export function DocumentsTab() {
   const [accessDoc, setAccessDoc] = useState<DocumentResponse | null>(null);
   const [versionDocId, setVersionDocId] = useState<string | null>(null);
   const [versions, setVersions] = useState<DocumentVersionResponse[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [newVersionDocId, setNewVersionDocId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [docs, cats, activeTags] = await Promise.all([
+      const [docs, cats, activeTags, depts, tenantRoles] = await Promise.all([
         listDocuments(),
         listCategoriesFlat(),
         listTagsActive(),
+        getTenantActiveDepartments().catch(() => []),
+        getTenantRoles().catch(() => []),
       ]);
       setDocuments(docs);
       setCategories(cats);
       setTags(activeTags);
+      setDepartments(depts);
+      setRoles(tenantRoles);
       const del = await listDeletedDocuments();
       setDeleted(del);
     } catch (e) {
@@ -91,19 +104,39 @@ export function DocumentsTab() {
     setError(null);
     try {
       const categoryId = (form.elements.namedItem("categoryId") as HTMLSelectElement)?.value || undefined;
-      const tagIdsRaw = (form.elements.namedItem("tagIds") as HTMLSelectElement)?.selectedOptions;
-      const tagIds = tagIdsRaw ? Array.from(tagIdsRaw).map((o) => o.value) : undefined;
+      const tagIds = selectedTagIds;
       const description = (form.elements.namedItem("description") as HTMLInputElement)?.value || undefined;
-      const visibility = (form.elements.namedItem("visibility") as HTMLSelectElement)?.value as DocumentVisibility;
+      const visibility = uploadVisibility;
+      const accessibleDepartments =
+        visibility === "SPECIFIC_DEPARTMENTS" ? selectedDepartmentIds : null;
+      const accessibleRoles =
+        visibility === "SPECIFIC_ROLES" ? selectedRoleIds : null;
+
+      if (visibility === "SPECIFIC_DEPARTMENTS" && selectedDepartmentIds.length === 0) {
+        setError("Vui lòng chọn ít nhất 1 phòng ban.");
+        setUploading(false);
+        return;
+      }
+      if (visibility === "SPECIFIC_ROLES" && selectedRoleIds.length === 0) {
+        setError("Vui lòng chọn ít nhất 1 vai trò.");
+        setUploading(false);
+        return;
+      }
       const params: UploadDocumentParams = {
         file,
         categoryId: categoryId || null,
-        tagIds: tagIds?.length ? tagIds : null,
+        tagIds: tagIds.length ? tagIds : null,
         description: description || null,
         visibility: visibility || "COMPANY_WIDE",
+        accessibleDepartments,
+        accessibleRoles,
       };
       await uploadDocument(params);
       form.reset();
+      setSelectedTagIds([]);
+      setUploadVisibility("COMPANY_WIDE");
+      setSelectedDepartmentIds([]);
+      setSelectedRoleIds([]);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload thất bại");
@@ -150,8 +183,11 @@ export function DocumentsTab() {
     try {
       const v = await getVersionHistory(id);
       setVersions(v);
+      setSelectedVersionId(v?.[0]?.versionId ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không tải được lịch sử phiên bản");
+      setVersions([]);
+      setSelectedVersionId(null);
     }
   };
 
@@ -230,19 +266,36 @@ export function DocumentsTab() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Tags (giữ Ctrl để chọn nhiều)
+              Tags
             </label>
-            <select
-              name="tagIds"
-              multiple
-              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            >
-              {tags.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.code})
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
+              {tags.length === 0 ? (
+                <span className="px-2 py-1 text-xs text-zinc-500">Chưa có tags.</span>
+              ) : (
+                tags.map((t) => {
+                  const active = selectedTagIds.includes(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTagIds((prev) =>
+                          prev.includes(t.id) ? prev.filter((x) => x !== t.id) : [...prev, t.id]
+                        );
+                      }}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                        active
+                          ? "bg-green-500 text-white shadow-sm shadow-green-500/30"
+                          : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                      }`}
+                      title={`${t.name} (${t.code})`}
+                    >
+                      {t.name} ({t.code})
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -261,6 +314,13 @@ export function DocumentsTab() {
             </label>
             <select
               name="visibility"
+              value={uploadVisibility}
+              onChange={(e) => {
+                const v = e.target.value as DocumentVisibility;
+                setUploadVisibility(v);
+                if (v !== "SPECIFIC_DEPARTMENTS") setSelectedDepartmentIds([]);
+                if (v !== "SPECIFIC_ROLES") setSelectedRoleIds([]);
+              }}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
               {Object.entries(VISIBILITY_LABELS).map(([v, l]) => (
@@ -268,6 +328,82 @@ export function DocumentsTab() {
               ))}
             </select>
           </div>
+          {uploadVisibility === "SPECIFIC_DEPARTMENTS" && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Chọn phòng ban
+              </label>
+              <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                {departments.length === 0 ? (
+                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có phòng ban active.</span>
+                ) : (
+                  departments.map((d) => {
+                    const active = selectedDepartmentIds.includes(d.id);
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDepartmentIds((prev) =>
+                            prev.includes(d.id) ? prev.filter((x) => x !== d.id) : [...prev, d.id]
+                          );
+                        }}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                          active
+                            ? "bg-green-500 text-white shadow-sm shadow-green-500/30"
+                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                        }`}
+                        title={d.name ?? String(d.id)}
+                      >
+                        {d.name ?? d.code ?? d.id}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Đã chọn: {selectedDepartmentIds.length}
+              </p>
+            </div>
+          )}
+          {uploadVisibility === "SPECIFIC_ROLES" && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Chọn vai trò
+              </label>
+              <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                {roles.length === 0 ? (
+                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có roles.</span>
+                ) : (
+                  roles.map((r) => {
+                    const active = selectedRoleIds.includes(r.id);
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRoleIds((prev) =>
+                            prev.includes(r.id) ? prev.filter((x) => x !== r.id) : [...prev, r.id]
+                          );
+                        }}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                          active
+                            ? "bg-green-500 text-white shadow-sm shadow-green-500/30"
+                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                        }`}
+                        title={r.name ?? r.code ?? String(r.id)}
+                      >
+                        {r.name ?? r.code ?? r.id}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Đã chọn: {selectedRoleIds.length}
+              </p>
+            </div>
+          )}
           <Button type="submit" variant="primary" size="md" disabled={uploading}>
             <Upload className="mr-2 h-4 w-4" />
             {uploading ? "Đang upload…" : "Upload"}
@@ -413,12 +549,59 @@ export function DocumentsTab() {
                 <X className="h-5 w-5" />
               </button>
             </div>
+            {versions.length > 0 && (
+              <div className="mb-4">
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  Chọn phiên bản
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedVersionId ?? ""}
+                    onChange={(e) => setSelectedVersionId(e.target.value)}
+                    className="w-full appearance-none rounded-lg border border-zinc-300 bg-white px-3 py-2 pr-10 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  >
+                    {versions.map((v) => (
+                      <option key={v.versionId} value={v.versionId}>
+                        Phiên bản {v.versionNumber}{v.versionNote ? ` — ${v.versionNote}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                </div>
+              </div>
+            )}
             <ul className="space-y-2 text-sm">
               {versions.map((v) => (
-                <li key={v.versionId} className="flex justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-900">
-                  <span>Phiên bản {v.versionNumber}</span>
-                  <span className="text-zinc-500">{v.versionNote || "—"}</span>
-                  <span className="text-zinc-500">{new Date(v.createdAt).toLocaleString()}</span>
+                <li
+                  key={v.versionId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedVersionId(v.versionId)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setSelectedVersionId(v.versionId);
+                  }}
+                  className={`flex items-start justify-between gap-3 rounded-lg px-3 py-2 transition ${
+                    selectedVersionId === v.versionId
+                      ? "bg-green-500/10 ring-1 ring-inset ring-green-500/20"
+                      : "bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  <div className="flex min-w-0 items-start gap-2">
+                    <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                      {selectedVersionId === v.versionId ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <span className="text-[11px]">{v.versionNumber}</span>}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-medium text-zinc-900 dark:text-zinc-50">
+                        Phiên bản {v.versionNumber}
+                      </div>
+                      <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                        {v.versionNote || "—"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">
+                    {new Date(v.createdAt).toLocaleString()}
+                  </div>
                 </li>
               ))}
             </ul>
