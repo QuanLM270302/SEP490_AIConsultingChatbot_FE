@@ -16,7 +16,8 @@ const navigation = [
   { name: "Dashboard", href: "/super-admin", icon: LayoutDashboard },
   { name: "Organizations", href: "/super-admin/organizations", icon: Building2 },
   { name: "Staff", href: "/super-admin/staff", icon: Users },
-  { name: "Subscription", href: "/super-admin/pricing", icon: CreditCard },
+  { name: "Subscription Plans", href: "/super-admin/pricing", icon: CreditCard },
+  { name: "Subscriptions (đã mua)", href: "/super-admin/subscriptions", icon: CreditCard },
 ];
 
 interface SuperAdminSidebarProps {

@@ -1,98 +1,186 @@
-import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
-import { Check, Edit, Plus, Star } from "lucide-react";
+"use client";
 
-type PlanItem = {
-  name: string;
-  price: string;
-  interval: string;
-  description: string;
-  features: string[];
-  popular: boolean;
-  activeTenants: number;
-};
-const plans: PlanItem[] = [];
+import { useState, useEffect } from "react";
+import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
+import {
+  getAdminSubscriptions,
+  getActiveAdminSubscriptions,
+  getAdminSubscriptionsByTenant,
+  getAdminSubscriptionById,
+  type AdminSubscriptionResponse,
+} from "@/lib/api/admin";
+import { Loader2, Eye, Filter } from "lucide-react";
+
+type FilterMode = "all" | "active";
 
 export default function SubscriptionsPage() {
+  const [list, setList] = useState<AdminSubscriptionResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterMode>("all");
+  const [tenantIdFilter, setTenantIdFilter] = useState("");
+  const [detail, setDetail] = useState<AdminSubscriptionResponse | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    if (tenantIdFilter.trim()) {
+      getAdminSubscriptionsByTenant(tenantIdFilter.trim())
+        .then(setList)
+        .catch((e) => setError(e instanceof Error ? e.message : "Lỗi"))
+        .finally(() => setLoading(false));
+    } else if (filter === "active") {
+      getActiveAdminSubscriptions()
+        .then(setList)
+        .catch((e) => setError(e instanceof Error ? e.message : "Lỗi"))
+        .finally(() => setLoading(false));
+    } else {
+      getAdminSubscriptions()
+        .then(setList)
+        .catch((e) => setError(e instanceof Error ? e.message : "Lỗi"))
+        .finally(() => setLoading(false));
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, [filter, tenantIdFilter]);
+
+  const handleViewDetail = (id: string) => {
+    getAdminSubscriptionById(id)
+      .then(setDetail)
+      .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"));
+  };
+
   return (
     <SuperAdminLayout>
-      <div className="space-y-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-              Subscription Plans
-            </h1>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Quản lý các gói dịch vụ và giới hạn tương ứng
-            </p>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+            Subscriptions – Tenant đã mua (API 05)
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Xem tất cả subscriptions, lọc theo trạng thái active hoặc theo tenant
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-zinc-500" />
+            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Lọc:</span>
           </div>
-          <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 dark:focus:ring-offset-zinc-900">
-            <Plus className="h-4 w-4" />
-            Create Plan
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${filter === "all" ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+          >
+            Tất cả
           </button>
+          <button
+            type="button"
+            onClick={() => setFilter("active")}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${filter === "active" ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+          >
+            Đang active
+          </button>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-zinc-500">Tenant ID:</label>
+            <input
+              type="text"
+              placeholder="UUID tenant (để trống = tất cả)"
+              value={tenantIdFilter}
+              onChange={(e) => setTenantIdFilter(e.target.value)}
+              className="w-64 rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+            />
+          </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {plans.length === 0 ? (
-            <div className="col-span-full rounded-3xl bg-white p-8 text-center shadow-sm dark:bg-zinc-950">
-              <p className="text-sm text-zinc-500">Dữ liệu gói dịch vụ sẽ được tải từ API.</p>
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 rounded-2xl bg-white py-12 dark:bg-zinc-950">
+            <Loader2 className="h-6 w-6 animate-spin text-green-500" />
+            <span className="text-sm text-zinc-500">Đang tải…</span>
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl bg-white p-6 text-sm text-red-600 dark:bg-zinc-950 dark:text-red-400">{error}</div>
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50">
+                  <tr>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Tenant / Gói</th>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Tier</th>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Trạng thái</th>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Giá / Chu kỳ</th>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Bắt đầu / Hết hạn</th>
+                    <th className="px-6 py-3 text-right font-semibold text-zinc-700 dark:text-zinc-300">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {list.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
+                        Chưa có subscription hoặc không tìm thấy theo bộ lọc.
+                      </td>
+                    </tr>
+                  ) : (
+                    list.map((s) => (
+                      <tr key={s.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-medium text-zinc-900 dark:text-white">{s.tenantName ?? s.tenantId}</p>
+                            <p className="text-xs font-mono text-zinc-500">{s.tenantId}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300">{s.tier ?? "—"}</td>
+                        <td className="px-6 py-4">
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${s.status === "ACTIVE" ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"}`}>
+                            {s.status ?? "—"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {s.price != null ? `${Number(s.price).toLocaleString("vi-VN")} ${s.currency ?? ""}` : "—"} / {s.billingCycle ?? "—"}
+                        </td>
+                        <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">
+                          {s.startDate ? new Date(s.startDate).toLocaleDateString("vi-VN") : "—"} → {s.endDate ? new Date(s.endDate).toLocaleDateString("vi-VN") : "—"}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleViewDetail(s.id)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> Chi tiết
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-          ) : null}
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative flex flex-col rounded-3xl p-8 shadow-sm ring-1 transition-all ${
-                plan.popular 
-                  ? "bg-white ring-green-500 dark:bg-zinc-900 dark:ring-green-500/50" 
-                  : "bg-white ring-zinc-200 dark:bg-zinc-950 dark:ring-white/10"
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-4 left-0 right-0 flex justify-center">
-                  <span className="flex items-center gap-1 rounded-full bg-green-500 px-3 py-1 text-xs font-medium text-white shadow-sm">
-                    <Star className="h-3 w-3 fill-current" />
-                    Most Popular
-                  </span>
-                </div>
-              )}
-              
-              <div className="mb-6 flex items-start justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                    {plan.name}
-                  </h3>
-                  <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                    {plan.description}
-                  </p>
-                </div>
-                <button className="text-zinc-400 hover:text-green-500 dark:hover:text-green-400">
-                  <Edit className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mb-6 flex items-baseline text-zinc-900 dark:text-white">
-                <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
-                <span className="ml-1 text-sm font-medium text-zinc-500">/{plan.interval}</span>
-              </div>
-
-              <ul className="mb-8 flex-1 space-y-4">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex flex-start gap-3">
-                    <Check className="h-5 w-5 shrink-0 text-green-500" />
-                    <span className="text-sm text-zinc-600 dark:text-zinc-300">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <div className="mt-auto rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900/50">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-500 dark:text-zinc-400">Active Tenants</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white">{plan.activeTenants}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
+
+      {detail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-zinc-900/60" onClick={() => setDetail(null)} />
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Chi tiết subscription</h3>
+            <dl className="mt-4 space-y-2 text-sm">
+              <div><dt className="text-zinc-500">ID</dt><dd className="font-mono text-zinc-900 dark:text-white">{detail.id}</dd></div>
+              <div><dt className="text-zinc-500">Tenant</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.tenantName ?? detail.tenantId}</dd></div>
+              <div><dt className="text-zinc-500">Tier / Status</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.tier ?? "—"} / {detail.status ?? "—"}</dd></div>
+              <div><dt className="text-zinc-500">Giá / Chu kỳ</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.price != null ? `${Number(detail.price).toLocaleString("vi-VN")} ${detail.currency ?? ""}` : "—"} / {detail.billingCycle ?? "—"}</dd></div>
+              <div><dt className="text-zinc-500">Bắt đầu / Hết hạn</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.startDate ? new Date(detail.startDate).toLocaleDateString("vi-VN") : "—"} → {detail.endDate ? new Date(detail.endDate).toLocaleDateString("vi-VN") : "—"}</dd></div>
+              <div><dt className="text-zinc-500">Auto renew</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.autoRenew ? "Có" : "Không"}</dd></div>
+              <div><dt className="text-zinc-500">Trial</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.isTrial ? "Có" : "Không"}</dd></div>
+            </dl>
+            <button type="button" onClick={() => setDetail(null)} className="mt-6 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium dark:bg-zinc-700 dark:text-zinc-200">Đóng</button>
+          </div>
+        </div>
+      )}
     </SuperAdminLayout>
   );
 }

@@ -15,3 +15,7 @@ export const TAGS_BASE = `${KNOWLEDGE_BASE}/tags`;
 export const CHATBOT_BASE = `${API_BASE_URL}/api/v1/chatbot`;
 export const TENANT_ADMIN_BASE = `${API_BASE_URL}/api/v1/tenant-admin`;
 export const STAFF_BASE = `${API_BASE_URL}/api/v1/staff`;
+export const TENANT_SUBSCRIPTION_BASE = `${API_BASE_URL}/api/v1/tenant-subscription`;
+export const SUBSCRIPTIONS_BASE = `${API_BASE_URL}/api/v1/subscriptions`;
+export const PAYMENT_BASE = `${API_BASE_URL}/api/v1/payment`;
+export const ADMIN_BASE = `${API_BASE_URL}/api/v1/admin`;
