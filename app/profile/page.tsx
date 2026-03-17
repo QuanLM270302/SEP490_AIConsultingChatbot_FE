@@ -131,8 +131,16 @@ export default function ProfilePage() {
 
   const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
+    const passwordPattern =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^])[A-Za-z\d@$!%*?&#^]{8,}$/;
     if (newPassword !== confirmNew) {
-      setPasswordError("New password and confirmation do not match.");
+      setPasswordError("Mật khẩu mới và xác nhận không khớp.");
+      return;
+    }
+    if (!passwordPattern.test(newPassword)) {
+      setPasswordError(
+        "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt."
+      );
       return;
     }
     setPasswordError(null);
