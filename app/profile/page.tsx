@@ -21,6 +21,8 @@ import {
   getProfile,
   updateProfile,
   changePassword,
+  requestUpdateContactEmail,
+  verifyAndUpdateContactEmail,
 } from "@/lib/api/profile";
 import type {
   UserProfileResponse,
@@ -67,6 +69,32 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const mustChangePassword = getStoredUser()?.mustChangePassword ?? false;
+
+  // Contact email update (OTP) state
+  const [newContactEmail, setNewContactEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [contactSuccess, setContactSuccess] = useState<string | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+
+  const contactEmailHelp =
+    "Nếu bạn gặp lỗi PKIX/SSLHandshake khi gửi OTP, nguyên nhân thường do backend cấu hình SMTP/TLS (certificate) chưa đúng. FE không thể tự sửa; hãy liên hệ admin/backend để cấu hình mail server hoặc truststore Java.";
+
+  const prettifyContactEmailError = (message: string) => {
+    const m = message || "";
+    if (
+      /PKIX path building failed/i.test(m) ||
+      /SSLHandshakeException/i.test(m) ||
+      /unable to find valid certification path/i.test(m)
+    ) {
+      return `Không gửi được OTP do cấu hình email (TLS/Certificate) trên server. ${contactEmailHelp}`;
+    }
+    if (/Mail server connection failed/i.test(m) || /MessagingException/i.test(m)) {
+      return `Không kết nối được mail server để gửi OTP. ${contactEmailHelp}`;
+    }
+    return message;
+  };
 
   useEffect(() => {
     getProfile()
@@ -124,6 +152,46 @@ export default function ProfilePage() {
       setPasswordError(err instanceof Error ? err.message : "Change password failed");
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleRequestOtp = async (e: FormEvent) => {
+    e.preventDefault();
+    setContactError(null);
+    setContactSuccess(null);
+    setContactLoading(true);
+    try {
+      await requestUpdateContactEmail({ newContactEmail: newContactEmail.trim() });
+      setOtpSent(true);
+      setContactSuccess("OTP đã được gửi đến email mới. Vui lòng kiểm tra hộp thư.");
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : "Request OTP failed";
+      setContactError(prettifyContactEmailError(raw));
+    } finally {
+      setContactLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: FormEvent) => {
+    e.preventDefault();
+    setContactError(null);
+    setContactSuccess(null);
+    setContactLoading(true);
+    try {
+      await verifyAndUpdateContactEmail({
+        newContactEmail: newContactEmail.trim(),
+        otp: otp.trim(),
+      });
+      setContactSuccess("Contact email đã được cập nhật thành công.");
+      setOtp("");
+      setOtpSent(false);
+      const refreshed = await getProfile();
+      setProfile(refreshed);
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : "Verify OTP failed";
+      setContactError(prettifyContactEmailError(raw));
+    } finally {
+      setContactLoading(false);
     }
   };
 
@@ -204,9 +272,9 @@ export default function ProfilePage() {
         </div>
 
         {/* Cards row */}
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-4">
             {/* Personal info — emerald */}
-            <section className="rounded-xl border-l-4 border-emerald-500 bg-white p-4 shadow-md shadow-emerald-500/10 dark:border-emerald-400 dark:bg-zinc-900/80 dark:shadow-emerald-900/20">
+            <section className="h-full rounded-xl border-l-4 border-emerald-500 bg-white p-4 shadow-md shadow-emerald-500/10 dark:border-emerald-400 dark:bg-zinc-900/80 dark:shadow-emerald-900/20">
               <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-400">
                   <UserCircleIcon className="h-4 w-4" />
@@ -216,6 +284,7 @@ export default function ProfilePage() {
               <dl className="space-y-3 text-sm">
                 {[
                   { icon: EnvelopeIcon, label: "Email", value: profile.email },
+                  { icon: EnvelopeIcon, label: "Contact email", value: profile.contactEmail ?? "—" },
                   { icon: UserCircleIcon, label: "Full name", value: profile.fullName },
                   { icon: PhoneIcon, label: "Phone", value: profile.phoneNumber ?? "—" },
                   { icon: CalendarDaysIcon, label: "Date of birth", value: formatDate(profile.dateOfBirth) },
@@ -237,7 +306,7 @@ export default function ProfilePage() {
             </section>
 
             {/* Update profile — violet */}
-            <section className="rounded-xl border-l-4 border-violet-500 bg-white p-4 shadow-md shadow-violet-500/10 dark:border-violet-400 dark:bg-zinc-900/80 dark:shadow-violet-900/20">
+            <section className="h-full rounded-xl border-l-4 border-violet-500 bg-white p-4 shadow-md shadow-violet-500/10 dark:border-violet-400 dark:bg-zinc-900/80 dark:shadow-violet-900/20">
               <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:bg-violet-400/20 dark:text-violet-400">
                   <PencilSquareIcon className="h-4 w-4" />
@@ -280,8 +349,82 @@ export default function ProfilePage() {
               </form>
             </section>
 
+            {/* Contact email (OTP) — cyan */}
+            <section className="h-full rounded-xl border-l-4 border-cyan-500 bg-white p-4 shadow-md shadow-cyan-500/10 dark:border-cyan-400 dark:bg-zinc-900/80 dark:shadow-cyan-900/20">
+              <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-600 dark:bg-cyan-400/20 dark:text-cyan-400">
+                  <EnvelopeIcon className="h-4 w-4" />
+                </span>
+                Update contact email
+              </h2>
+              <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
+                Gửi OTP đến email mới để xác thực, sau đó nhập OTP để cập nhật contact email.
+              </p>
+              {contactError && (
+                <p className="mb-3 rounded-xl bg-rose-50 p-2.5 text-sm text-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
+                  {contactError}
+                </p>
+              )}
+              {contactSuccess && (
+                <p className="mb-3 rounded-xl bg-emerald-50 p-2.5 text-sm text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                  {contactSuccess}
+                </p>
+              )}
+              <form onSubmit={otpSent ? handleVerifyOtp : handleRequestOtp} className="space-y-3">
+                <div>
+                  <label htmlFor="newContactEmail" className={labelClass}>New contact email</label>
+                  <input
+                    id="newContactEmail"
+                    type="email"
+                    value={newContactEmail}
+                    onChange={(e) => setNewContactEmail(e.target.value)}
+                    className={inputClass}
+                    placeholder="name@company.com"
+                    required
+                  />
+                </div>
+                {otpSent && (
+                  <div>
+                    <label htmlFor="otp" className={labelClass}>OTP (6 digits)</label>
+                    <input
+                      id="otp"
+                      type="text"
+                      inputMode="numeric"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      className={inputClass}
+                      placeholder="123456"
+                      maxLength={6}
+                      required
+                    />
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={contactLoading}
+                  className="w-full rounded-xl bg-linear-to-r from-cyan-500 to-sky-500 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-cyan-500/30 transition hover:from-cyan-600 hover:to-sky-600 disabled:opacity-60"
+                >
+                  {contactLoading ? "Processing…" : otpSent ? "Verify OTP & Update" : "Send OTP"}
+                </button>
+                {otpSent && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtpSent(false);
+                      setOtp("");
+                      setContactSuccess(null);
+                      setContactError(null);
+                    }}
+                    className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    Resend / Change email
+                  </button>
+                )}
+              </form>
+            </section>
+
             {/* Change password — amber */}
-            <section className="rounded-xl border-l-4 border-amber-500 bg-white p-4 shadow-md shadow-amber-500/10 dark:border-amber-400 dark:bg-zinc-900/80 dark:shadow-amber-900/20">
+            <section className="h-full rounded-xl border-l-4 border-amber-500 bg-white p-4 shadow-md shadow-amber-500/10 dark:border-amber-400 dark:bg-zinc-900/80 dark:shadow-amber-900/20">
               <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:bg-amber-400/20 dark:text-amber-400">
                   <KeyIcon className="h-4 w-4" />
