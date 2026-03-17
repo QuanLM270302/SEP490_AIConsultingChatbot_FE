@@ -1,27 +1,85 @@
-import { Users, Building, Shield, TrendingUp } from "lucide-react";
+"use client";
 
-const stats = [
-  { name: "Total Employees", value: "156", change: "+8", icon: Users },
-  { name: "Departments", value: "12", change: "+2", icon: Building },
-  { name: "Active Roles", value: "8", change: "0", icon: Shield },
-  { name: "Growth Rate", value: "12%", change: "+3%", icon: TrendingUp },
+import { useState, useEffect } from "react";
+import { Users, Building, Shield, TrendingUp } from "lucide-react";
+import { getTenantDashboard, getTenantDepartments, getTenantRoles } from "@/lib/api/tenant-admin";
+
+const statConfig = [
+  { key: "employees" as const, name: "Total Employees", icon: Users },
+  { key: "departments" as const, name: "Departments", icon: Building },
+  { key: "roles" as const, name: "Active Roles", icon: Shield },
+  { key: "growth" as const, name: "Growth Rate", icon: TrendingUp },
 ];
 
 export function OrganizationStats() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const [departmentCount, setDepartmentCount] = useState<number | null>(null);
+  const [roleCount, setRoleCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      getTenantDashboard(),
+      getTenantDepartments(),
+      getTenantRoles(),
+    ])
+      .then(([dashboard, departments, roles]) => {
+        if (cancelled) return;
+        setTotalUsers(dashboard.totalUsers ?? null);
+        setDepartmentCount(departments?.length ?? null);
+        setRoleCount(roles?.length ?? null);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Lỗi tải dữ liệu");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const display = (key: string) => {
+    if (loading) return "…";
+    if (error) return "—";
+    switch (key) {
+      case "employees":
+        return totalUsers != null ? String(totalUsers) : "—";
+      case "departments":
+        return departmentCount != null ? String(departmentCount) : "—";
+      case "roles":
+        return roleCount != null ? String(roleCount) : "—";
+      case "growth":
+        return "—";
+      default:
+        return "—";
+    }
+  };
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {stats.map((stat) => (
-        <div key={stat.name} className="rounded-3xl bg-white p-5 shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
+      {statConfig.map(({ key, name, icon: Icon }) => (
+        <div
+          key={key}
+          className="rounded-3xl bg-white p-5 shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40"
+        >
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <p className="text-xs font-medium text-zinc-400">{stat.name}</p>
-              <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{stat.value}</p>
-              <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-semibold text-green-600 dark:text-green-400">
-                {stat.change}
-              </div>
+              <p className="text-xs font-medium text-zinc-400">{name}</p>
+              <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                {display(key)}
+              </p>
+              {!error && !loading && key !== "growth" && (
+                <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-semibold text-green-600 dark:text-green-400">
+                  Dữ liệu từ server
+                </div>
+              )}
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-green-500/10">
-              <stat.icon className="h-5 w-5 text-green-500" />
+              <Icon className="h-5 w-5 text-green-500" />
             </div>
           </div>
         </div>

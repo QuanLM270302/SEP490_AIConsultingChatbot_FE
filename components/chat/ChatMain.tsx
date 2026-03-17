@@ -18,33 +18,9 @@ interface ChatMainProps {
   historyOpen: boolean;
 }
 
-const mockMessages: Message[] = [
-  {
-    id: "1",
-    role: "user",
-    content: "Làm thế nào để xin nghỉ phép?",
-    timestamp: "10:30",
-  },
-  {
-    id: "2",
-    role: "assistant",
-    content:
-      "Để xin nghỉ phép, bạn cần làm theo các bước sau:\n\n1. Đăng nhập vào hệ thống HR\n2. Chọn mục 'Nghỉ phép' trong menu\n3. Điền form đơn xin nghỉ với thông tin: ngày bắt đầu, ngày kết thúc, lý do\n4. Gửi đơn cho quản lý trực tiếp phê duyệt\n\nThời gian phê duyệt thường là 1-2 ngày làm việc.",
-    timestamp: "10:31",
-    sources: [
-      {
-        title: "Quy trình nghỉ phép - Sổ tay nhân viên",
-        excerpt: "Nhân viên cần gửi đơn xin nghỉ phép ít nhất 3 ngày trước...",
-      },
-    ],
-  },
-];
-
 export function ChatMain({ chatId, onToggleHistory, historyOpen }: ChatMainProps) {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>(
-    chatId ? mockMessages : []
-  );
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
 
   const handleSend = () => {

@@ -2,11 +2,7 @@
 
 import { PieChart } from "lucide-react";
 
-const planData = [
-  { name: "Starter", count: 12, color: "bg-blue-500", percentage: 50 },
-  { name: "Business", count: 8, color: "bg-green-500", percentage: 33 },
-  { name: "Enterprise", count: 4, color: "bg-purple-500", percentage: 17 },
-];
+const planData: { name: string; count: number; color: string; percentage: number }[] = [];
 
 export function TenantDistribution() {
   const total = planData.reduce((sum, plan) => sum + plan.count, 0);

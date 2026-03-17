@@ -19,44 +19,6 @@ interface ChatHistory {
   category: "today" | "yesterday" | "last7days" | "older";
 }
 
-const mockChatHistory: ChatHistory[] = [
-  {
-    id: "1",
-    title: "Quy trình nghỉ phép",
-    preview: "Làm thế nào để xin nghỉ phép?",
-    timestamp: "10:30",
-    category: "today",
-  },
-  {
-    id: "2",
-    title: "Chính sách làm việc từ xa",
-    preview: "Công ty có cho phép làm việc từ xa không?",
-    timestamp: "09:15",
-    category: "today",
-  },
-  {
-    id: "3",
-    title: "Quy định về trang phục",
-    preview: "Dress code của công ty như thế nào?",
-    timestamp: "Yesterday",
-    category: "yesterday",
-  },
-  {
-    id: "4",
-    title: "Chế độ bảo hiểm",
-    preview: "Công ty có những loại bảo hiểm nào?",
-    timestamp: "2 days ago",
-    category: "last7days",
-  },
-  {
-    id: "5",
-    title: "Quy trình onboarding",
-    preview: "Nhân viên mới cần làm gì trong tuần đầu?",
-    timestamp: "5 days ago",
-    category: "last7days",
-  },
-];
-
 const categoryLabels = {
   today: "Hôm nay",
   yesterday: "Hôm qua",
@@ -93,7 +55,8 @@ export function ChatHistorySidebar({
     }
   }, [open]);
 
-  const groupedChats = mockChatHistory.reduce((acc, chat) => {
+  const chatHistory: ChatHistory[] = [];
+  const groupedChats = chatHistory.reduce((acc, chat) => {
     if (!acc[chat.category]) {
       acc[chat.category] = [];
     }
@@ -152,8 +115,13 @@ export function ChatHistorySidebar({
           </div>
         </div>
 
-        {/* Chat History */}
+        {/* Chat History - sẽ đồng bộ từ API khi có */}
         <div className="overflow-y-auto" style={{ height: "calc(100% - 200px)" }}>
+          {Object.keys(groupedChats).length === 0 ? (
+            <div className="p-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              Chưa có lịch sử chat. Các cuộc hội thoại sẽ hiển thị tại đây khi được đồng bộ từ server.
+            </div>
+          ) : null}
           {Object.entries(groupedChats).map(([category, chats]) => (
             <div key={category} className="border-b border-zinc-200 dark:border-zinc-800">
               <div className="px-4 py-2">

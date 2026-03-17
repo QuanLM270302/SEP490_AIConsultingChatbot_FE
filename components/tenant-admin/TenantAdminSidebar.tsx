@@ -117,15 +117,15 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span>Employees</span>
-                  <span>156</span>
+                  <span>—</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Departments</span>
-                  <span>8</span>
+                  <span>—</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Active Roles</span>
-                  <span>12</span>
+                  <span>—</span>
                 </div>
               </div>
             </div>

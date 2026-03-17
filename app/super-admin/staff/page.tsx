@@ -1,12 +1,7 @@
 import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import { Users, MoreVertical, Search, Plus } from "lucide-react";
 
-const staffMembers = [
-  { id: 1, name: "Admin User", email: "admin@example.com", role: "Super Admin", status: "Active", lastActive: "2 mins ago" },
-  { id: 2, name: "John Doe", email: "john@example.com", role: "Support Lead", status: "Active", lastActive: "1 hour ago" },
-  { id: 3, name: "Jane Smith", email: "jane@example.com", role: "Billing Admin", status: "Offline", lastActive: "1 day ago" },
-  { id: 4, name: "Mike Johnson", email: "mike@example.com", role: "Technical Support", status: "Active", lastActive: "5 mins ago" },
-];
+const staffMembers: { id: number; name: string; email: string; role: string; status: string; lastActive: string }[] = [];
 
 export default function StaffManagementPage() {
   return (
@@ -51,6 +46,13 @@ export default function StaffManagementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                {staffMembers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
+                      Dữ liệu staff sẽ được tải từ API.
+                    </td>
+                  </tr>
+                ) : null}
                 {staffMembers.map((staff) => (
                   <tr key={staff.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
                     <td className="px-6 py-4">

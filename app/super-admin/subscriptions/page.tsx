@@ -1,53 +1,16 @@
 import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import { Check, Edit, Plus, Star } from "lucide-react";
 
-const plans = [
-  {
-    name: "Free",
-    price: "$0",
-    interval: "forever",
-    description: "Perfect for testing the platform",
-    features: [
-      "Up to 2 projects",
-      "1,000 AI Queries / month",
-      "Community support",
-      "Standard models"
-    ],
-    popular: false,
-    activeTenants: 15,
-  },
-  {
-    name: "Pro",
-    price: "$49",
-    interval: "per month",
-    description: "For small teams and startups",
-    features: [
-      "Up to 10 projects",
-      "10,000 AI Queries / month",
-      "Priority email support",
-      "Advanced RAG capabilities",
-      "Custom branding"
-    ],
-    popular: true,
-    activeTenants: 42,
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    interval: "annually",
-    description: "For large scale organizations",
-    features: [
-      "Unlimited projects",
-      "Unlimited AI Queries",
-      "24/7 Phone & Email support",
-      "Dedicated account manager",
-      "Custom model fine-tuning",
-      "On-premise deployment options"
-    ],
-    popular: false,
-    activeTenants: 8,
-  }
-];
+type PlanItem = {
+  name: string;
+  price: string;
+  interval: string;
+  description: string;
+  features: string[];
+  popular: boolean;
+  activeTenants: number;
+};
+const plans: PlanItem[] = [];
 
 export default function SubscriptionsPage() {
   return (
@@ -69,6 +32,11 @@ export default function SubscriptionsPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {plans.length === 0 ? (
+            <div className="col-span-full rounded-3xl bg-white p-8 text-center shadow-sm dark:bg-zinc-950">
+              <p className="text-sm text-zinc-500">Dữ liệu gói dịch vụ sẽ được tải từ API.</p>
+            </div>
+          ) : null}
           {plans.map((plan) => (
             <div
               key={plan.name}

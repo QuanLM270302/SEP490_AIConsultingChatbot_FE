@@ -13,22 +13,7 @@ export default function TenantAdminSubscriptionPage() {
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("Starter");
   const [activeTab, setActiveTab] = useState<"plans" | "billing" | "history">("plans");
 
-  const mockInvoices: Invoice[] = [
-    {
-      id: "INV-2026-001",
-      date: "01/03/2026",
-      amount: "599.000đ",
-      status: "paid",
-      description: "Gói Standard - Tháng 03/2026",
-    },
-    {
-      id: "INV-2026-002",
-      date: "01/02/2026",
-      amount: "599.000đ",
-      status: "paid",
-      description: "Gói Standard - Tháng 02/2026",
-    },
-  ];
+  const invoices: Invoice[] = [];
 
   return (
     <div className="min-h-screen bg-linear-to-br from-zinc-50 via-white to-green-50/30 text-zinc-900 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
@@ -75,7 +60,19 @@ export default function TenantAdminSubscriptionPage() {
           </section>
         )}
 
-        {activeTab === "history" && <InvoiceList invoices={mockInvoices} />}
+        {activeTab === "history" && (
+          <>
+            {invoices.length === 0 ? (
+              <section className="rounded-3xl border-2 border-zinc-200 bg-white p-8 text-center shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Chưa có giao dịch. Lịch sử thanh toán sẽ hiển thị khi kết nối API billing.
+                </p>
+              </section>
+            ) : (
+              <InvoiceList invoices={invoices} />
+            )}
+          </>
+        )}
       </main>
     </div>
   );
