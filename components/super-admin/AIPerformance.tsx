@@ -3,34 +3,10 @@
 import { Zap, CheckCircle, AlertTriangle, Activity } from "lucide-react";
 
 const metrics = [
-  {
-    name: "Avg Response Time",
-    value: "1.8s",
-    status: "good",
-    icon: Zap,
-    change: "-0.2s",
-  },
-  {
-    name: "AI Success Rate",
-    value: "96.8%",
-    status: "good",
-    icon: CheckCircle,
-    change: "+1.2%",
-  },
-  {
-    name: "Low Confidence",
-    value: "3.2%",
-    status: "warning",
-    icon: AlertTriangle,
-    change: "+0.5%",
-  },
-  {
-    name: "Token Usage",
-    value: "2.4M",
-    status: "normal",
-    icon: Activity,
-    change: "+12%",
-  },
+  { name: "Avg Response Time", value: "—", status: "good" as const, icon: Zap, change: "—" },
+  { name: "AI Success Rate", value: "—", status: "good" as const, icon: CheckCircle, change: "—" },
+  { name: "Low Confidence", value: "—", status: "warning" as const, icon: AlertTriangle, change: "—" },
+  { name: "Token Usage", value: "—", status: "normal" as const, icon: Activity, change: "—" },
 ];
 
 export function AIPerformance() {

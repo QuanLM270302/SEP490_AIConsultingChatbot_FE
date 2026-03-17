@@ -2,13 +2,7 @@
 
 import { MoreVertical } from "lucide-react";
 
-const organizations = [
-  { id: 1, name: "Công ty TNHH ABC", users: 45, documents: 1250, aiQueries: 8420, status: "active", plan: "Enterprise", createdAt: "2024-01-15" },
-  { id: 2, name: "Tập đoàn XYZ", users: 120, documents: 3840, aiQueries: 24680, status: "active", plan: "Enterprise", createdAt: "2024-02-01" },
-  { id: 3, name: "Công ty DEF", users: 28, documents: 680, aiQueries: 4520, status: "active", plan: "Business", createdAt: "2024-02-10" },
-  { id: 4, name: "Startup GHI", users: 12, documents: 240, aiQueries: 1850, status: "trial", plan: "Trial", createdAt: "2024-02-28" },
-  { id: 5, name: "Công ty JKL", users: 8, documents: 120, aiQueries: 680, status: "suspended", plan: "Business", createdAt: "2024-01-20" },
-];
+const organizations: { id: number; name: string; users: number; documents: number; aiQueries: number; status: string; plan: string; createdAt: string }[] = [];
 
 export function OrganizationsTable() {
   return (
@@ -44,6 +38,13 @@ export function OrganizationsTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-900 dark:bg-zinc-950">
+            {organizations.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-6 py-8 text-center text-sm text-zinc-500">
+                  Dữ liệu tổ chức sẽ được tải từ API.
+                </td>
+              </tr>
+            ) : null}
             {organizations.map((org) => (
               <tr key={org.id} className="transition hover:bg-zinc-50 dark:hover:bg-zinc-900">
                 <td className="whitespace-nowrap px-6 py-4">

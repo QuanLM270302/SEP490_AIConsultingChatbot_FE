@@ -1,36 +1,12 @@
 import { Building2, Users, MessageSquare, CheckCircle, XCircle, FileText } from "lucide-react";
 
 const stats = [
-  {
-    name: "Total Tenants",
-    value: "24",
-    icon: Building2,
-  },
-  {
-    name: "Active Tenants",
-    value: "20",
-    icon: CheckCircle,
-  },
-  {
-    name: "Suspended Tenants",
-    value: "4",
-    icon: XCircle,
-  },
-  {
-    name: "Total Users",
-    value: "1,234",
-    icon: Users,
-  },
-  {
-    name: "Total Documents",
-    value: "6,130",
-    icon: FileText,
-  },
-  {
-    name: "Total AI Queries",
-    value: "45.2K",
-    icon: MessageSquare,
-  },
+  { name: "Total Tenants", value: "—", icon: Building2 },
+  { name: "Active Tenants", value: "—", icon: CheckCircle },
+  { name: "Suspended Tenants", value: "—", icon: XCircle },
+  { name: "Total Users", value: "—", icon: Users },
+  { name: "Total Documents", value: "—", icon: FileText },
+  { name: "Total AI Queries", value: "—", icon: MessageSquare },
 ];
 
 export function PlatformStats() {

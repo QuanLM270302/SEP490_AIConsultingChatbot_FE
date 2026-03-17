@@ -34,7 +34,6 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
 
   return (
     <>
-      {/* Mobile backdrop */}
       {open && (
         <div
           className="fixed inset-0 z-40 bg-zinc-900/80 lg:hidden"
@@ -42,7 +41,6 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-6 left-4 z-50 w-64 shrink-0 rounded-3xl bg-white p-6 shadow-lg shadow-green-100/60 transition-transform duration-300 dark:bg-zinc-950 dark:shadow-black/50 lg:translate-x-0",
@@ -51,7 +49,6 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
       >
         <div className="flex h-full flex-col justify-between gap-6">
           <div className="space-y-6">
-            {/* Logo */}
             <div className="flex items-center justify-between">
               <Link href="/tenant-admin" className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-green-400 to-green-600 text-white shadow-lg shadow-green-500/30">
@@ -69,7 +66,6 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
               </button>
             </div>
 
-            {/* Navigation */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
                 Management
@@ -106,36 +102,28 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
             </nav>
           </div>
 
-          {/* Organization Info & Usage Limits */}
           <div className="space-y-4">
             <div className="space-y-3 rounded-2xl bg-linear-to-br from-green-50 to-emerald-50 p-4 text-xs dark:from-green-950/30 dark:to-emerald-950/30">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-zinc-800 dark:text-zinc-100">
                   Current Plan
                 </p>
-                <span className="rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-semibold text-white">
-                  Standard
+                <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
+                  —
                 </span>
               </div>
               <div className="space-y-2 text-zinc-600 dark:text-zinc-400">
                 <div className="flex items-center justify-between">
                   <span>Users</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white">120 / 200</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-white/50 dark:bg-zinc-900/50">
-                  <div className="h-full w-[60%] rounded-full bg-linear-to-r from-green-400 to-green-600" />
+                  <span className="font-semibold text-zinc-900 dark:text-white">—</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Storage</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white">2.3 / 10 GB</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-white/50 dark:bg-zinc-900/50">
-                  <div className="h-full w-[23%] rounded-full bg-linear-to-r from-blue-400 to-blue-600" />
+                  <span className="font-semibold text-zinc-900 dark:text-white">—</span>
                 </div>
               </div>
             </div>
 
-            {/* Back to home */}
             <Link
               href="/"
               className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"

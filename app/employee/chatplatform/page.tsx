@@ -9,89 +9,86 @@ import { ChatMessageList } from "@/components/chat/ChatMessageList";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { chat } from "@/lib/api/chatbot";
 
 export default function ChatPlatformPage() {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      question: "Làm thế nào để xin nghỉ phép?",
-      answer:
-        "Để xin nghỉ phép, bạn cần gửi đơn xin nghỉ phép qua hệ thống HR ít nhất **3 ngày trước ngày nghỉ**. Đơn sẽ được phê duyệt bởi quản lý trực tiếp của bạn.\n\n**Quy trình chi tiết:**\n1. Đăng nhập vào hệ thống HR Portal\n2. Chọn mục \"Xin nghỉ phép\"\n3. Điền đầy đủ thông tin: ngày bắt đầu, ngày kết thúc, lý do\n4. Gửi đơn và chờ phê duyệt\n\n**Lưu ý:** Đơn cần được gửi tối thiểu 3 ngày làm việc trước ngày nghỉ dự kiến để đảm bảo quy trình phê duyệt kịp thời.",
-      references: [
-        {
-          documentId: "HR-POL-001",
-          documentName: "Chính sách nghỉ phép",
-          excerpt:
-            "Nhân viên cần gửi đơn xin nghỉ phép tối thiểu 3 ngày làm việc trước ngày nghỉ dự kiến. Đơn sẽ được xem xét và phê duyệt bởi quản lý trực tiếp trong vòng 24 giờ.",
-          page: 5,
-          confidence: 0.95,
-        },
-        {
-          documentId: "HR-GUIDE-002",
-          documentName: "Hướng dẫn sử dụng HR Portal",
-          excerpt:
-            "Để xin nghỉ phép, truy cập HR Portal → Menu \"Nghỉ phép\" → Chọn \"Tạo đơn mới\" và điền đầy đủ thông tin theo form.",
-          page: 12,
-          confidence: 0.88,
-        },
-      ],
-      timestamp: new Date(Date.now() - 3600000),
-      rating: "helpful",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentQuestion.trim()) return;
+    const question = currentQuestion.trim();
+    if (!question) return;
 
+    setError(null);
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    const userMessageId = Date.now().toString();
+
+    try {
+      const response = await chat({
+        message: question,
+        conversationId: conversationId ?? undefined,
+        topK: 5,
+      });
+
+      if (response.conversationId) {
+        setConversationId(response.conversationId);
+      }
+
+      const references = (response.sources ?? []).map((s) => ({
+        documentId: s.documentId,
+        documentName: s.fileName,
+        excerpt: s.chunkContent ?? "",
+        confidence: s.relevanceScore,
+      }));
+
       const newMessage: Message = {
-        id: Date.now().toString(),
-        question: currentQuestion,
-        answer:
-          "Đây là câu trả lời mẫu từ AI chatbot dựa trên tài liệu công ty. Câu trả lời này được tạo ra bằng **RAG (Retrieval-Augmented Generation)** để đảm bảo độ chính xác và cập nhật.\n\n**Các điểm chính:**\n- Câu trả lời được tìm kiếm từ cơ sở tri thức nội bộ\n- Thông tin được xác thực từ tài liệu chính thức\n- Có thể xem các đoạn trích và nguồn tham khảo bên dưới",
-        references: [
-          {
-            documentId: "DOC-001",
-            documentName: "Hướng dẫn nhân viên",
-            excerpt: "Đoạn trích liên quan từ tài liệu chính thức của công ty...",
-            page: 12,
-            confidence: 0.92,
-          },
-          {
-            documentId: "DOC-002",
-            documentName: "Quy định nội bộ",
-            excerpt: "Thông tin bổ sung từ tài liệu quy định nội bộ...",
-            confidence: 0.85,
-          },
-        ],
+        id: userMessageId,
+        question,
+        answer: response.answer,
+        references,
         timestamp: new Date(),
         rating: null,
       };
-      setMessages([newMessage, ...messages]);
+
+      setMessages((prev) => [newMessage, ...prev]);
       setCurrentQuestion("");
-      setIsLoading(false);
       setSelectedMessage(newMessage.id);
-    }, 1500);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Không thể kết nối tới chatbot. Vui lòng thử lại.";
+      setError(message);
+      const fallbackMessage: Message = {
+        id: userMessageId,
+        question,
+        answer: `**Lỗi:** ${message}\n\nKiểm tra kết nối mạng hoặc liên hệ quản trị viên nếu lỗi tiếp tục.`,
+        references: [],
+        timestamp: new Date(),
+        rating: null,
+      };
+      setMessages((prev) => [fallbackMessage, ...prev]);
+      setSelectedMessage(fallbackMessage.id);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRate = (messageId: string, rating: "helpful" | "not-helpful") => {
-    setMessages(
-      messages.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
     );
   };
 
   const handleNewChat = () => {
     setSelectedMessage(null);
     setCurrentQuestion("");
+    setConversationId(null);
   };
 
   const handleSelectExample = (example: string) => {
@@ -121,6 +118,13 @@ export default function ChatPlatformPage() {
               Lịch sử chat
             </button>
           </div>
+
+          {error && (
+            <div className="mx-6 mt-3 rounded-lg bg-red-900/30 px-4 py-2 text-sm text-red-200">
+              {error}
+            </div>
+          )}
+
           <ChatHeader />
 
           <div className="flex-1 overflow-y-auto px-6 py-8">
@@ -146,7 +150,6 @@ export default function ChatPlatformPage() {
         onClose={() => setIsHistoryOpen(false)}
         onSelectChat={(chatId) => {
           setCurrentChatId(chatId || null);
-          // Khi chọn chat khác có thể thêm logic load lịch sử sau
         }}
         currentChatId={currentChatId}
       />

@@ -3,28 +3,16 @@
 import { Button } from "@/components/ui";
 import { Check, X } from "lucide-react";
 
-const requests = [
-  {
-    id: 1,
-    company: "Công ty TNHH Tech Solutions",
-    contact: "Nguyễn Văn A",
-    email: "a.nguyen@techsolutions.vn",
-    employees: "50-200",
-    submittedAt: "2024-03-01",
-  },
-  {
-    id: 2,
-    company: "Tập đoàn Retail Plus",
-    contact: "Trần Thị B",
-    email: "b.tran@retailplus.vn",
-    employees: "200-500",
-    submittedAt: "2024-03-02",
-  },
-];
+const requests: { id: number; company: string; contact: string; email: string; employees: string; submittedAt: string }[] = [];
 
 export function OnboardingRequests() {
   return (
     <div className="space-y-4">
+      {requests.length === 0 ? (
+        <div className="rounded-3xl bg-white p-8 text-center shadow-lg dark:bg-zinc-950">
+          <p className="text-sm text-zinc-500">Dữ liệu yêu cầu onboarding sẽ được tải từ API.</p>
+        </div>
+      ) : null}
       {requests.map((request) => (
         <div
           key={request.id}
