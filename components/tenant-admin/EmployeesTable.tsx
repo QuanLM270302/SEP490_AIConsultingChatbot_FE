@@ -12,8 +12,12 @@ import {
   resetTenantUserPassword,
   deleteTenantUser,
   getTenantAvailablePermissions,
+  getTenantDepartments,
+  getTenantRoles,
   type UserResponse,
   type UpdateUserRequest,
+  type DepartmentResponse,
+  type RoleResponse,
 } from "@/lib/api/tenant-admin";
 
 type StatusFilter = "ACTIVE" | "INACTIVE" | "ALL";
@@ -411,6 +415,29 @@ function EditUserModal({
   const [fullName, setFullName] = useState(user.fullName ?? "");
   const [departmentId, setDepartmentId] = useState<number | "">(user.departmentId ?? "");
   const [roleId, setRoleId] = useState<number | "">(user.roleId ?? "");
+  const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
+  const [metaLoading, setMetaLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMetaLoading(true);
+    Promise.all([
+      getTenantDepartments().catch(() => []),
+      getTenantRoles().catch(() => []),
+    ])
+      .then(([depts, r]) => {
+        if (cancelled) return;
+        setDepartments(depts);
+        setRoles(r);
+      })
+      .finally(() => {
+        if (!cancelled) setMetaLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -423,12 +450,36 @@ function EditUserModal({
             <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Department ID (số)</label>
-            <input type="number" value={departmentId} onChange={(e) => setDepartmentId(e.target.value === "" ? "" : Number(e.target.value))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            <label className="block text-xs font-medium text-zinc-500">Phòng ban</label>
+            <select
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value === "" ? "" : Number(e.target.value))}
+              className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+            >
+              <option value="">—</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name ?? `Department #${d.id}`}
+                </option>
+              ))}
+            </select>
+            {metaLoading && <p className="mt-1 text-xs text-zinc-500">Đang tải danh sách phòng ban…</p>}
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Role ID (số)</label>
-            <input type="number" value={roleId} onChange={(e) => setRoleId(e.target.value === "" ? "" : Number(e.target.value))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            <label className="block text-xs font-medium text-zinc-500">Vai trò</label>
+            <select
+              value={roleId}
+              onChange={(e) => setRoleId(e.target.value === "" ? "" : Number(e.target.value))}
+              className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+            >
+              <option value="">—</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name ?? `Role #${r.id}`}
+                </option>
+              ))}
+            </select>
+            {metaLoading && <p className="mt-1 text-xs text-zinc-500">Đang tải danh sách vai trò…</p>}
           </div>
         </div>
         <div className="mt-6 flex gap-2">

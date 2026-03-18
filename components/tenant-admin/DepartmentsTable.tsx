@@ -4,17 +4,19 @@ import { useState, useEffect } from "react";
 import { MoreVertical } from "lucide-react";
 import { getTenantDepartments, type DepartmentResponse } from "@/lib/api/tenant-admin";
 
-export function DepartmentsTable() {
+export function DepartmentsTable({ refreshKey = 0 }: { refreshKey?: number }) {
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     getTenantDepartments()
       .then(setDepartments)
       .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải danh sách"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   if (loading) {
     return (
