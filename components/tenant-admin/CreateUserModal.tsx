@@ -78,7 +78,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo user mới</h3>
-        <p className="mt-1 text-xs text-zinc-500">POST /api/v1/tenant-admin/users</p>
+        <p className="mt-1 text-xs text-zinc-500">Thêm nhân viên mới vào tổ chức và gán phòng ban/vai trò.</p>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>
             <label className="block text-xs font-medium text-zinc-500">Họ tên *</label>

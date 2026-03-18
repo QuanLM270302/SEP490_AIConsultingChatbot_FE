@@ -35,6 +35,7 @@ export interface UserResponse {
   roleId?: number;
   roleName?: string;
   status?: string;
+  isActive?: boolean;
   createdAt?: string;
 }
 

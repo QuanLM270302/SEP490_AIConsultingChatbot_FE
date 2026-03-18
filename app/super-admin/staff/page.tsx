@@ -22,6 +22,7 @@ export default function StaffManagementPage() {
   const [detailUser, setDetailUser] = useState<StaffUser | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [search, setSearch] = useState("");
 
   const load = () => {
@@ -37,8 +38,40 @@ export default function StaffManagementPage() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [openMenuId]);
+
+  const toggleMenu = (staffId: string, anchor: HTMLElement) => {
+    if (openMenuId === staffId) {
+      setOpenMenuId(null);
+      setMenuPos(null);
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const menuWidth = 192; // w-48
+    const margin = 12;
+    const left = Math.min(
+      Math.max(rect.right - menuWidth, margin),
+      window.innerWidth - margin - menuWidth
+    );
+    setMenuPos({ top: rect.bottom + 6, left });
+    setOpenMenuId(staffId);
+  };
+
   const handleActivate = (userId: string) => {
     setOpenMenuId(null);
+    setMenuPos(null);
     setActionLoading(userId);
     activateStaff(userId)
       .then(load)
@@ -48,6 +81,7 @@ export default function StaffManagementPage() {
 
   const handleDeactivate = (userId: string) => {
     setOpenMenuId(null);
+    setMenuPos(null);
     setActionLoading(userId);
     deactivateStaff(userId)
       .then(load)
@@ -58,6 +92,7 @@ export default function StaffManagementPage() {
   const handleDelete = (userId: string) => {
     if (!confirm("Bạn có chắc muốn xóa tài khoản STAFF này?")) return;
     setOpenMenuId(null);
+    setMenuPos(null);
     setActionLoading(userId);
     deleteStaff(userId)
       .then(load)
@@ -67,6 +102,7 @@ export default function StaffManagementPage() {
 
   const handleViewDetail = (userId: string) => {
     setOpenMenuId(null);
+    setMenuPos(null);
     getStaffById(userId)
       .then(setDetailUser)
       .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"));
@@ -86,7 +122,7 @@ export default function StaffManagementPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-              Quản lý Staff (API 03)
+              Quản lý Staff
             </h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               Tạo, xem, kích hoạt / vô hiệu hóa, xóa tài khoản STAFF
@@ -166,33 +202,11 @@ export default function StaffManagementPage() {
                         <td className="relative px-6 py-4 text-right">
                           <button
                             type="button"
-                            onClick={() => setOpenMenuId(openMenuId === staff.id ? null : staff.id)}
+                            onClick={(e) => toggleMenu(staff.id, e.currentTarget)}
                             className="rounded-full p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
                           >
                             <MoreVertical className="h-5 w-5" />
                           </button>
-                          {openMenuId === staff.id && (
-                            <>
-                              <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
-                              <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-                                <button type="button" onClick={() => handleViewDetail(staff.id)} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                                  <Eye className="h-4 w-4" /> Xem chi tiết
-                                </button>
-                                {staff.isActive ? (
-                                  <button type="button" onClick={() => handleDeactivate(staff.id)} disabled={!!actionLoading} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30">
-                                    <UserX className="h-4 w-4" /> Vô hiệu hóa
-                                  </button>
-                                ) : (
-                                  <button type="button" onClick={() => handleActivate(staff.id)} disabled={!!actionLoading} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/30">
-                                    <UserCheck className="h-4 w-4" /> Kích hoạt
-                                  </button>
-                                )}
-                                <button type="button" onClick={() => handleDelete(staff.id)} disabled={!!actionLoading} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">
-                                  <Trash2 className="h-4 w-4" /> Xóa
-                                </button>
-                              </div>
-                            </>
-                          )}
                           {actionLoading === staff.id && (
                             <span className="absolute right-10 top-1/2 -translate-y-1/2">
                               <Loader2 className="h-4 w-4 animate-spin text-green-500" />
@@ -235,6 +249,57 @@ export default function StaffManagementPage() {
           </div>
         </div>
       )}
+
+      {openMenuId && menuPos && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => {
+              setOpenMenuId(null);
+              setMenuPos(null);
+            }}
+          />
+          <div
+            className="fixed z-50 w-48 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <button
+              type="button"
+              onClick={() => handleViewDetail(openMenuId)}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Eye className="h-4 w-4" /> Xem chi tiết
+            </button>
+            {list.find((s) => s.id === openMenuId)?.isActive ? (
+              <button
+                type="button"
+                onClick={() => handleDeactivate(openMenuId)}
+                disabled={!!actionLoading}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-60 dark:text-amber-400 dark:hover:bg-amber-950/30"
+              >
+                <UserX className="h-4 w-4" /> Vô hiệu hóa
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleActivate(openMenuId)}
+                disabled={!!actionLoading}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-green-700 hover:bg-green-50 disabled:opacity-60 dark:text-green-400 dark:hover:bg-green-950/30"
+              >
+                <UserCheck className="h-4 w-4" /> Kích hoạt
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleDelete(openMenuId)}
+              disabled={!!actionLoading}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
+            >
+              <Trash2 className="h-4 w-4" /> Xóa
+            </button>
+          </div>
+        </>
+      )}
     </SuperAdminLayout>
   );
 }
@@ -270,7 +335,7 @@ function CreateStaffModal({ onClose, onSuccess }: { onClose: () => void; onSucce
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo tài khoản STAFF</h3>
-        <p className="mt-1 text-xs text-zinc-500">POST /api/v1/admin/staff</p>
+        <p className="mt-1 text-xs text-zinc-500">Tạo mới tài khoản nhân viên để quản trị hệ thống.</p>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>
             <label className="block text-xs font-medium text-zinc-500">Email *</label>

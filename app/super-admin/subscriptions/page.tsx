@@ -57,7 +57,7 @@ export default function SubscriptionsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-            Subscriptions – Tenant đã mua (API 05)
+            Subscriptions – Tenant đã mua
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             Xem tất cả subscriptions, lọc theo trạng thái active hoặc theo tenant
