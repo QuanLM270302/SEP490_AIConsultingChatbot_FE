@@ -168,7 +168,10 @@ export function EmployeesTable() {
     }
   };
 
-  const isActive = (u: UserResponse | null | undefined) => ((u?.status ?? "").toUpperCase() !== "INACTIVE");
+  const isActive = (u: UserResponse | null | undefined) => {
+    if (typeof u?.isActive === "boolean") return u.isActive;
+    return ((u?.status ?? "").toUpperCase() !== "INACTIVE");
+  };
 
   if (loading) {
     return (
@@ -241,7 +244,7 @@ export function EmployeesTable() {
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">{user.roleName ?? "—"}</td>
                     <td className="whitespace-nowrap px-6 py-4">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${isActive(user) ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"}`}>
-                        {user.status ?? "Active"}
+                        {isActive(user) ? "Active" : "Inactive"}
                       </span>
                     </td>
                     <td className="relative whitespace-nowrap px-6 py-4 text-right">
@@ -466,7 +469,7 @@ function PermissionsModal({
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative max-h-[80vh] w-full max-w-md overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Cập nhật quyền: {user.fullName ?? user.email}</h3>
-        <p className="mt-1 text-xs text-zinc-500">Chọn các quyền bổ sung cho user (backend: PUT /users/{userId}/permissions)</p>
+        <p className="mt-1 text-xs text-zinc-500">Chọn các quyền bổ sung cho user.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {available.map(({ code }) => (
             <label key={code} className="flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700">
@@ -475,7 +478,7 @@ function PermissionsModal({
             </label>
           ))}
         </div>
-        {available.length === 0 && <p className="text-sm text-zinc-500">Không có danh sách quyền. Kiểm tra API /roles/permissions/available.</p>}
+        {available.length === 0 && <p className="text-sm text-zinc-500">Không có danh sách quyền.</p>}
         <div className="mt-6 flex gap-2">
           <button type="button" onClick={onSave} disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">
             {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Lưu"}
