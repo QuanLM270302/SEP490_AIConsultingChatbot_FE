@@ -5,11 +5,10 @@ import {
   getSubscriptionPlans,
   getActiveSubscriptionPlans,
   deleteSubscriptionPlan,
-  createSubscriptionPlan,
   updateSubscriptionPlan,
   type SubscriptionPlanResponse,
 } from "@/lib/api/admin";
-import { Plus, MoreVertical, Pencil, Trash2, Loader2, Eye } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Loader2, Eye } from "lucide-react";
 
 type Filter = "all" | "active";
 
@@ -19,9 +18,9 @@ export function SubscriptionPlansTable() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [detailPlan, setDetailPlan] = useState<SubscriptionPlanResponse | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<SubscriptionPlanResponse | null>(null);
 
   const load = () => {
@@ -37,9 +36,41 @@ export function SubscriptionPlansTable() {
     load();
   }, [filter]);
 
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [openMenuId]);
+
+  const toggleMenu = (planId: string, anchor: HTMLElement) => {
+    if (openMenuId === planId) {
+      setOpenMenuId(null);
+      setMenuPos(null);
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const menuWidth = 160; // w-40
+    const margin = 12;
+    const left = Math.min(
+      Math.max(rect.right - menuWidth, margin),
+      window.innerWidth - margin - menuWidth
+    );
+    setMenuPos({ top: rect.bottom + 6, left });
+    setOpenMenuId(planId);
+  };
+
   const handleDelete = (id: string) => {
     if (!confirm("Bạn có chắc muốn deactivate plan này?")) return;
     setOpenMenuId(null);
+    setMenuPos(null);
     setActionLoading(id);
     deleteSubscriptionPlan(id)
       .then(load)
@@ -50,7 +81,7 @@ export function SubscriptionPlansTable() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Subscription Plans (API 04)</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Subscription Plans</h2>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -65,14 +96,6 @@ export function SubscriptionPlansTable() {
             className={`rounded-xl px-3 py-1.5 text-sm font-medium ${filter === "active" ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
           >
             Đang active
-          </button>
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600"
-          >
-            <Plus className="h-4 w-4" />
-            Tạo plan
           </button>
         </div>
       </div>
@@ -123,25 +146,13 @@ export function SubscriptionPlansTable() {
                         </span>
                       </td>
                       <td className="relative px-6 py-4 text-right">
-                        <button type="button" onClick={() => setOpenMenuId(openMenuId === p.id ? null : p.id)} className="rounded-full p-1.5 text-zinc-400 hover:text-zinc-600">
+                        <button
+                          type="button"
+                          onClick={(e) => toggleMenu(p.id, e.currentTarget)}
+                          className="rounded-full p-1.5 text-zinc-400 hover:text-zinc-600"
+                        >
                           <MoreVertical className="h-4 w-4" />
                         </button>
-                        {openMenuId === p.id && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
-                            <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-                              <button type="button" onClick={() => { setDetailPlan(p); setOpenMenuId(null); }} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                                <Eye className="h-4 w-4" /> Xem chi tiết
-                              </button>
-                              <button type="button" onClick={() => { setEditPlan(p); setOpenMenuId(null); }} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                                <Pencil className="h-4 w-4" /> Cập nhật
-                              </button>
-                              <button type="button" onClick={() => handleDelete(p.id)} disabled={!!actionLoading} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">
-                                <Trash2 className="h-4 w-4" /> Xóa (deactivate)
-                              </button>
-                            </div>
-                          </>
-                        )}
                         {actionLoading === p.id && <Loader2 className="inline h-4 w-4 animate-spin text-green-500 ml-1" />}
                       </td>
                     </tr>
@@ -171,83 +182,56 @@ export function SubscriptionPlansTable() {
         </div>
       )}
 
-      {createOpen && <CreatePlanModal onClose={() => setCreateOpen(false)} onSuccess={() => { setCreateOpen(false); load(); }} />}
       {editPlan && <EditPlanModal plan={editPlan} onClose={() => setEditPlan(null)} onSuccess={() => { setEditPlan(null); load(); }} />}
-    </div>
-  );
-}
 
-function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [loading, setLoading] = useState(false);
-  const [code, setCode] = useState("");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [monthlyPrice, setMonthlyPrice] = useState("0");
-  const [quarterlyPrice, setQuarterlyPrice] = useState("0");
-  const [yearlyPrice, setYearlyPrice] = useState("0");
-  const [maxUsers, setMaxUsers] = useState("10");
-  const [maxDocuments, setMaxDocuments] = useState("100");
-  const [maxStorageGb, setMaxStorageGb] = useState("5");
-  const [displayOrder, setDisplayOrder] = useState("0");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await createSubscriptionPlan({
-        code: code.trim(),
-        name: name.trim(),
-        description: description.trim() || undefined,
-        monthlyPrice: Number(monthlyPrice),
-        quarterlyPrice: Number(quarterlyPrice),
-        yearlyPrice: Number(yearlyPrice),
-        maxUsers: Number(maxUsers),
-        maxDocuments: Number(maxDocuments),
-        maxStorageGb: Number(maxStorageGb),
-        maxApiCalls: 10000,
-        maxChatbotRequests: 1000,
-        maxRagDocuments: 500,
-        maxAiTokens: 100000,
-        contextWindowTokens: 4096,
-        ragChunkSize: 512,
-        enableRag: true,
-        isTrial: false,
-        displayOrder: Number(displayOrder),
-      });
-      onSuccess();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Tạo plan thất bại");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
-      <div className="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo plan mới</h3>
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-          <div><label className="block text-xs text-zinc-500">Code *</label><input type="text" value={code} onChange={(e) => setCode(e.target.value)} required className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-          <div><label className="block text-xs text-zinc-500">Tên *</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-          <div><label className="block text-xs text-zinc-500">Mô tả</label><input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-          <div className="grid grid-cols-3 gap-2">
-            <div><label className="block text-xs text-zinc-500">Giá tháng</label><input type="number" min="0" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Giá quý</label><input type="number" min="0" value={quarterlyPrice} onChange={(e) => setQuarterlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Giá năm</label><input type="number" min="0" value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+      {openMenuId && menuPos && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => {
+              setOpenMenuId(null);
+              setMenuPos(null);
+            }}
+          />
+          <div
+            className="fixed z-50 w-40 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                const selected = plans.find((x) => x.id === openMenuId) ?? null;
+                if (selected) setDetailPlan(selected);
+                setOpenMenuId(null);
+                setMenuPos(null);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Eye className="h-4 w-4" /> Xem chi tiết
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const selected = plans.find((x) => x.id === openMenuId) ?? null;
+                if (selected) setEditPlan(selected);
+                setOpenMenuId(null);
+                setMenuPos(null);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Pencil className="h-4 w-4" /> Cập nhật
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDelete(openMenuId)}
+              disabled={!!actionLoading}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
+            >
+              <Trash2 className="h-4 w-4" /> Xóa (deactivate)
+            </button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div><label className="block text-xs text-zinc-500">Max users</label><input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Max documents</label><input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Max storage (GB)</label><input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Display order</label><input type="number" min="0" value={displayOrder} onChange={(e) => setDisplayOrder(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-          </div>
-          <div className="mt-6 flex gap-2">
-            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo"}</button>
-            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
-          </div>
-        </form>
-      </div>
+        </>
+      )}
     </div>
   );
 }
@@ -265,6 +249,15 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
   const [isActive, setIsActive] = useState(plan.isActive ?? true);
   const [displayOrder, setDisplayOrder] = useState(String(plan.displayOrder ?? 0));
 
+  const toInt = (v: string, fallback: number) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.trunc(n) : fallback;
+  };
+  const toNum = (v: string, fallback: number) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -272,21 +265,23 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
       await updateSubscriptionPlan(plan.id, {
         name: name.trim(),
         description: description.trim() || undefined,
-        monthlyPrice: Number(monthlyPrice),
-        quarterlyPrice: Number(quarterlyPrice),
-        yearlyPrice: Number(yearlyPrice),
-        maxUsers: Number(maxUsers),
-        maxDocuments: Number(maxDocuments),
-        maxStorageGb: Number(maxStorageGb),
-        maxApiCalls: plan.maxApiCalls ?? 10000,
-        maxChatbotRequests: plan.maxChatbotRequests ?? 1000,
-        maxRagDocuments: plan.maxRagDocuments ?? 500,
-        maxAiTokens: plan.maxAiTokens ?? 100000,
-        contextWindowTokens: plan.contextWindowTokens ?? 4096,
-        ragChunkSize: plan.ragChunkSize ?? 512,
-        enableRag: plan.enableRag ?? true,
+        monthlyPrice: toNum(monthlyPrice, 0),
+        quarterlyPrice: toNum(quarterlyPrice, 0),
+        yearlyPrice: toNum(yearlyPrice, 0),
+        maxUsers: Math.max(1, toInt(maxUsers, plan.maxUsers ?? 10)),
+        maxDocuments: Math.max(0, toInt(maxDocuments, plan.maxDocuments ?? 100)),
+        maxStorageGb: Math.max(1, toInt(maxStorageGb, plan.maxStorageGb ?? 5)),
+        maxApiCalls: Math.max(0, Math.trunc(plan.maxApiCalls ?? 10000)),
+        maxChatbotRequests: Math.max(0, Math.trunc(plan.maxChatbotRequests ?? 1000)),
+        maxRagDocuments: Math.max(0, Math.trunc(plan.maxRagDocuments ?? 500)),
+        maxAiTokens: Math.max(0, Math.trunc(plan.maxAiTokens ?? 100000)),
+        contextWindowTokens: Math.max(1, Math.trunc(plan.contextWindowTokens ?? 4096)),
+        ragChunkSize: Math.max(256, Math.trunc(plan.ragChunkSize ?? 512)),
+        aiModel: plan.aiModel ?? undefined,
+        embeddingModel: plan.embeddingModel ?? undefined,
+        features: plan.features ?? undefined,
         isActive,
-        displayOrder: Number(displayOrder),
+        displayOrder: Math.max(0, toInt(displayOrder, plan.displayOrder ?? 0)),
       });
       onSuccess();
     } catch (err) {

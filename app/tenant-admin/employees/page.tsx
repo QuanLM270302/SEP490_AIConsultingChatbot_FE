@@ -19,7 +19,7 @@ export default function EmployeesPage() {
               Quản lý Nhân viên
             </h1>
             <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-              Thêm, sửa, xóa nhân viên trong tổ chức (API 11)
+              Thêm, sửa, xóa nhân viên trong tổ chức.
             </p>
           </div>
           <div className="flex gap-3">

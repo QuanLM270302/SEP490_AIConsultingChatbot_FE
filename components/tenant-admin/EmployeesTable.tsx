@@ -24,6 +24,7 @@ export function EmployeesTable() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ACTIVE");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [detailUser, setDetailUser] = useState<UserResponse | null>(null);
   const [editUser, setEditUser] = useState<UserResponse | null>(null);
@@ -43,8 +44,40 @@ export function EmployeesTable() {
     loadUsers();
   }, [statusFilter]);
 
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [openMenuId]);
+
+  const toggleMenu = (userId: string, anchor: HTMLElement) => {
+    if (openMenuId === userId) {
+      setOpenMenuId(null);
+      setMenuPos(null);
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const menuWidth = 208; // w-52
+    const margin = 12;
+    const left = Math.min(
+      Math.max(rect.right - menuWidth, margin),
+      window.innerWidth - margin - menuWidth
+    );
+    setMenuPos({ top: rect.bottom + 6, left });
+    setOpenMenuId(userId);
+  };
+
   const handleActivate = (userId: string) => {
     setOpenMenuId(null);
+    setMenuPos(null);
     setActionLoading(userId);
     activateTenantUser(userId)
       .then(loadUsers)
@@ -54,6 +87,7 @@ export function EmployeesTable() {
 
   const handleDeactivate = (userId: string) => {
     setOpenMenuId(null);
+    setMenuPos(null);
     setActionLoading(userId);
     deactivateTenantUser(userId)
       .then(loadUsers)
@@ -63,6 +97,7 @@ export function EmployeesTable() {
 
   const handleResetPassword = (userId: string) => {
     setOpenMenuId(null);
+    setMenuPos(null);
     setActionLoading(userId);
     resetTenantUserPassword(userId)
       .then(() => alert("Mật khẩu mới đã được gửi đến email của user."))
@@ -73,6 +108,7 @@ export function EmployeesTable() {
   const handleDelete = (userId: string) => {
     if (!confirm("Bạn có chắc muốn xóa (vô hiệu hóa) user này?")) return;
     setOpenMenuId(null);
+    setMenuPos(null);
     setActionLoading(userId);
     deleteTenantUser(userId)
       .then(loadUsers)
@@ -82,6 +118,7 @@ export function EmployeesTable() {
 
   const handleViewDetail = (userId: string) => {
     setOpenMenuId(null);
+    setMenuPos(null);
     getTenantUserById(userId)
       .then(setDetailUser)
       .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"));
@@ -89,11 +126,13 @@ export function EmployeesTable() {
 
   const openEdit = (user: UserResponse) => {
     setOpenMenuId(null);
+    setMenuPos(null);
     setEditUser(user);
   };
 
   const openPermissions = (user: UserResponse) => {
     setOpenMenuId(null);
+    setMenuPos(null);
     getTenantAvailablePermissions()
       .then((list) => {
         setAvailablePermissions(list);
@@ -129,7 +168,7 @@ export function EmployeesTable() {
     }
   };
 
-  const isActive = (u: UserResponse) => (u.status ?? "").toUpperCase() !== "INACTIVE";
+  const isActive = (u: UserResponse | null | undefined) => ((u?.status ?? "").toUpperCase() !== "INACTIVE");
 
   if (loading) {
     return (
@@ -208,42 +247,11 @@ export function EmployeesTable() {
                     <td className="relative whitespace-nowrap px-6 py-4 text-right">
                       <button
                         type="button"
-                        onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                        onClick={(e) => toggleMenu(user.id, e.currentTarget)}
                         className="rounded-full p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-500 dark:hover:bg-zinc-900"
                       >
                         <MoreVertical className="h-4 w-4" />
                       </button>
-                      {openMenuId === user.id && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
-                          <div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-                            <button type="button" onClick={() => handleViewDetail(user.id)} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                              <Eye className="h-4 w-4" /> Xem chi tiết
-                            </button>
-                            <button type="button" onClick={() => openEdit(user)} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                              <Pencil className="h-4 w-4" /> Cập nhật thông tin
-                            </button>
-                            <button type="button" onClick={() => openPermissions(user)} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                              <Shield className="h-4 w-4" /> Cập nhật quyền
-                            </button>
-                            {isActive(user) ? (
-                              <button type="button" onClick={() => handleDeactivate(user.id)} disabled={!!actionLoading} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30">
-                                <UserX className="h-4 w-4" /> Vô hiệu hóa
-                              </button>
-                            ) : (
-                              <button type="button" onClick={() => handleActivate(user.id)} disabled={!!actionLoading} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/30">
-                                <UserCheck className="h-4 w-4" /> Kích hoạt
-                              </button>
-                            )}
-                            <button type="button" onClick={() => handleResetPassword(user.id)} disabled={!!actionLoading} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                              <Key className="h-4 w-4" /> Reset mật khẩu
-                            </button>
-                            <button type="button" onClick={() => handleDelete(user.id)} disabled={!!actionLoading} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">
-                              <Trash2 className="h-4 w-4" /> Xóa user
-                            </button>
-                          </div>
-                        </>
-                      )}
                       {actionLoading === user.id && (
                         <span className="absolute right-8 top-1/2 -translate-y-1/2">
                           <Loader2 className="h-4 w-4 animate-spin text-green-500" />
@@ -257,6 +265,85 @@ export function EmployeesTable() {
           </table>
         </div>
       </div>
+
+      {openMenuId && menuPos && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => {
+              setOpenMenuId(null);
+              setMenuPos(null);
+            }}
+          />
+          <div
+            className="fixed z-50 w-52 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <button
+              type="button"
+              onClick={() => handleViewDetail(openMenuId)}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Eye className="h-4 w-4" /> Xem chi tiết
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const selected = users.find((u) => u.id === openMenuId);
+                if (selected) openEdit(selected);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Pencil className="h-4 w-4" /> Cập nhật thông tin
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const selected = users.find((u) => u.id === openMenuId);
+                if (selected) openPermissions(selected);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Shield className="h-4 w-4" /> Cập nhật quyền
+            </button>
+            {isActive(users.find((u) => u.id === openMenuId)) ? (
+              <button
+                type="button"
+                onClick={() => handleDeactivate(openMenuId)}
+                disabled={!!actionLoading}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-60 dark:text-amber-400 dark:hover:bg-amber-950/30"
+              >
+                <UserX className="h-4 w-4" /> Vô hiệu hóa
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleActivate(openMenuId)}
+                disabled={!!actionLoading}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-green-700 hover:bg-green-50 disabled:opacity-60 dark:text-green-400 dark:hover:bg-green-950/30"
+              >
+                <UserCheck className="h-4 w-4" /> Kích hoạt
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleResetPassword(openMenuId)}
+              disabled={!!actionLoading}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 disabled:opacity-60 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Key className="h-4 w-4" /> Reset mật khẩu
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDelete(openMenuId)}
+              disabled={!!actionLoading}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
+            >
+              <Trash2 className="h-4 w-4" /> Xóa user
+            </button>
+          </div>
+        </>
+      )}
 
       {detailUser && (
         <DetailModal user={detailUser} onClose={() => setDetailUser(null)} />
