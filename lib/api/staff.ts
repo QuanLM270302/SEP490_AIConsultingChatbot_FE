@@ -3,6 +3,22 @@ import { STAFF_BASE } from "./config";
 
 export type TenantStatus = "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED";
 
+export type TransactionStatus = "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
+
+export interface Transaction {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  amount: number;
+  currency: string;
+  status: TransactionStatus;
+  description?: string;
+  createdAt: string;
+  updatedAt?: string;
+  paymentMethod?: string;
+  transactionType?: string;
+}
+
 export interface Tenant {
   id: string;
   name: string;
@@ -138,4 +154,26 @@ export async function deleteTenant(tenantId: string): Promise<{ message: string 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.message || "Xóa thất bại");
   return data;
+}
+
+// Transaction APIs
+export async function getTransactions(): Promise<Transaction[]> {
+  const res = await fetchWithAuth(`${STAFF_BASE}/transactions`);
+  if (!res.ok) throw new Error("Không tải được danh sách giao dịch");
+  return res.json();
+}
+
+export async function getTransactionById(transactionId: string): Promise<Transaction> {
+  const res = await fetchWithAuth(`${STAFF_BASE}/transactions/${transactionId}`);
+  if (!res.ok) {
+    if (res.status === 404) throw new Error("Không tìm thấy giao dịch");
+    throw new Error("Không tải được chi tiết giao dịch");
+  }
+  return res.json();
+}
+
+export async function getTransactionsByTenant(tenantId: string): Promise<Transaction[]> {
+  const res = await fetchWithAuth(`${STAFF_BASE}/transactions/tenants/${tenantId}`);
+  if (!res.ok) throw new Error("Không tải được giao dịch của tenant");
+  return res.json();
 }
