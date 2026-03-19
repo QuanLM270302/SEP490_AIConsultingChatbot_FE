@@ -7,8 +7,10 @@ import {
   deleteAdminRole,
   getAdminRoleById,
   getAdminRoles,
+  getAdminTenants,
   updateAdminRole,
   type AdminRoleResponse,
+  type AdminTenantSummary,
   type CreateAdminRoleRequest,
 } from "@/lib/api/admin";
 import { Eye, Loader2, MoreVertical, Pencil, Plus, Search, Shield, Trash2 } from "lucide-react";
@@ -297,7 +299,7 @@ function CreateRoleModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         code: form.code.trim().toUpperCase(),
         name: form.name.trim(),
         description: form.description?.trim() || undefined,
-        tenantId: form.tenantId?.trim() || null,
+        tenantId: form.tenantId && String(form.tenantId).trim() ? String(form.tenantId).trim() : null,
       });
       onSuccess();
     } catch (e) {
@@ -326,8 +328,22 @@ function CreateRoleModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <textarea value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="mt-1 h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Tenant ID (optional)</label>
-            <input value={form.tenantId ?? ""} onChange={(e) => setForm((p) => ({ ...p, tenantId: e.target.value }))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" placeholder="Để trống nếu là system role" />
+            <label className="block text-xs font-medium text-zinc-500">Tenant (để trống = system role)</label>
+            <select
+              value={form.tenantId ?? ""}
+              onChange={(e) => setForm((p) => ({ ...p, tenantId: e.target.value || null }))}
+              disabled={tenantsLoading}
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white disabled:opacity-60"
+            >
+              <option value="">— System role (không gắn tenant) —</option>
+              {tenants.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                  {t.status ? ` (${t.status})` : ""}
+                </option>
+              ))}
+            </select>
+            {tenantsLoading ? <p className="mt-1 text-xs text-zinc-500">Đang tải danh sách tenant…</p> : null}
           </div>
           <div className="mt-6 flex gap-2">
             <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">

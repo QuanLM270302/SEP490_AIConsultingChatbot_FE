@@ -168,8 +168,8 @@ export interface SubscriptionPlanResponse {
 }
 
 export interface CreateSubscriptionPlanRequest {
-  code: string;
-  name: string;
+  planType: "TRIAL" | "STARTER" | "STANDARD" | "ENTERPRISE";
+  name?: string;
   description?: string;
   monthlyPrice: number;
   quarterlyPrice: number;
@@ -190,6 +190,11 @@ export interface CreateSubscriptionPlanRequest {
   trialDays?: number;
   displayOrder: number;
   features?: string;
+}
+
+export interface SubscriptionPlanTypeOption {
+  code: "TRIAL" | "STARTER" | "STANDARD" | "ENTERPRISE";
+  defaultName: string;
 }
 
 export interface UpdateSubscriptionPlanRequest {
@@ -233,6 +238,12 @@ export async function getSubscriptionPlanById(id: string): Promise<SubscriptionP
   return res.json();
 }
 
+export async function getSubscriptionPlanTypes(): Promise<SubscriptionPlanTypeOption[]> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/subscription-plans/types`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load plan types"));
+  return res.json();
+}
+
 export async function createSubscriptionPlan(body: CreateSubscriptionPlanRequest): Promise<SubscriptionPlanResponse> {
   const res = await fetchWithAuth(`${ADMIN_BASE}/subscription-plans`, {
     method: "POST",
@@ -258,6 +269,19 @@ export async function deleteSubscriptionPlan(id: string): Promise<{ message: str
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.message || "Failed to delete plan");
   return data;
+}
+
+// ---------- Admin Tenants (SUPER_ADMIN – dropdown / lọc) ----------
+export interface AdminTenantSummary {
+  id: string;
+  name: string;
+  status?: string;
+}
+
+export async function getAdminTenants(): Promise<AdminTenantSummary[]> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/tenants`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load tenants"));
+  return res.json();
 }
 
 // ---------- Admin Subscriptions - tenant đã mua (API 05) ----------

@@ -42,6 +42,14 @@ const VISIBILITY_LABELS: Record<DocumentVisibility, string> = {
   SPECIFIC_ROLES: "Theo vai trò",
 };
 
+function prettifyDocumentAccessError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("visibility_enum") && lower.includes("does not exist")) {
+    return "Không thể cập nhật quyền truy cập do backend chưa đồng bộ schema DB (thiếu enum visibility). Vui lòng backend kiểm tra migration/schema.";
+  }
+  return message;
+}
+
 export function DocumentsTab() {
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [deleted, setDeleted] = useState<DeletedDocumentResponse[]>([]);
@@ -152,7 +160,8 @@ export function DocumentsTab() {
       setAccessDoc(null);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Cập nhật thất bại");
+      const raw = e instanceof Error ? e.message : "Cập nhật thất bại";
+      setError(prettifyDocumentAccessError(raw));
     }
   };
 
@@ -534,6 +543,8 @@ export function DocumentsTab() {
       {accessDoc && (
         <UpdateAccessModal
           doc={accessDoc}
+          availableDepartments={departments}
+          availableRoles={roles}
           onClose={() => setAccessDoc(null)}
           onSave={(body) => handleUpdateAccess(accessDoc.id, body)}
         />
@@ -642,23 +653,52 @@ export function DocumentsTab() {
 
 function UpdateAccessModal({
   doc,
+  availableDepartments,
+  availableRoles,
   onClose,
   onSave,
 }: {
   doc: DocumentResponse;
+  availableDepartments: DepartmentResponse[];
+  availableRoles: RoleResponse[];
   onClose: () => void;
   onSave: (body: UpdateDocumentAccessRequest) => void;
 }) {
   const [visibility, setVisibility] = useState<DocumentVisibility>(doc.visibility);
-  const [depts, setDepts] = useState<string>(doc.accessibleDepartments?.join(", ") ?? "");
-  const [roles, setRoles] = useState<string>(doc.accessibleRoles?.join(", ") ?? "");
+  const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<number[]>(
+    doc.accessibleDepartments ?? []
+  );
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>(
+    doc.accessibleRoles ?? []
+  );
+
+  const toggleDepartment = (departmentId: number) => {
+    setSelectedDepartmentIds((prev) =>
+      prev.includes(departmentId)
+        ? prev.filter((id) => id !== departmentId)
+        : [...prev, departmentId]
+    );
+  };
+
+  const toggleRole = (roleId: number) => {
+    setSelectedRoleIds((prev) =>
+      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (visibility === "SPECIFIC_DEPARTMENTS" && selectedDepartmentIds.length === 0) {
+      return;
+    }
+    if (visibility === "SPECIFIC_ROLES" && selectedRoleIds.length === 0) {
+      return;
+    }
     const body: UpdateDocumentAccessRequest = {
       visibility,
-      accessibleDepartments: visibility === "SPECIFIC_DEPARTMENTS" ? depts.split(/,\s*/).map((s) => parseInt(s, 10)).filter((n) => !Number.isNaN(n)) : null,
-      accessibleRoles: visibility === "SPECIFIC_ROLES" ? roles.split(/,\s*/).map((s) => parseInt(s, 10)).filter((n) => !Number.isNaN(n)) : null,
+      accessibleDepartments:
+        visibility === "SPECIFIC_DEPARTMENTS" ? selectedDepartmentIds : null,
+      accessibleRoles: visibility === "SPECIFIC_ROLES" ? selectedRoleIds : null,
     };
     onSave(body);
   };
@@ -688,14 +728,77 @@ function UpdateAccessModal({
           </div>
           {visibility === "SPECIFIC_DEPARTMENTS" && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">ID phòng ban (cách nhau bằng dấu phẩy)</label>
-              <input value={depts} onChange={(e) => setDepts(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" placeholder="1, 2, 3" />
+              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Chọn phòng ban
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {availableDepartments.length === 0 ? (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Không có dữ liệu phòng ban khả dụng.
+                  </p>
+                ) : (
+                  availableDepartments.map((dept) => {
+                    const active = selectedDepartmentIds.includes(dept.id);
+                    return (
+                      <button
+                        key={dept.id}
+                        type="button"
+                        onClick={() => toggleDepartment(dept.id)}
+                        className={`rounded-full px-3 py-1.5 text-xs transition ${
+                          active
+                            ? "bg-green-500 text-white"
+                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        {dept.name ?? `Department ${dept.id}`}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              {selectedDepartmentIds.length === 0 && (
+                <p className="mt-2 text-xs text-red-500">
+                  Vui lòng chọn ít nhất 1 phòng ban.
+                </p>
+              )}
             </div>
           )}
           {visibility === "SPECIFIC_ROLES" && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">ID vai trò (cách nhau bằng dấu phẩy)</label>
-              <input value={roles} onChange={(e) => setRoles(e.target.value)} className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" placeholder="1, 2" />
+              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Chọn vai trò
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {availableRoles.length === 0 ? (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Không có dữ liệu vai trò khả dụng.
+                  </p>
+                ) : (
+                  availableRoles.map((role) => {
+                    const roleId = role.id;
+                    const active = selectedRoleIds.includes(roleId);
+                    return (
+                      <button
+                        key={roleId}
+                        type="button"
+                        onClick={() => toggleRole(roleId)}
+                        className={`rounded-full px-3 py-1.5 text-xs transition ${
+                          active
+                            ? "bg-green-500 text-white"
+                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        {role.name ?? role.code ?? `Role ${roleId}`}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              {selectedRoleIds.length === 0 && (
+                <p className="mt-2 text-xs text-red-500">
+                  Vui lòng chọn ít nhất 1 vai trò.
+                </p>
+              )}
             </div>
           )}
           <div className="flex gap-2">

@@ -7,6 +7,8 @@ import {
   LayoutDashboard,
   Users,
   Building,
+  Shield,
+  Bot,
   FileText,
   BarChart3,
   CreditCard,
@@ -17,7 +19,9 @@ const navigation = [
   { name: "Dashboard", href: "/tenant-admin", icon: LayoutDashboard },
   { name: "Employees", href: "/tenant-admin/employees", icon: Users },
   { name: "Departments", href: "/tenant-admin/departments", icon: Building },
+  { name: "Roles & Permissions", href: "/tenant-admin/roles", icon: Shield },
   { name: "Documents", href: "/tenant-admin/documents", icon: FileText },
+  { name: "AI Chatbot", href: "/chatbot", icon: Bot },
   { name: "AI Analytics", href: "/tenant-admin/analytics", icon: BarChart3 },
   { name: "Subscription", href: "/tenant-admin/subscription", icon: CreditCard },
 ];
