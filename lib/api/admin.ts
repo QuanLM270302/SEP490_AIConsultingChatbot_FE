@@ -14,7 +14,7 @@ export interface StaffUser {
 }
 
 export interface CreateStaffRequest {
-  email: string;
+  contactEmail: string;
   fullName: string;
   phone?: string;
 }
@@ -34,7 +34,12 @@ export async function getStaffById(userId: string): Promise<StaffUser> {
   return res.json();
 }
 
-export async function createStaff(body: CreateStaffRequest): Promise<{ message: string }> {
+export interface CreateStaffResponse {
+  message: string;
+  emailSent?: boolean;
+}
+
+export async function createStaff(body: CreateStaffRequest): Promise<CreateStaffResponse> {
   const res = await fetchWithAuth(`${ADMIN_BASE}/staff`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -63,6 +68,71 @@ export async function deleteStaff(userId: string): Promise<{ message: string }> 
   const res = await fetchWithAuth(`${ADMIN_BASE}/staff/${userId}`, { method: "DELETE" });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.message || "Failed to delete");
+  return data;
+}
+
+// ---------- Role Management (API 06) ----------
+export interface AdminRoleResponse {
+  id: number;
+  code?: string;
+  name?: string;
+  description?: string;
+  usersCount?: number;
+  isSystemRole?: boolean;
+  tenantId?: string | null;
+  tenantName?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateAdminRoleRequest {
+  code: string;
+  name: string;
+  description?: string;
+  tenantId?: string | null;
+}
+
+export interface UpdateAdminRoleRequest {
+  name?: string;
+  description?: string;
+}
+
+export async function getAdminRoles(): Promise<AdminRoleResponse[]> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/roles`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load roles"));
+  return res.json();
+}
+
+export async function getAdminRoleById(roleId: number): Promise<AdminRoleResponse> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/roles/${roleId}`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load role"));
+  return res.json();
+}
+
+export async function createAdminRole(body: CreateAdminRoleRequest): Promise<AdminRoleResponse> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/roles`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to create role"));
+  return res.json();
+}
+
+export async function updateAdminRole(roleId: number, body: UpdateAdminRoleRequest): Promise<AdminRoleResponse> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/roles/${roleId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to update role"));
+  return res.json();
+}
+
+export async function deleteAdminRole(roleId: number): Promise<{ message: string }> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/roles/${roleId}`, { method: "DELETE" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || "Failed to delete role");
   return data;
 }
 
@@ -98,8 +168,8 @@ export interface SubscriptionPlanResponse {
 }
 
 export interface CreateSubscriptionPlanRequest {
-  code: string;
-  name: string;
+  planType: "TRIAL" | "STARTER" | "STANDARD" | "ENTERPRISE";
+  name?: string;
   description?: string;
   monthlyPrice: number;
   quarterlyPrice: number;
@@ -120,6 +190,11 @@ export interface CreateSubscriptionPlanRequest {
   trialDays?: number;
   displayOrder: number;
   features?: string;
+}
+
+export interface SubscriptionPlanTypeOption {
+  code: "TRIAL" | "STARTER" | "STANDARD" | "ENTERPRISE";
+  defaultName: string;
 }
 
 export interface UpdateSubscriptionPlanRequest {
@@ -163,6 +238,12 @@ export async function getSubscriptionPlanById(id: string): Promise<SubscriptionP
   return res.json();
 }
 
+export async function getSubscriptionPlanTypes(): Promise<SubscriptionPlanTypeOption[]> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/subscription-plans/types`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load plan types"));
+  return res.json();
+}
+
 export async function createSubscriptionPlan(body: CreateSubscriptionPlanRequest): Promise<SubscriptionPlanResponse> {
   const res = await fetchWithAuth(`${ADMIN_BASE}/subscription-plans`, {
     method: "POST",
@@ -188,6 +269,19 @@ export async function deleteSubscriptionPlan(id: string): Promise<{ message: str
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.message || "Failed to delete plan");
   return data;
+}
+
+// ---------- Admin Tenants (SUPER_ADMIN – dropdown / lọc) ----------
+export interface AdminTenantSummary {
+  id: string;
+  name: string;
+  status?: string;
+}
+
+export async function getAdminTenants(): Promise<AdminTenantSummary[]> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/tenants`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load tenants"));
+  return res.json();
 }
 
 // ---------- Admin Subscriptions - tenant đã mua (API 05) ----------

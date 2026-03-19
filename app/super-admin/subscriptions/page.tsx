@@ -7,9 +7,11 @@ import {
   getActiveAdminSubscriptions,
   getAdminSubscriptionsByTenant,
   getAdminSubscriptionById,
+  getAdminTenants,
   type AdminSubscriptionResponse,
+  type AdminTenantSummary,
 } from "@/lib/api/admin";
-import { Loader2, Eye, Filter } from "lucide-react";
+import { Loader2, Eye, Filter, ChevronDown } from "lucide-react";
 
 type FilterMode = "all" | "active";
 
@@ -19,6 +21,8 @@ export default function SubscriptionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterMode>("all");
   const [tenantIdFilter, setTenantIdFilter] = useState("");
+  const [tenants, setTenants] = useState<AdminTenantSummary[]>([]);
+  const [tenantsError, setTenantsError] = useState<string | null>(null);
   const [detail, setDetail] = useState<AdminSubscriptionResponse | null>(null);
 
   const load = () => {
@@ -46,6 +50,12 @@ export default function SubscriptionsPage() {
     load();
   }, [filter, tenantIdFilter]);
 
+  useEffect(() => {
+    getAdminTenants()
+      .then(setTenants)
+      .catch((e) => setTenantsError(e instanceof Error ? e.message : "Không tải được danh sách tenant"));
+  }, []);
+
   const handleViewDetail = (id: string) => {
     getAdminSubscriptionById(id)
       .then(setDetail)
@@ -64,46 +74,91 @@ export default function SubscriptionsPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-zinc-500" />
-            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Lọc:</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setFilter("all")}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${filter === "all" ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
-          >
-            Tất cả
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("active")}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${filter === "active" ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
-          >
-            Đang active
-          </button>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-zinc-500">Tenant ID:</label>
-            <input
-              type="text"
-              placeholder="UUID tenant (để trống = tất cả)"
-              value={tenantIdFilter}
-              onChange={(e) => setTenantIdFilter(e.target.value)}
-              className="w-64 rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-            />
-          </div>
-        </div>
+        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-none">
+          {/* Toolbar: cùng padding ngang với bảng (px-6) — tenant căn phải thẳng hàng cột Thao tác */}
+          <div className="border-b border-zinc-200/80 bg-zinc-50/90 px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                    <Filter className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Lọc</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-full bg-zinc-100/80 p-1 dark:bg-zinc-800/80">
+                  <button
+                    type="button"
+                    onClick={() => setFilter("all")}
+                    disabled={!!tenantIdFilter.trim()}
+                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                      tenantIdFilter.trim()
+                        ? "cursor-not-allowed opacity-50"
+                        : filter === "all"
+                          ? "bg-white text-green-700 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:text-green-400 dark:ring-zinc-700"
+                          : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    }`}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilter("active")}
+                    disabled={!!tenantIdFilter.trim()}
+                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                      tenantIdFilter.trim()
+                        ? "cursor-not-allowed opacity-50"
+                        : filter === "active"
+                          ? "bg-white text-green-700 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:text-green-400 dark:ring-zinc-700"
+                          : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    }`}
+                  >
+                    Đang active
+                  </button>
+                </div>
+              </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center gap-2 rounded-2xl bg-white py-12 dark:bg-zinc-950">
-            <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-            <span className="text-sm text-zinc-500">Đang tải…</span>
+              <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:gap-3">
+                <label
+                  htmlFor="sub-tenant-filter"
+                  className="shrink-0 text-sm font-medium text-zinc-600 dark:text-zinc-400"
+                >
+                  Tenant
+                </label>
+                <div className="relative min-w-48 max-w-full flex-1 sm:max-w-[20rem] sm:flex-initial">
+                  <select
+                    id="sub-tenant-filter"
+                    value={tenantIdFilter}
+                    onChange={(e) => setTenantIdFilter(e.target.value)}
+                    className="h-10 w-full cursor-pointer appearance-none rounded-xl border border-zinc-200 bg-white py-2 pl-3.5 pr-10 text-sm font-medium text-zinc-900 shadow-sm transition hover:border-zinc-300 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-500 dark:focus:border-green-500"
+                  >
+                    <option value="">Tất cả tenant</option>
+                    {tenants.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                        {t.status ? ` (${t.status})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500"
+                    aria-hidden
+                  />
+                </div>
+              </div>
+            </div>
+            {tenantsError ? (
+              <p className="mt-3 text-right text-xs text-amber-600 dark:text-amber-400">{tenantsError}</p>
+            ) : null}
           </div>
-        ) : error ? (
-          <div className="rounded-2xl bg-white p-6 text-sm text-red-600 dark:bg-zinc-950 dark:text-red-400">{error}</div>
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-green-500" />
+              <span className="text-sm text-zinc-500 dark:text-zinc-400">Đang tải…</span>
+            </div>
+          ) : error ? (
+            <div className="px-6 py-10 text-center text-sm text-red-600 dark:text-red-400">{error}</div>
+          ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50">
@@ -159,8 +214,8 @@ export default function SubscriptionsPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {detail && (

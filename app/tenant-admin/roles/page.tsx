@@ -1,30 +1,480 @@
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
-import { RolesTable } from "@/components/tenant-admin/RolesTable";
-import { PermissionsMatrix } from "@/components/tenant-admin/PermissionsMatrix";
-import { Shield } from "lucide-react";
+"use client";
 
-export default function RolesPage() {
+import { useEffect, useMemo, useState } from "react";
+import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
+import {
+  createTenantRole,
+  deleteTenantRole,
+  getTenantAvailablePermissions,
+  getTenantCustomRoles,
+  getTenantFixedRoles,
+  getTenantRoleById,
+  getTenantRoles,
+  updateTenantRole,
+  type CreateRoleRequest,
+  type RoleResponse,
+} from "@/lib/api/tenant-admin";
+import { Eye, Loader2, MoreVertical, Pencil, Plus, Shield, Trash2 } from "lucide-react";
+
+type FilterMode = "all" | "custom" | "fixed";
+
+export default function TenantAdminRolesPage() {
+  const [filter, setFilter] = useState<FilterMode>("all");
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
+  const [permissions, setPermissions] = useState<{ code: string; name?: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [detail, setDetail] = useState<RoleResponse | null>(null);
+  const [editRole, setEditRole] = useState<RoleResponse | null>(null);
+
+  const fixedCodes = useMemo(() => new Set(["TENANT_ADMIN", "CONTENT_MANAGER", "EMPLOYEE"]), []);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [list, perms] = await Promise.all([
+        filter === "custom"
+          ? getTenantCustomRoles()
+          : filter === "fixed"
+            ? getTenantFixedRoles()
+            : getTenantRoles(),
+        getTenantAvailablePermissions().catch(() => []),
+      ]);
+      setRoles(list);
+      setPermissions(perms);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Lỗi tải roles");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, [filter]);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [openMenuId]);
+
+  const isFixedRole = (role: RoleResponse) => fixedCodes.has((role.code ?? "").toUpperCase());
+
+  const toggleMenu = (roleId: number, anchor: HTMLElement) => {
+    if (openMenuId === roleId) {
+      setOpenMenuId(null);
+      setMenuPos(null);
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const menuWidth = 200;
+    const margin = 12;
+    const left = Math.min(Math.max(rect.right - menuWidth, margin), window.innerWidth - menuWidth - margin);
+    setMenuPos({ top: rect.bottom + 6, left });
+    setOpenMenuId(roleId);
+  };
+
+  const onViewDetail = async (roleId: number) => {
+    setOpenMenuId(null);
+    setMenuPos(null);
+    try {
+      const data = await getTenantRoleById(roleId);
+      setDetail(data);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Không thể xem chi tiết role");
+    }
+  };
+
+  const onDeleteRole = async (role: RoleResponse) => {
+    if (isFixedRole(role)) {
+      alert("Role cố định không thể xóa.");
+      return;
+    }
+    if (!confirm(`Bạn có chắc muốn xóa role "${role.name ?? role.code ?? role.id}"?`)) return;
+    setOpenMenuId(null);
+    setMenuPos(null);
+    setActionLoadingId(role.id);
+    try {
+      await deleteTenantRole(role.id);
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Xóa role thất bại");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   return (
     <TenantAdminLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
-              Roles & Permissions
-            </h1>
-            <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-              Quản lý vai trò và phân quyền truy cập
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Roles & Permissions</h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Quản lý fixed roles và custom roles trong tenant
             </p>
           </div>
-          <button className="flex items-center gap-2 rounded-2xl bg-green-500 px-6 py-3 font-semibold text-white shadow-lg hover:bg-green-600">
-            <Shield className="h-4 w-4" />
-            Tạo role mới
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600"
+          >
+            <Plus className="h-4 w-4" />
+            Tạo custom role
           </button>
         </div>
 
-        <RolesTable />
-        <PermissionsMatrix />
+        <div className="flex flex-wrap gap-2">
+          {(["all", "custom", "fixed"] as FilterMode[]).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFilter(f)}
+              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                filter === f
+                  ? "bg-green-500 text-white"
+                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              }`}
+            >
+              {f === "all" ? "Tất cả" : f === "custom" ? "Custom roles" : "Fixed roles"}
+            </button>
+          ))}
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-green-500" />
+              <span className="text-sm text-zinc-500">Đang tải roles…</span>
+            </div>
+          ) : error ? (
+            <div className="p-5 text-sm text-red-600 dark:text-red-400">{error}</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="border-b border-zinc-200 bg-zinc-50/60 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
+                  <tr>
+                    <th className="px-6 py-4 font-medium">Role</th>
+                    <th className="px-6 py-4 font-medium">Code</th>
+                    <th className="px-6 py-4 font-medium">Users</th>
+                    <th className="px-6 py-4 font-medium">Type</th>
+                    <th className="px-6 py-4 font-medium text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                  {roles.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
+                        Không có role nào.
+                      </td>
+                    </tr>
+                  ) : (
+                    roles.map((role) => {
+                      const fixed = isFixedRole(role);
+                      return (
+                        <tr key={role.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                          <td className="px-6 py-4">
+                            <p className="font-medium text-zinc-900 dark:text-white">{role.name ?? "—"}</p>
+                            <p className="text-xs text-zinc-500">{role.description ?? "Không có mô tả"}</p>
+                          </td>
+                          <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.code ?? "—"}</td>
+                          <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.usersCount ?? 0}</td>
+                          <td className="px-6 py-4">
+                            {fixed ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700 ring-1 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-300">
+                                <Shield className="h-3 w-3" />
+                                Fixed
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700 ring-1 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-300">
+                                Custom
+                              </span>
+                            )}
+                          </td>
+                          <td className="relative px-6 py-4 text-right">
+                            <button
+                              type="button"
+                              onClick={(e) => toggleMenu(role.id, e.currentTarget)}
+                              className="rounded-full p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                            >
+                              <MoreVertical className="h-5 w-5" />
+                            </button>
+                            {actionLoadingId === role.id ? (
+                              <span className="absolute right-10 top-1/2 -translate-y-1/2">
+                                <Loader2 className="h-4 w-4 animate-spin text-green-500" />
+                              </span>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
+
+      {openMenuId && menuPos && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => { setOpenMenuId(null); setMenuPos(null); }} />
+          <div className="fixed z-50 w-52 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900" style={{ top: menuPos.top, left: menuPos.left }}>
+            <button
+              type="button"
+              onClick={() => void onViewDetail(openMenuId)}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Eye className="h-4 w-4" /> Xem chi tiết
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const role = roles.find((r) => r.id === openMenuId);
+                setOpenMenuId(null);
+                setMenuPos(null);
+                if (!role) return;
+                if (isFixedRole(role)) {
+                  alert("Role cố định không thể sửa.");
+                  return;
+                }
+                setEditRole(role);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Pencil className="h-4 w-4" /> Cập nhật role
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const role = roles.find((r) => r.id === openMenuId);
+                if (role) void onDeleteRole(role);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+            >
+              <Trash2 className="h-4 w-4" /> Xóa role
+            </button>
+          </div>
+        </>
+      )}
+
+      {createOpen && (
+        <CreateRoleModal
+          permissions={permissions}
+          onClose={() => setCreateOpen(false)}
+          onSuccess={async () => {
+            setCreateOpen(false);
+            await load();
+          }}
+        />
+      )}
+
+      {editRole && (
+        <EditRoleModal
+          role={editRole}
+          permissions={permissions}
+          onClose={() => setEditRole(null)}
+          onSuccess={async () => {
+            setEditRole(null);
+            await load();
+          }}
+        />
+      )}
+
+      {detail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-zinc-900/60" onClick={() => setDetail(null)} />
+          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Chi tiết role</h3>
+            <dl className="mt-4 space-y-2 text-sm">
+              <div><dt className="text-zinc-500">Name</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.name ?? "—"}</dd></div>
+              <div><dt className="text-zinc-500">Code</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.code ?? "—"}</dd></div>
+              <div><dt className="text-zinc-500">Description</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.description ?? "—"}</dd></div>
+              <div><dt className="text-zinc-500">Users</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.usersCount ?? 0}</dd></div>
+            </dl>
+            <button type="button" onClick={() => setDetail(null)} className="mt-6 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200">Đóng</button>
+          </div>
+        </div>
+      )}
     </TenantAdminLayout>
+  );
+}
+
+function PermissionSelector({
+  selected,
+  allPermissions,
+  onChange,
+}: {
+  selected: string[];
+  allPermissions: { code: string; name?: string }[];
+  onChange: (next: string[]) => void;
+}) {
+  const toggle = (code: string) => {
+    onChange(selected.includes(code) ? selected.filter((p) => p !== code) : [...selected, code]);
+  };
+  return (
+    <div className="flex max-h-40 flex-wrap gap-2 overflow-auto rounded-xl border border-zinc-200 p-2 dark:border-zinc-700">
+      {allPermissions.map((p) => {
+        const active = selected.includes(p.code);
+        return (
+          <button
+            key={p.code}
+            type="button"
+            onClick={() => toggle(p.code)}
+            className={`rounded-full px-2.5 py-1 text-xs transition ${
+              active
+                ? "bg-green-500 text-white"
+                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            }`}
+          >
+            {p.name ?? p.code}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CreateRoleModal({
+  permissions,
+  onClose,
+  onSuccess,
+}: {
+  permissions: { code: string; name?: string }[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [form, setForm] = useState<CreateRoleRequest>({ code: "", name: "", description: "", permissions: [] });
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.code.trim() || !form.name.trim()) {
+      alert("Code và tên role là bắt buộc.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await createTenantRole({
+        code: form.code.trim().toUpperCase(),
+        name: form.name.trim(),
+        description: form.description?.trim() || undefined,
+        permissions: form.permissions,
+      });
+      onSuccess();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Tạo role thất bại");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
+      <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo custom role</h3>
+        <form onSubmit={submit} className="mt-4 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-zinc-500">Code *</label>
+            <input value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm uppercase dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" placeholder="HR_MANAGER" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500">Tên role *</label>
+            <input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" placeholder="HR Manager" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500">Mô tả</label>
+            <textarea value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="mt-1 h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Permissions</label>
+            <PermissionSelector selected={form.permissions} allPermissions={permissions} onChange={(next) => setForm((p) => ({ ...p, permissions: next }))} />
+          </div>
+          <div className="mt-6 flex gap-2">
+            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? "Đang tạo..." : "Tạo role"}</button>
+            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditRoleModal({
+  role,
+  permissions,
+  onClose,
+  onSuccess,
+}: {
+  role: RoleResponse;
+  permissions: { code: string; name?: string }[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState(role.name ?? "");
+  const [description, setDescription] = useState(role.description ?? "");
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await updateTenantRole(role.id, {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        permissions: selectedPermissions.length ? selectedPermissions : undefined,
+      });
+      onSuccess();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Cập nhật role thất bại");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
+      <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Cập nhật custom role</h3>
+        <p className="mt-1 text-xs text-zinc-500">Code: {role.code ?? "—"} (không thể đổi)</p>
+        <form onSubmit={submit} className="mt-4 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-zinc-500">Tên role</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500">Mô tả</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">
+              Permissions mới (để trống nếu không đổi)
+            </label>
+            <PermissionSelector selected={selectedPermissions} allPermissions={permissions} onChange={setSelectedPermissions} />
+          </div>
+          <div className="mt-6 flex gap-2">
+            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? "Đang lưu..." : "Lưu thay đổi"}</button>
+            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

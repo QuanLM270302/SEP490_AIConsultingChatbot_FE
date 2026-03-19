@@ -14,6 +14,7 @@ export const PUBLIC_PATHS = ["/", "/login", "/forgot-password"];
 export const PATH_ALLOWED_ROLES: Record<string, string[]> = {
   "/": [],
   "/profile": [],
+  "/chatbot": [],
   "/subscription": [ROLE_TENANT_ADMIN],
   "/employee": [ROLE_EMPLOYEE],
   "/tenant-admin": [ROLE_TENANT_ADMIN],

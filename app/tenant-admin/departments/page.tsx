@@ -10,6 +10,7 @@ import { createTenantDepartment } from "@/lib/api/tenant-admin";
 export default function DepartmentsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [filter, setFilter] = useState<"all" | "active">("all");
 
   return (
     <TenantAdminLayout>
@@ -33,9 +34,34 @@ export default function DepartmentsPage() {
           </button>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+              filter === "all"
+                ? "bg-green-500 text-white"
+                : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }`}
+          >
+            Tất cả
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("active")}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+              filter === "active"
+                ? "bg-green-500 text-white"
+                : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }`}
+          >
+            Đang hoạt động
+          </button>
+        </div>
+
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <DepartmentsTable refreshKey={refreshKey} />
+            <DepartmentsTable refreshKey={refreshKey} filter={filter} />
           </div>
           <div>
             <DepartmentStructure />

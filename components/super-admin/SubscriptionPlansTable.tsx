@@ -4,11 +4,15 @@ import { useState, useEffect } from "react";
 import {
   getSubscriptionPlans,
   getActiveSubscriptionPlans,
+  getSubscriptionPlanTypes,
+  createSubscriptionPlan,
   deleteSubscriptionPlan,
   updateSubscriptionPlan,
+  type CreateSubscriptionPlanRequest,
+  type SubscriptionPlanTypeOption,
   type SubscriptionPlanResponse,
 } from "@/lib/api/admin";
-import { MoreVertical, Pencil, Trash2, Loader2, Eye } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Loader2, Eye, Plus } from "lucide-react";
 
 type Filter = "all" | "active";
 
@@ -22,6 +26,7 @@ export function SubscriptionPlansTable() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [detailPlan, setDetailPlan] = useState<SubscriptionPlanResponse | null>(null);
   const [editPlan, setEditPlan] = useState<SubscriptionPlanResponse | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -83,6 +88,14 @@ export function SubscriptionPlansTable() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Subscription Plans</h2>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-600"
+          >
+            <Plus className="h-4 w-4" />
+            Tạo plan
+          </button>
           <button
             type="button"
             onClick={() => setFilter("all")}
@@ -182,6 +195,16 @@ export function SubscriptionPlansTable() {
         </div>
       )}
 
+      {createOpen && (
+        <CreatePlanModal
+          onClose={() => setCreateOpen(false)}
+          onSuccess={() => {
+            setCreateOpen(false);
+            load();
+          }}
+        />
+      )}
+
       {editPlan && <EditPlanModal plan={editPlan} onClose={() => setEditPlan(null)} onSuccess={() => { setEditPlan(null); load(); }} />}
 
       {openMenuId && menuPos && (
@@ -232,6 +255,127 @@ export function SubscriptionPlansTable() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [types, setTypes] = useState<SubscriptionPlanTypeOption[]>([]);
+  const [planType, setPlanType] = useState<SubscriptionPlanTypeOption["code"]>("STARTER");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [monthlyPrice, setMonthlyPrice] = useState("0");
+  const [quarterlyPrice, setQuarterlyPrice] = useState("0");
+  const [yearlyPrice, setYearlyPrice] = useState("0");
+  const [maxUsers, setMaxUsers] = useState("10");
+  const [maxDocuments, setMaxDocuments] = useState("100");
+  const [maxStorageGb, setMaxStorageGb] = useState("5");
+
+  useEffect(() => {
+    getSubscriptionPlanTypes()
+      .then((data) => {
+        setTypes(data);
+        if (data.length > 0) setPlanType(data[0].code);
+      })
+      .catch(() => {
+        const fallback: SubscriptionPlanTypeOption[] = [
+          { code: "TRIAL", defaultName: "Trial" },
+          { code: "STARTER", defaultName: "Starter" },
+          { code: "STANDARD", defaultName: "Standard" },
+          { code: "ENTERPRISE", defaultName: "Enterprise" },
+        ];
+        setTypes(fallback);
+      });
+  }, []);
+
+  const toInt = (v: string, fallback: number) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.trunc(n) : fallback;
+  };
+  const toNum = (v: string, fallback: number) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  const selectedType = types.find((t) => t.code === planType);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const body: CreateSubscriptionPlanRequest = {
+        planType,
+        name: name.trim() || undefined,
+        description: description.trim() || undefined,
+        monthlyPrice: Math.max(0, toNum(monthlyPrice, 0)),
+        quarterlyPrice: Math.max(0, toNum(quarterlyPrice, 0)),
+        yearlyPrice: Math.max(0, toNum(yearlyPrice, 0)),
+        maxUsers: Math.max(1, toInt(maxUsers, 10)),
+        maxDocuments: Math.max(0, toInt(maxDocuments, 100)),
+        maxStorageGb: Math.max(1, toInt(maxStorageGb, 5)),
+        maxApiCalls: 10000,
+        maxChatbotRequests: 1000,
+        maxRagDocuments: 500,
+        maxAiTokens: 100000,
+        contextWindowTokens: 4096,
+        ragChunkSize: 512,
+        enableRag: true,
+        isTrial: planType === "TRIAL",
+        trialDays: planType === "TRIAL" ? 14 : undefined,
+        displayOrder: 0,
+      };
+      await createSubscriptionPlan(body);
+      onSuccess();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Tạo plan thất bại");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
+      <div className="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo subscription plan</h3>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          <div>
+            <label className="block text-xs text-zinc-500">Plan type *</label>
+            <select
+              value={planType}
+              onChange={(e) => setPlanType(e.target.value as SubscriptionPlanTypeOption["code"])}
+              className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+            >
+              {types.map((t) => (
+                <option key={t.code} value={t.code}>
+                  {t.code} - {t.defaultName}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-zinc-500">Code sẽ tự map theo loại plan.</p>
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-500">Tên (optional)</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={selectedType?.defaultName ?? "Để trống để BE tự gán"} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+          </div>
+          <div><label className="block text-xs text-zinc-500">Mô tả</label><input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+          <div className="grid grid-cols-3 gap-2">
+            <div><label className="block text-xs text-zinc-500">Giá tháng</label><input type="number" min="0" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">Giá quý</label><input type="number" min="0" value={quarterlyPrice} onChange={(e) => setQuarterlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">Giá năm</label><input type="number" min="0" value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div><label className="block text-xs text-zinc-500">Max users</label><input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">Max docs</label><input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">Storage GB</label><input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+          </div>
+          <div className="mt-6 flex gap-2">
+            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo"}</button>
+            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

@@ -15,7 +15,7 @@ import { listTagsActive } from "@/lib/api/tags";
 import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
 import { useEffect } from "react";
 
-export default function ChatPlatformPage() {
+export default function ChatbotPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
@@ -103,12 +103,6 @@ export default function ChatPlatformPage() {
     setMessages((prev) =>
       prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
     );
-  };
-
-  const handleNewChat = () => {
-    setSelectedMessage(null);
-    setCurrentQuestion("");
-    setConversationId(null);
   };
 
   const handleSelectExample = (example: string) => {
