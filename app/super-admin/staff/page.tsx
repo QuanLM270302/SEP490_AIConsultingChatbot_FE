@@ -318,10 +318,14 @@ function CreateStaffModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     }
     setLoading(true);
     try {
-      const body: CreateStaffRequest = { email: email.trim(), fullName: fullName.trim() };
+      const body: CreateStaffRequest = { contactEmail: email.trim(), fullName: fullName.trim() };
       if (phone.trim()) body.phone = phone.trim();
-      await createStaff(body);
-      alert("Tài khoản STAFF đã được tạo. Email thông tin đăng nhập đã được gửi.");
+      const data = await createStaff(body);
+      if (data.emailSent === false) {
+        alert("Tài khoản STAFF đã được tạo thành công. Tuy nhiên không gửi được email thông tin đăng nhập (kiểm tra cấu hình SMTP phía server).");
+      } else {
+        alert("Tài khoản STAFF đã được tạo. Email thông tin đăng nhập đã được gửi.");
+      }
       onSuccess();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Tạo staff thất bại");

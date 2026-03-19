@@ -15,6 +15,7 @@ import {
 const navigation = [
   { name: "Dashboard", href: "/super-admin", icon: LayoutDashboard },
   { name: "Organizations", href: "/super-admin/organizations", icon: Building2 },
+  { name: "Roles & Permissions", href: "/super-admin/roles", icon: Shield },
   { name: "Staff", href: "/super-admin/staff", icon: Users },
   { name: "Subscription Plans", href: "/super-admin/pricing", icon: CreditCard },
   { name: "Subscriptions (đã mua)", href: "/super-admin/subscriptions", icon: CreditCard },
