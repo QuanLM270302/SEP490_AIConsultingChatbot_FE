@@ -85,6 +85,52 @@ export async function activateTenant(tenantId: string): Promise<{ message: strin
   return data;
 }
 
+export async function rejectTenant(tenantId: string, reason: string): Promise<{ message: string }> {
+  console.log("API Call - rejectTenant:", { tenantId, reason });
+  
+  // Try with query parameter first
+  const urlWithQuery = `${STAFF_BASE}/tenants/${tenantId}/reject?reason=${encodeURIComponent(reason)}`;
+  console.log("Request URL (with query):", urlWithQuery);
+  
+  let res = await fetchWithAuth(urlWithQuery, {
+    method: "PUT",
+  });
+  
+  console.log("Response status (PUT with query):", res.status);
+  
+  // If 500 error, try with body instead
+  if (res.status === 500) {
+    console.log("Retrying with body instead of query parameter...");
+    const urlWithoutQuery = `${STAFF_BASE}/tenants/${tenantId}/reject`;
+    console.log("Request URL (with body):", urlWithoutQuery);
+    
+    res = await fetchWithAuth(urlWithoutQuery, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reason }),
+    });
+    
+    console.log("Response status (PUT with body):", res.status);
+  }
+  
+  const data = await res.json().catch((err) => {
+    console.error("Failed to parse JSON:", err);
+    return {};
+  });
+  
+  console.log("Response data:", data);
+  
+  if (!res.ok) {
+    const errorMsg = data?.message || "Từ chối thất bại";
+    console.error("API Error:", errorMsg);
+    throw new Error(errorMsg);
+  }
+  
+  return data;
+}
+
 export async function deleteTenant(tenantId: string): Promise<{ message: string }> {
   const res = await fetchWithAuth(`${STAFF_BASE}/tenants/${tenantId}`, {
     method: "DELETE",
