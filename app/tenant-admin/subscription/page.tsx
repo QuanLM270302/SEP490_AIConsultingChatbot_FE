@@ -21,7 +21,7 @@ export default function TenantAdminSubscriptionPage() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [payments, setPayments] = useState<Awaited<ReturnType<typeof getPaymentHistory>>>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("STARTER");
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("TRIAL");
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("MONTHLY");
   const [paymentPending, setPaymentPending] = useState<SelectPlanResponse | null>(null);
   const [selectPlanLoading, setSelectPlanLoading] = useState(false);
@@ -122,6 +122,7 @@ export default function TenantAdminSubscriptionPage() {
                 onChange={(e) => setSelectedTier(e.target.value as SubscriptionTier)}
                 className="rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
               >
+                <option value="TRIAL">TRIAL</option>
                 <option value="STARTER">STARTER</option>
                 <option value="STANDARD">STANDARD</option>
                 <option value="ENTERPRISE">ENTERPRISE</option>
@@ -188,6 +189,35 @@ function PaymentPendingSection({
   const [status, setStatus] = useState<string | null>(null);
   const [polling, setPolling] = useState(true);
 
+  // Debug QR URL
+  useEffect(() => {
+    console.log("Payment data:", data);
+    console.log("QR Image URL:", data.qr_image_url);
+  }, [data]);
+
+  // Build QR URL from bank info if template variables not replaced
+  const getQRImageUrl = () => {
+    if (!data.qr_image_url) return null;
+    
+    // Check if URL has template variables
+    if (data.qr_image_url.includes('${')) {
+      console.warn("QR URL has template variables, building from bank info");
+      
+      // Extract bank code from bank_name or use default
+      const bankCode = data.bank_name === "TPBANK" ? "970423" : "970423"; // Default to TPBANK
+      const bankAccount = data.bank_account || "";
+      const accountName = data.account_name || "";
+      const amount = data.amount || 0;
+      const addInfo = encodeURIComponent(data.transaction_code || "");
+      
+      return `https://img.vietqr.io/image/${bankCode}-${bankAccount}-compact2.jpg?amount=${amount}&addInfo=${addInfo}&accountName=${encodeURIComponent(accountName)}`;
+    }
+    
+    return data.qr_image_url;
+  };
+
+  const qrImageUrl = getQRImageUrl();
+
   useEffect(() => {
     if (!data.payment_id || !polling) return;
     const interval = setInterval(async () => {
@@ -206,27 +236,123 @@ function PaymentPendingSection({
   }, [data.payment_id, data.polling_interval_seconds, polling, onSuccess]);
 
   return (
-    <section className="mb-8 rounded-3xl border-2 border-amber-200 bg-amber-50/80 p-6 dark:border-amber-800 dark:bg-amber-950/30">
+    <section className="mb-8 rounded-3xl border-2 border-emerald-200 bg-white p-6 shadow-xl dark:border-emerald-800 dark:bg-zinc-950">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Đang chờ thanh toán</h3>
-        <button type="button" onClick={onClose} className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-400">
+        <button 
+          type="button" 
+          onClick={onClose} 
+          className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
+        >
           Đóng
         </button>
       </div>
-      <p className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
-        Mã giao dịch: <strong className="font-mono">{data.transaction_code}</strong> — Số tiền: {data.amount?.toLocaleString("vi-VN")}đ
-      </p>
-      {data.bank_account && (
-        <p className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
-          Chuyển khoản: <strong>{data.bank_name}</strong> — Số TK: <strong>{data.bank_account}</strong> — Chủ TK: {data.account_name}
-        </p>
-      )}
-      {data.qr_image_url && (
-        <div className="mb-4">
-          <img src={data.qr_image_url} alt="QR thanh toán" className="h-48 w-48 rounded-lg border border-zinc-200 dark:border-zinc-700" />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* QR Code Section */}
+        {qrImageUrl ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Quét mã QR để thanh toán
+            </p>
+            <div className="relative">
+              <img 
+                src={qrImageUrl} 
+                alt="QR thanh toán" 
+                className="h-64 w-64 rounded-xl border-2 border-emerald-500 bg-white p-2 shadow-lg object-contain" 
+                onError={(e) => {
+                  console.error("QR Image failed to load:", qrImageUrl);
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<div class="h-64 w-64 flex items-center justify-center rounded-xl border-2 border-red-500 bg-red-50 p-4 text-center text-sm text-red-600">Không thể tải mã QR. Vui lòng chuyển khoản thủ công.</div>';
+                  }
+                }}
+              />
+            </div>
+            <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
+              Sử dụng app ngân hàng để quét mã QR
+            </p>
+            {data.qr_image_url?.includes('${') && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                ⚠️ URL được tạo từ thông tin ngân hàng
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-800 dark:bg-amber-950/30">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              ⚠️ Mã QR không khả dụng
+            </p>
+          </div>
+        )}
+
+        {/* Payment Info Section */}
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">Mã giao dịch</p>
+            <p className="font-mono text-lg font-bold text-zinc-900 dark:text-zinc-50">
+              {data.transaction_code}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">Số tiền</p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              {data.amount?.toLocaleString("vi-VN")}đ
+            </p>
+          </div>
+
+          {data.bank_account && (
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <p className="mb-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                Thông tin chuyển khoản
+              </p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-zinc-600 dark:text-zinc-400">Ngân hàng:</span>
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">{data.bank_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-600 dark:text-zinc-400">Số tài khoản:</span>
+                  <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-50">{data.bank_account}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-600 dark:text-zinc-400">Chủ tài khoản:</span>
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">{data.account_name}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {status && (
+            <div className={`rounded-2xl border p-4 ${
+              status === "SUCCESS" 
+                ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30" 
+                : status === "PENDING"
+                ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                : "border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
+            }`}>
+              <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Trạng thái</p>
+              <p className={`text-sm font-semibold ${
+                status === "SUCCESS" 
+                  ? "text-emerald-600 dark:text-emerald-400" 
+                  : status === "PENDING"
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-zinc-700 dark:text-zinc-300"
+              }`}>
+                {status === "SUCCESS" ? "✓ Thanh toán thành công" : status === "PENDING" ? "⏳ Đang chờ xác nhận" : status}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!data.qr_image_url && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          ⚠️ Mã QR không khả dụng. Vui lòng chuyển khoản thủ công theo thông tin bên trên.
         </div>
       )}
-      {status && <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Trạng thái: {status}</p>}
     </section>
   );
 }
