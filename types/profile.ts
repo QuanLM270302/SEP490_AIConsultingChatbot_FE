@@ -27,3 +27,14 @@ export interface ChangePasswordRequest {
   oldPassword?: string | null; // Optional when mustChangePassword is true
   newPassword: string;
 }
+
+/** Request body for POST /api/v1/profile/contact-email/request */
+export interface UpdateContactEmailRequest {
+  newContactEmail: string;
+}
+
+/** Request body for POST /api/v1/profile/contact-email/verify */
+export interface VerifyContactEmailRequest {
+  newContactEmail: string;
+  otp: string;
+}

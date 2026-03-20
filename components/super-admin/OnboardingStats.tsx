@@ -1,8 +1,8 @@
 export function OnboardingStats() {
   const stats = [
-    { label: "Chờ duyệt", value: "8", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-500/10" },
-    { label: "Đã duyệt tháng này", value: "12", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-500/10" },
-    { label: "Từ chối", value: "3", color: "text-rose-600 dark:text-rose-400", bgColor: "bg-rose-500/10" },
+    { label: "Chờ duyệt", value: "—", color: "text-amber-600 dark:text-amber-400", bgColor: "bg-amber-500/10" },
+    { label: "Đã duyệt tháng này", value: "—", color: "text-green-600 dark:text-green-400", bgColor: "bg-green-500/10" },
+    { label: "Từ chối", value: "—", color: "text-rose-600 dark:text-rose-400", bgColor: "bg-rose-500/10" },
   ];
 
   return (

@@ -7,7 +7,7 @@ export default function SubscriptionPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/employee/subscription");
+    router.replace("/tenant-admin/subscription");
   }, [router]);
 
   return (

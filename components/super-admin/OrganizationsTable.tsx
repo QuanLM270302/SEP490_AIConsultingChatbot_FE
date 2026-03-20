@@ -2,12 +2,7 @@
 
 import { MoreVertical } from "lucide-react";
 
-const organizations = [
-  { id: 1, name: "Công ty TNHH ABC", users: 45, status: "active", plan: "Enterprise", createdAt: "2024-01-15" },
-  { id: 2, name: "Tập đoàn XYZ", users: 120, status: "active", plan: "Enterprise", createdAt: "2024-02-01" },
-  { id: 3, name: "Công ty DEF", users: 28, status: "active", plan: "Business", createdAt: "2024-02-10" },
-  { id: 4, name: "Startup GHI", users: 12, status: "trial", plan: "Trial", createdAt: "2024-02-28" },
-];
+const organizations: { id: number; name: string; users: number; documents: number; aiQueries: number; status: string; plan: string; createdAt: string }[] = [];
 
 export function OrganizationsTable() {
   return (
@@ -21,6 +16,12 @@ export function OrganizationsTable() {
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
                 Người dùng
+              </th>
+              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+                Documents
+              </th>
+              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+                AI Queries
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
                 Trạng thái
@@ -37,6 +38,13 @@ export function OrganizationsTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-900 dark:bg-zinc-950">
+            {organizations.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-6 py-8 text-center text-sm text-zinc-500">
+                  Dữ liệu tổ chức sẽ được tải từ API.
+                </td>
+              </tr>
+            ) : null}
             {organizations.map((org) => (
               <tr key={org.id} className="transition hover:bg-zinc-50 dark:hover:bg-zinc-900">
                 <td className="whitespace-nowrap px-6 py-4">
@@ -48,14 +56,22 @@ export function OrganizationsTable() {
                   <div className="text-sm text-zinc-900 dark:text-white">{org.users}</div>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">
+                  <div className="text-sm text-zinc-900 dark:text-white">{org.documents.toLocaleString()}</div>
+                </td>
+                <td className="whitespace-nowrap px-6 py-4">
+                  <div className="text-sm text-zinc-900 dark:text-white">{org.aiQueries.toLocaleString()}</div>
+                </td>
+                <td className="whitespace-nowrap px-6 py-4">
                   <span
                     className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
                       org.status === "active"
                         ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : org.status === "trial"
+                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : "bg-red-500/10 text-red-600 dark:text-red-400"
                     }`}
                   >
-                    {org.status === "active" ? "Hoạt động" : "Dùng thử"}
+                    {org.status === "active" ? "Hoạt động" : org.status === "trial" ? "Dùng thử" : "Tạm ngưng"}
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">

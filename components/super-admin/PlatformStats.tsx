@@ -1,39 +1,17 @@
-import { Building2, Users, TrendingUp, Activity } from "lucide-react";
+import { Building2, Users, MessageSquare, CheckCircle, XCircle, FileText } from "lucide-react";
 
 const stats = [
-  {
-    name: "Tổng Organizations",
-    value: "24",
-    change: "+12%",
-    changeType: "positive" as const,
-    icon: Building2,
-  },
-  {
-    name: "Tổng Users",
-    value: "1,234",
-    change: "+18%",
-    changeType: "positive" as const,
-    icon: Users,
-  },
-  {
-    name: "Active Sessions",
-    value: "892",
-    change: "+8%",
-    changeType: "positive" as const,
-    icon: Activity,
-  },
-  {
-    name: "System Uptime",
-    value: "99.9%",
-    change: "+0.1%",
-    changeType: "positive" as const,
-    icon: TrendingUp,
-  },
+  { name: "Total Tenants", value: "—", icon: Building2 },
+  { name: "Active Tenants", value: "—", icon: CheckCircle },
+  { name: "Suspended Tenants", value: "—", icon: XCircle },
+  { name: "Total Users", value: "—", icon: Users },
+  { name: "Total Documents", value: "—", icon: FileText },
+  { name: "Total AI Queries", value: "—", icon: MessageSquare },
 ];
 
 export function PlatformStats() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       {stats.map((stat) => (
         <div
           key={stat.name}
@@ -47,9 +25,6 @@ export function PlatformStats() {
               <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
                 {stat.value}
               </p>
-              <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-semibold text-green-600 dark:text-green-400">
-                {stat.change}
-              </div>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-green-500/10">
               <stat.icon className="h-5 w-5 text-green-500" />

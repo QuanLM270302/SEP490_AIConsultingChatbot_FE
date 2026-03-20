@@ -9,34 +9,33 @@ export function StatsCards() {
   const stats = [
     {
       label: "Câu hỏi hôm nay",
-      value: "12",
-      change: "+3 so với hôm qua",
+      value: "—",
+      change: "Dữ liệu từ server",
       icon: ChatBubbleLeftRightIcon,
       bgColor: "bg-green-100 dark:bg-green-900/30",
       iconColor: "text-green-600 dark:text-green-400",
     },
     {
       label: "Độ chính xác",
-      value: "87%",
-      change: "Trung bình tuần này",
+      value: "—",
+      change: "Dữ liệu từ server",
       icon: CursorArrowRaysIcon,
       bgColor: "bg-blue-100 dark:bg-blue-900/30",
       iconColor: "text-blue-600 dark:text-blue-400",
     },
     {
       label: "Lượt chat còn lại",
-      value: "48/100",
+      value: "—",
       change: null,
       icon: BoltIcon,
       bgColor: "bg-amber-100 dark:bg-amber-900/30",
       iconColor: "text-amber-600 dark:text-amber-400",
-      showProgress: true,
-      progress: 48,
+      showProgress: false,
     },
     {
       label: "Tài liệu truy cập",
-      value: "1,245",
-      change: "Tổng số tài liệu",
+      value: "—",
+      change: "Dữ liệu từ server",
       icon: BookOpenIcon,
       bgColor: "bg-purple-100 dark:bg-purple-900/30",
       iconColor: "text-purple-600 dark:text-purple-400",
@@ -67,10 +66,7 @@ export function StatsCards() {
           </div>
           {stat.showProgress ? (
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
-              <div
-                className="h-full rounded-full bg-amber-500"
-                style={{ width: `${stat.progress}%` }}
-              />
+              <div className="h-full w-0 rounded-full bg-amber-500" />
             </div>
           ) : (
             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -82,4 +78,3 @@ export function StatsCards() {
     </div>
   );
 }
-

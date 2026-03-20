@@ -6,22 +6,21 @@ import { cn } from "@/lib/utils/cn";
 import {
   LayoutDashboard,
   Building2,
-  UserCheck,
-  Activity,
   Shield,
-  BarChart3,
-  DollarSign,
+  Bot,
   X,
+  Users,
+  CreditCard,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/super-admin", icon: LayoutDashboard },
   { name: "Organizations", href: "/super-admin/organizations", icon: Building2 },
-  { name: "Onboarding", href: "/super-admin/onboarding", icon: UserCheck },
-  { name: "System Health", href: "/super-admin/system", icon: Activity },
-  { name: "Compliance", href: "/super-admin/compliance", icon: Shield },
-  { name: "Reports", href: "/super-admin/reports", icon: BarChart3 },
-  { name: "Pricing", href: "/super-admin/pricing", icon: DollarSign },
+  { name: "Roles & Permissions", href: "/super-admin/roles", icon: Shield },
+  { name: "AI Chatbot", href: "/chatbot", icon: Bot },
+  { name: "Staff", href: "/super-admin/staff", icon: Users },
+  { name: "Subscription Plans", href: "/super-admin/pricing", icon: CreditCard },
+  { name: "Subscriptions (đã mua)", href: "/super-admin/subscriptions", icon: CreditCard },
 ];
 
 interface SuperAdminSidebarProps {

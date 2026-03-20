@@ -4,6 +4,8 @@ import type {
   UserProfileResponse,
   UpdateProfileRequest,
   ChangePasswordRequest,
+  UpdateContactEmailRequest,
+  VerifyContactEmailRequest,
 } from "@/types/profile";
 import type { MessageResponse } from "@/types/auth";
 
@@ -46,6 +48,30 @@ export async function changePassword(
   body: ChangePasswordRequest
 ): Promise<MessageResponse> {
   const res = await fetchWithAuth(`${PROFILE_BASE}/change-password`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  });
+  return handleResponse<MessageResponse>(res);
+}
+
+/** POST /api/v1/profile/contact-email/request */
+export async function requestUpdateContactEmail(
+  body: UpdateContactEmailRequest
+): Promise<MessageResponse> {
+  const res = await fetchWithAuth(`${PROFILE_BASE}/contact-email/request`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  });
+  return handleResponse<MessageResponse>(res);
+}
+
+/** POST /api/v1/profile/contact-email/verify */
+export async function verifyAndUpdateContactEmail(
+  body: VerifyContactEmailRequest
+): Promise<MessageResponse> {
+  const res = await fetchWithAuth(`${PROFILE_BASE}/contact-email/verify`, {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify(body),

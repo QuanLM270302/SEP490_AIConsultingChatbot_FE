@@ -11,7 +11,7 @@ export function MetricsSection() {
               Knowledge Coverage Score
             </p>
             <p className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-              87.52%
+              —
             </p>
           </div>
           <button className="flex items-center gap-2 rounded-2xl bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
@@ -19,24 +19,8 @@ export function MetricsSection() {
             <ChevronDownIcon className="h-4 w-4" />
           </button>
         </div>
-        {/* Simple fake chart */}
-        <div className="mt-4 h-40 rounded-2xl bg-linear-to-b from-green-50 via-white to-white p-4 dark:from-green-900/20 dark:via-zinc-950 dark:to-zinc-950">
-          <div className="flex h-full items-end justify-between gap-2">
-            {[75, 68, 78, 82, 77, 80].map((value, idx) => (
-              <div
-                key={idx}
-                className="flex flex-1 flex-col items-center gap-1"
-              >
-                <div
-                  className="w-full rounded-full bg-green-400"
-                  style={{ height: `${40 + (value - 60)}%` }}
-                />
-                <span className="text-[10px] font-semibold text-green-600">
-                  {value}
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="mt-4 h-40 rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900/50 flex items-center justify-center">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Dữ liệu từ API</p>
         </div>
         <div className="flex items-center justify-between text-[11px] text-zinc-400">
           <div className="flex items-center gap-3">
@@ -75,7 +59,7 @@ export function MetricsSection() {
 
           <div className="flex-1 rounded-3xl bg-white p-4 shadow-sm shadow-green-50 dark:bg-zinc-950 dark:shadow-black/40">
             <p className="text-xs font-medium text-zinc-400">
-              Document Uploads (Content Managers)
+              Document Uploads (Tenant Admin)
             </p>
             <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
               1875+

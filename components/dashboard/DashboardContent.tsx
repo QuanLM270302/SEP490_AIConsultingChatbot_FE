@@ -32,7 +32,7 @@ const GUEST_FEATURES = [
   {
     icon: ShieldCheckIcon,
     title: "Bảo mật & phân quyền",
-    description: "Multi-tenant, phân quyền theo vai trò: Nhân viên, Content Manager, Tenant Admin, Super Admin.",
+    description: "Multi-tenant, phân quyền theo vai trò: Employee, Staff, Tenant Admin, Super Admin.",
   },
   {
     icon: SparklesIcon,
@@ -79,12 +79,6 @@ export function DashboardContent() {
             >
               Đăng nhập
               <ArrowRightIcon className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/register"
-              className="inline-flex items-center gap-2 rounded-xl border-2 border-white/80 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15"
-            >
-              Đăng ký
             </Link>
           </div>
         </section>

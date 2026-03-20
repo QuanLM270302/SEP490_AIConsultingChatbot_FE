@@ -6,10 +6,10 @@ interface EmptyStateProps {
 
 export function EmptyState({ onSelectExample }: EmptyStateProps) {
   const examples = [
-    "Làm thế nào để xin nghỉ phép?",
-    "Quy trình onboarding như thế nào?",
-    "Chính sách làm việc từ xa?",
-    "Cách sử dụng hệ thống HR?",
+    "Đặt câu hỏi về tài liệu nội bộ",
+    "Tìm thông tin chính sách công ty",
+    "Hỏi về quy trình nghiệp vụ",
+    "Tra cứu hướng dẫn sử dụng",
   ];
 
   return (
