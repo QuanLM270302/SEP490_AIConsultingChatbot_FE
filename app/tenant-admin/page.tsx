@@ -4,7 +4,7 @@ import { AIUsageChart } from "@/components/tenant-admin/AIUsageChart";
 import { EmployeeOverview } from "@/components/tenant-admin/EmployeeOverview";
 import { DepartmentOverview } from "@/components/tenant-admin/DepartmentOverview";
 import Link from "next/link";
-import { Users, Building, Shield, CreditCard, FileText } from "lucide-react";
+import { Users, Building, Shield, CreditCard, FileText, Bot } from "lucide-react";
 
 export default function TenantAdminPage() {
   const quickLinks = [
@@ -42,6 +42,13 @@ export default function TenantAdminPage() {
       href: "/tenant-admin/documents",
       icon: FileText,
       color: "bg-sky-500",
+    },
+    {
+      title: "AI Chatbot",
+      description: "Hỏi đáp AI trên dữ liệu nội bộ",
+      href: "/chatbot",
+      icon: Bot,
+      color: "bg-violet-500",
     },
   ];
 

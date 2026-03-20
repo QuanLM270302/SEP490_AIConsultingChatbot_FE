@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { AppHeader } from "@/components/layout/AppHeader";
 import {
   Building2,
@@ -16,6 +17,7 @@ import {
   Trash2,
   X,
   DollarSign,
+  Bot,
 } from "lucide-react";
 import {
   getStaffDashboard,
@@ -250,13 +252,22 @@ export default function StaffDashboardPage() {
         <div className="mx-auto max-w-6xl space-y-10">
           {/* Header */}
           <section className="overflow-hidden rounded-3xl bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-500 p-6 text-white shadow-xl shadow-emerald-500/30 dark:shadow-emerald-900/40">
-            <div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                 Staff Dashboard
               </h1>
               <p className="mt-1 max-w-xl text-sm text-emerald-50/90">
                 Trung tâm điều phối cho đội ngũ Staff: phê duyệt tenant, quản lý subscription và theo dõi chỉ số thống kê toàn nền tảng.
               </p>
+              </div>
+              <Link
+                href="/chatbot"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/30 hover:bg-white/30"
+              >
+                <Bot className="h-4 w-4" />
+                Mở AI Chatbot
+              </Link>
             </div>
           </section>
 

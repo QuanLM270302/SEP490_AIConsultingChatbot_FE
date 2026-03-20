@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState } from "react";
 import type { Message } from "@/types/chat";
 import { AIBoxSidebar } from "@/components/chat/AIBoxSidebar";
 import { ChatHistorySidebar } from "@/components/chat/ChatHistorySidebar";
@@ -18,7 +18,7 @@ export default function ChatPlatformPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const question = currentQuestion.trim();
     if (!question) return;
@@ -90,7 +90,7 @@ export default function ChatPlatformPage() {
 
       <div className="flex flex-1 flex-col h-screen overflow-hidden">
         {/* FIXED HEADER */}
-        <div className="flex-shrink-0 border-b border-zinc-200/50 bg-white/80 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/80">
+        <div className="shrink-0 border-b border-zinc-200/50 bg-white/80 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/80">
           <div className="flex items-center justify-between px-6 py-4">
             <button
               type="button"
@@ -202,7 +202,7 @@ export default function ChatPlatformPage() {
         </div>
 
         {/* FIXED INPUT AT BOTTOM */}
-        <div className="flex-shrink-0 border-t border-zinc-200/50 bg-white/80 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/80">
+        <div className="shrink-0 border-t border-zinc-200/50 bg-white/80 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/80">
           <div className="mx-auto max-w-4xl px-4 py-4 md:px-6">
             <form onSubmit={handleSubmit}>
               <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-3 shadow-lg transition focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900">
