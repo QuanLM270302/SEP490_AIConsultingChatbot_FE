@@ -298,6 +298,23 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     return Number.isFinite(n) ? n : fallback;
   };
 
+  // Format number with comma separator (Vietnamese style)
+  const formatNumber = (value: string): string => {
+    const num = value.replace(/[^\d]/g, '');
+    if (!num) return '';
+    return Number(num).toLocaleString('vi-VN');
+  };
+
+  // Parse formatted number back to plain number
+  const parseNumber = (value: string): string => {
+    return value.replace(/\./g, '');
+  };
+
+  const handlePriceChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = parseNumber(e.target.value);
+    setter(raw);
+  };
+
   const selectedType = types.find((t) => t.code === planType);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -341,38 +358,125 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo subscription plan</h3>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs text-zinc-500">Plan type *</label>
-            <select
-              value={planType}
-              onChange={(e) => setPlanType(e.target.value as SubscriptionPlanTypeOption["code"])}
-              className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-            >
-              {types.map((t) => (
-                <option key={t.code} value={t.code}>
-                  {t.code} - {t.defaultName}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-zinc-500">Code sẽ tự map theo loại plan.</p>
+            <label className="block text-xs text-zinc-500">Tên gói *</label>
+            <input 
+              type="text" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              placeholder="Nhập tên gói (VD: Gói Starter)" 
+              required
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+            />
           </div>
           <div>
-            <label className="block text-xs text-zinc-500">Tên (optional)</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={selectedType?.defaultName ?? "Để trống để BE tự gán"} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            <label className="block text-xs text-zinc-500">Mô tả</label>
+            <input 
+              type="text" 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              placeholder="Mô tả ngắn về gói"
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+            />
           </div>
-          <div><label className="block text-xs text-zinc-500">Mô tả</label><input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+          
+          {/* Price Fields with VND */}
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Giá gói</label>
+            <div className="grid grid-cols-1 gap-2">
+              <div>
+                <label className="block text-xs text-zinc-500">Giá tháng</label>
+                <div className="relative mt-1">
+                  <input 
+                    type="text" 
+                    value={formatNumber(monthlyPrice)} 
+                    onChange={handlePriceChange(setMonthlyPrice)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 pr-12 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">VND</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500">Giá quý</label>
+                <div className="relative mt-1">
+                  <input 
+                    type="text" 
+                    value={formatNumber(quarterlyPrice)} 
+                    onChange={handlePriceChange(setQuarterlyPrice)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 pr-12 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">VND</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500">Giá năm</label>
+                <div className="relative mt-1">
+                  <input 
+                    type="text" 
+                    value={formatNumber(yearlyPrice)} 
+                    onChange={handlePriceChange(setYearlyPrice)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 pr-12 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">VND</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Limits */}
           <div className="grid grid-cols-3 gap-2">
-            <div><label className="block text-xs text-zinc-500">Giá tháng</label><input type="number" min="0" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Giá quý</label><input type="number" min="0" value={quarterlyPrice} onChange={(e) => setQuarterlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Giá năm</label><input type="number" min="0" value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div>
+              <label className="block text-xs text-zinc-500">Số user</label>
+              <input 
+                type="number" 
+                min="1" 
+                value={maxUsers} 
+                onChange={(e) => setMaxUsers(e.target.value)} 
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Số tài liệu</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={maxDocuments} 
+                onChange={(e) => setMaxDocuments(e.target.value)} 
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Dung lượng (GB)</label>
+              <input 
+                type="number" 
+                min="1" 
+                value={maxStorageGb} 
+                onChange={(e) => setMaxStorageGb(e.target.value)} 
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div><label className="block text-xs text-zinc-500">Max users</label><input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Max docs</label><input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Storage GB</label><input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-          </div>
+
+          {/* Hidden Plan Type - auto set to STARTER */}
+          <input type="hidden" value={planType} />
+
           <div className="mt-6 flex gap-2">
-            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo"}</button>
-            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo"}
+            </button>
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700 dark:text-zinc-300"
+            >
+              Hủy
+            </button>
           </div>
         </form>
       </div>

@@ -229,16 +229,161 @@ export default function SuperAdminRolesPage() {
 
       {detail ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-zinc-900/60" onClick={() => setDetail(null)} />
-          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Chi tiết Role</h3>
-            <dl className="mt-4 space-y-2 text-sm">
-              <div><dt className="text-zinc-500">Name</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.name ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Code</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.code ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Description</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.description ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Scope</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.isSystemRole ? "System role" : detail.tenantName ?? "Tenant role"}</dd></div>
-            </dl>
-            <button type="button" onClick={() => setDetail(null)} className="mt-6 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200">Đóng</button>
+          <div className="absolute inset-0 bg-zinc-900/70 backdrop-blur-sm" onClick={() => setDetail(null)} />
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-zinc-900">
+            {/* HEADER */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 px-8 py-8 dark:from-emerald-600 dark:to-emerald-700">
+              <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+              <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+              <div className="relative flex items-start justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+                    <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">
+                      {detail.name ?? "—"}
+                    </h3>
+                    <div className="mt-2 flex items-center gap-2">
+                      <p className="text-sm text-emerald-50">Role Details</p>
+                      {detail.isSystemRole && (
+                        <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
+                          SYSTEM ROLE
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDetail(null)}
+                  className="rounded-xl bg-white/20 p-2 text-white backdrop-blur-sm transition hover:bg-white/30"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* CONTENT - Card Based Layout */}
+            <div className="space-y-6 p-8">
+              {/* Stats Cards Row */}
+              <div className="grid gap-4 sm:grid-cols-3">
+                {/* Role Code Card */}
+                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-emerald-500/5 blur-2xl" />
+                  <div className="relative">
+                    <div className="mb-2 flex items-center gap-2">
+                      <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                      </svg>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Code
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                      {detail.code ?? "—"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Scope Card */}
+                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-blue-500/5 blur-2xl" />
+                  <div className="relative">
+                    <div className="mb-2 flex items-center gap-2">
+                      <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                      </svg>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Scope
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                      {detail.isSystemRole ? "System" : "Tenant"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Status Card */}
+                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-purple-500/5 blur-2xl" />
+                  <div className="relative">
+                    <div className="mb-2 flex items-center gap-2">
+                      <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Status
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                      Active
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description Card */}
+              {detail.description && (
+                <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="mb-3 flex items-center gap-2">
+                    <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Description
+                    </h4>
+                  </div>
+                  <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    {detail.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Permissions Card */}
+              {detail.permissions && detail.permissions.length > 0 && (
+                <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="mb-4 flex items-center gap-2">
+                    <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Permissions
+                    </h4>
+                    <span className="ml-auto rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+                      {detail.permissions.length}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {detail.permissions.map((perm: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {perm}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* FOOTER */}
+            <div className="flex items-center justify-end border-t border-zinc-200 bg-zinc-50 px-8 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <button
+                type="button"
+                onClick={() => setDetail(null)}
+                className="rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-zinc-900/20 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:shadow-white/20 dark:hover:bg-zinc-100"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
