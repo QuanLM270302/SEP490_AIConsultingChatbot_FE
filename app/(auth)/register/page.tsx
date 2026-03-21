@@ -140,7 +140,7 @@ export default function RegisterPage() {
 
           <div className="mb-6 space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-              Start for free
+              Apply Now
             </h1>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Register your organization to get started with our AI-powered internal consultant.

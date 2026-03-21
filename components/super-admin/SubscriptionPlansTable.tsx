@@ -179,18 +179,168 @@ export function SubscriptionPlansTable() {
 
       {detailPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-zinc-900/60" onClick={() => setDetailPlan(null)} />
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Chi tiết plan: {detailPlan.code ?? detailPlan.name}</h3>
-            <dl className="mt-4 space-y-2 text-sm">
-              <div><dt className="text-zinc-500">Code</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.code ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Tên</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.name ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Mô tả</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.description ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Giá tháng / quý / năm</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.monthlyPrice != null ? `${Number(detailPlan.monthlyPrice).toLocaleString("vi-VN")} / ${Number(detailPlan.quarterlyPrice).toLocaleString("vi-VN")} / ${Number(detailPlan.yearlyPrice).toLocaleString("vi-VN")} ${detailPlan.currency ?? ""}` : "—"}</dd></div>
-              <div><dt className="text-zinc-500">Max users / documents / storage (GB)</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.maxUsers ?? "—"} / {detailPlan.maxDocuments ?? "—"} / {detailPlan.maxStorageGb ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Active</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.isActive ? "Có" : "Không"}</dd></div>
-            </dl>
-            <button type="button" onClick={() => setDetailPlan(null)} className="mt-6 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium dark:bg-zinc-700 dark:text-zinc-200">Đóng</button>
+          <div className="absolute inset-0 bg-zinc-900/70 backdrop-blur-sm" onClick={() => setDetailPlan(null)} />
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-zinc-900">
+            {/* HEADER */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-violet-500 to-violet-600 px-8 py-8 dark:from-violet-600 dark:to-violet-700">
+              <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+              <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+              <div className="relative flex items-start justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+                    <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">
+                      {detailPlan.name ?? detailPlan.code}
+                    </h3>
+                    <div className="mt-2 flex items-center gap-2">
+                      <p className="text-sm text-violet-50">Plan Details</p>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm ${
+                        detailPlan.isActive ? 'bg-green-500/30 text-white' : 'bg-red-500/30 text-white'
+                      }`}>
+                        {detailPlan.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDetailPlan(null)}
+                  className="rounded-xl bg-white/20 p-2 text-white backdrop-blur-sm transition hover:bg-white/30"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* CONTENT */}
+            <div className="space-y-6 p-8">
+              {/* Description Card */}
+              {detailPlan.description && (
+                <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="mb-3 flex items-center gap-2">
+                    <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Mô tả
+                    </h4>
+                  </div>
+                  <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    {detailPlan.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Pricing Cards */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  Giá tháng / quý / năm
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {/* Monthly */}
+                  <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                    <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-emerald-500/5 blur-2xl" />
+                    <div className="relative">
+                      <div className="mb-2 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                          Tháng
+                        </span>
+                      </div>
+                      <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {detailPlan.monthlyPrice != null ? `${Number(detailPlan.monthlyPrice).toLocaleString("vi-VN")} VND` : "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quarterly */}
+                  <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                    <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-blue-500/5 blur-2xl" />
+                    <div className="relative">
+                      <div className="mb-2 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                          Quý
+                        </span>
+                      </div>
+                      <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {detailPlan.quarterlyPrice != null ? `${Number(detailPlan.quarterlyPrice).toLocaleString("vi-VN")} VND` : "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Yearly */}
+                  <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                    <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-purple-500/5 blur-2xl" />
+                    <div className="relative">
+                      <div className="mb-2 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                          Năm
+                        </span>
+                      </div>
+                      <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {detailPlan.yearlyPrice != null ? `${Number(detailPlan.yearlyPrice).toLocaleString("vi-VN")} VND` : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Limits Card */}
+              <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                <div className="mb-4 flex items-center gap-2">
+                  <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Max users / documents / storage (GB)
+                  </h4>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Users</span>
+                    <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
+                      {detailPlan.maxUsers ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Documents</span>
+                    <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
+                      {detailPlan.maxDocuments ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Storage</span>
+                    <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
+                      {detailPlan.maxStorageGb ?? "—"} GB
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* FOOTER */}
+            <div className="flex items-center justify-end border-t border-zinc-200 bg-zinc-50 px-8 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <button
+                type="button"
+                onClick={() => setDetailPlan(null)}
+                className="rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-zinc-900/20 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:shadow-white/20 dark:hover:bg-zinc-100"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -298,6 +448,23 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     return Number.isFinite(n) ? n : fallback;
   };
 
+  // Format number with comma separator (Vietnamese style)
+  const formatNumber = (value: string): string => {
+    const num = value.replace(/[^\d]/g, '');
+    if (!num) return '';
+    return Number(num).toLocaleString('vi-VN');
+  };
+
+  // Parse formatted number back to plain number
+  const parseNumber = (value: string): string => {
+    return value.replace(/\./g, '');
+  };
+
+  const handlePriceChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = parseNumber(e.target.value);
+    setter(raw);
+  };
+
   const selectedType = types.find((t) => t.code === planType);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -341,38 +508,125 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo subscription plan</h3>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs text-zinc-500">Plan type *</label>
-            <select
-              value={planType}
-              onChange={(e) => setPlanType(e.target.value as SubscriptionPlanTypeOption["code"])}
-              className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-            >
-              {types.map((t) => (
-                <option key={t.code} value={t.code}>
-                  {t.code} - {t.defaultName}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-zinc-500">Code sẽ tự map theo loại plan.</p>
+            <label className="block text-xs text-zinc-500">Tên gói *</label>
+            <input 
+              type="text" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              placeholder="Nhập tên gói (VD: Gói Starter)" 
+              required
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+            />
           </div>
           <div>
-            <label className="block text-xs text-zinc-500">Tên (optional)</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={selectedType?.defaultName ?? "Để trống để BE tự gán"} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            <label className="block text-xs text-zinc-500">Mô tả</label>
+            <input 
+              type="text" 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              placeholder="Mô tả ngắn về gói"
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+            />
           </div>
-          <div><label className="block text-xs text-zinc-500">Mô tả</label><input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+          
+          {/* Price Fields with VND */}
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Giá gói</label>
+            <div className="grid grid-cols-1 gap-2">
+              <div>
+                <label className="block text-xs text-zinc-500">Giá tháng</label>
+                <div className="relative mt-1">
+                  <input 
+                    type="text" 
+                    value={formatNumber(monthlyPrice)} 
+                    onChange={handlePriceChange(setMonthlyPrice)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 pr-12 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">VND</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500">Giá quý</label>
+                <div className="relative mt-1">
+                  <input 
+                    type="text" 
+                    value={formatNumber(quarterlyPrice)} 
+                    onChange={handlePriceChange(setQuarterlyPrice)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 pr-12 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">VND</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500">Giá năm</label>
+                <div className="relative mt-1">
+                  <input 
+                    type="text" 
+                    value={formatNumber(yearlyPrice)} 
+                    onChange={handlePriceChange(setYearlyPrice)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 pr-12 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">VND</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Limits */}
           <div className="grid grid-cols-3 gap-2">
-            <div><label className="block text-xs text-zinc-500">Giá tháng</label><input type="number" min="0" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Giá quý</label><input type="number" min="0" value={quarterlyPrice} onChange={(e) => setQuarterlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Giá năm</label><input type="number" min="0" value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div>
+              <label className="block text-xs text-zinc-500">Số user</label>
+              <input 
+                type="number" 
+                min="1" 
+                value={maxUsers} 
+                onChange={(e) => setMaxUsers(e.target.value)} 
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Số tài liệu</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={maxDocuments} 
+                onChange={(e) => setMaxDocuments(e.target.value)} 
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Dung lượng (GB)</label>
+              <input 
+                type="number" 
+                min="1" 
+                value={maxStorageGb} 
+                onChange={(e) => setMaxStorageGb(e.target.value)} 
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div><label className="block text-xs text-zinc-500">Max users</label><input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Max docs</label><input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Storage GB</label><input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-          </div>
+
+          {/* Hidden Plan Type - auto set to STARTER */}
+          <input type="hidden" value={planType} />
+
           <div className="mt-6 flex gap-2">
-            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo"}</button>
-            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo"}
+            </button>
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700 dark:text-zinc-300"
+            >
+              Hủy
+            </button>
           </div>
         </form>
       </div>

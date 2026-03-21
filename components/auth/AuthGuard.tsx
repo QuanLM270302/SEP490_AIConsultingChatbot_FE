@@ -27,7 +27,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
     if (isPublic) {
       const token = getAccessToken();
-      if (token && pathname !== "/") {
+      if (token) {
         const user = getStoredUser();
         const home = user?.roles ? roleToPath(user.roles) : "/employee";
         router.replace(home);

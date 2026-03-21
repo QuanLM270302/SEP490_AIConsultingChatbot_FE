@@ -75,9 +75,51 @@ export default function Home() {
   }, [currentQA]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-50 via-white to-emerald-50/30 dark:from-zinc-950 dark:via-black dark:to-emerald-950/20">
-      {/* BACKGROUND GLOW */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
+    <div className="relative min-h-screen overflow-hidden">
+      {/* ANIMATED GRADIENT BACKGROUND */}
+      <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-zinc-50 via-white to-emerald-50/30 dark:from-zinc-950 dark:via-black dark:to-emerald-950/20" />
+      
+      {/* GRID PATTERN */}
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+      
+      {/* DOT PATTERN - Top Right */}
+      <div className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] opacity-40">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,#10b98120_1px,transparent_1px)] bg-[size:24px_24px]" />
+      </div>
+      
+      {/* DOT PATTERN - Bottom Left */}
+      <div className="pointer-events-none absolute bottom-0 left-0 h-[500px] w-[500px] opacity-40">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,#10b98120_1px,transparent_1px)] bg-[size:24px_24px]" />
+      </div>
+
+      {/* ANIMATED GRADIENT ORBS */}
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 bg-emerald-500/5 blur-[120px]" />
+      
+      <motion.div
+        animate={{
+          x: [0, 100, 0],
+          y: [0, 50, 0],
+        }}
+        transition={{
+          duration: 20,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="pointer-events-none absolute right-[10%] top-[20%] h-[400px] w-[400px] rounded-full bg-teal-500/10 blur-[100px]"
+      />
+      
+      <motion.div
+        animate={{
+          x: [0, -80, 0],
+          y: [0, 80, 0],
+        }}
+        transition={{
+          duration: 25,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="pointer-events-none absolute bottom-[10%] left-[15%] h-[350px] w-[350px] rounded-full bg-cyan-500/10 blur-[100px]"
+      />
 
       {/* NAVBAR */}
       <nav className="relative z-10 border-b border-zinc-200/50 bg-white/50 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/50">
@@ -90,7 +132,7 @@ export default function Home() {
               href="/register"
               className="rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
             >
-              Start for free
+              Apply Now
             </Link>
             <Link
               href="/login"
@@ -129,7 +171,7 @@ export default function Home() {
             transition={{ delay: 0.4 }}
             className="mx-auto max-w-3xl"
           >
-            <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl shadow-emerald-500/10 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl shadow-emerald-500/10 transition-all duration-300 hover:shadow-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex items-center gap-3 border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
                 <Search className="h-5 w-5 text-zinc-400" />
                 <input
@@ -211,8 +253,8 @@ export default function Home() {
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
             >
-              <div className="group h-full rounded-3xl border border-zinc-200 bg-white p-6 shadow-lg shadow-zinc-900/5 transition hover:scale-[1.02] hover:shadow-xl hover:shadow-emerald-500/10 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <div className="group h-full rounded-3xl border border-zinc-200 bg-white p-6 shadow-lg shadow-zinc-900/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-emerald-500/10 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 transition-transform group-hover:animate-pulse-glow dark:text-emerald-400">
                   {item.icon}
                 </div>
                 <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
