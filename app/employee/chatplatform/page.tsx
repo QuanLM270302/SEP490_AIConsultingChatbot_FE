@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Message } from "@/types/chat";
 import { AIBoxSidebar } from "@/components/chat/AIBoxSidebar";
 import { ChatHistorySidebar } from "@/components/chat/ChatHistorySidebar";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, ThumbsUp, ThumbsDown, FileText, MessageSquare } from "lucide-react";
-import { chat } from "@/lib/api/chatbot";
+import { chat, chatbotHealth } from "@/lib/api/chatbot";
 
 export default function ChatPlatformPage() {
   const router = useRouter();
@@ -17,6 +17,27 @@ export default function ChatPlatformPage() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [healthStatus, setHealthStatus] = useState<'healthy' | 'error' | 'checking'>('checking');
+  const [showHealthToast, setShowHealthToast] = useState(false);
+
+  // Check chatbot health on mount and periodically
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        await chatbotHealth();
+        setHealthStatus('healthy');
+        setShowHealthToast(false);
+      } catch (err) {
+        setHealthStatus('error');
+        setShowHealthToast(true);
+        setTimeout(() => setShowHealthToast(false), 5000);
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +110,7 @@ export default function ChatPlatformPage() {
       <AIBoxSidebar />
 
       <div className="flex flex-1 flex-col h-screen overflow-hidden">
-        {/* FIXED HEADER */}
+        {/* FIXED HEADER with Subtle Health Status */}
         <div className="shrink-0 border-b border-zinc-200/50 bg-white/80 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/80">
           <div className="flex items-center justify-between px-6 py-4">
             <button
@@ -100,13 +121,53 @@ export default function ChatPlatformPage() {
               <ArrowLeft className="h-4 w-4" />
               Back
             </button>
-            <button
-              type="button"
-              onClick={() => setIsHistoryOpen(true)}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              History
-            </button>
+            
+            <div className="flex items-center gap-3">
+              {/* Subtle Health Status */}
+              <div className="group relative flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-full transition-colors ${
+                  healthStatus === 'healthy' ? 'bg-emerald-500' :
+                  healthStatus === 'error' ? 'bg-red-500' :
+                  'bg-yellow-500'
+                }`} />
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {healthStatus === 'healthy' ? 'Online' :
+                   healthStatus === 'error' ? 'Offline' :
+                   'Connecting'}
+                </span>
+                
+                {/* Tooltip on hover */}
+                <div className="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden w-56 rounded-xl border border-zinc-200 bg-white p-3 shadow-xl group-hover:block dark:border-zinc-800 dark:bg-zinc-900">
+                  <div className="flex items-start gap-2">
+                    <div className={`mt-0.5 h-2 w-2 rounded-full ${
+                      healthStatus === 'healthy' ? 'bg-emerald-500' :
+                      healthStatus === 'error' ? 'bg-red-500' :
+                      'bg-yellow-500'
+                    }`} />
+                    <div>
+                      <p className="text-xs font-semibold text-zinc-900 dark:text-white">
+                        {healthStatus === 'healthy' ? 'AI Service Online' :
+                         healthStatus === 'error' ? 'AI Service Offline' :
+                         'Checking Status...'}
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                        {healthStatus === 'healthy' ? 'All systems operational' :
+                         healthStatus === 'error' ? 'Service temporarily unavailable' :
+                         'Connecting to chatbot service'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsHistoryOpen(true)}
+                className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                History
+              </button>
+            </div>
           </div>
         </div>
 
@@ -134,6 +195,20 @@ export default function ChatPlatformPage() {
                 <p className="text-zinc-600 dark:text-zinc-400">
                   Ask me anything about your company policies, procedures, or documents.
                 </p>
+                
+                {/* Health Status in Empty State */}
+                <div className="mt-6 flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+                  <div className={`h-2 w-2 rounded-full ${
+                    healthStatus === 'healthy' ? 'bg-emerald-500' :
+                    healthStatus === 'error' ? 'bg-red-500' :
+                    'bg-yellow-500'
+                  }`} />
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                    {healthStatus === 'healthy' ? '🤖 AI Assistant is ready' :
+                     healthStatus === 'error' ? '⚠️ AI Assistant is offline' :
+                     '⏳ Connecting to AI...'}
+                  </span>
+                </div>
               </div>
             ) : (
               messages.map((msg) => (

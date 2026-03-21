@@ -131,14 +131,6 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
               </div>
             </div>
           </div>
-
-          {/* Back to home */}
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
-          >
-            ← Back to Home
-          </Link>
         </div>
       </aside>
     </>
