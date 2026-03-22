@@ -121,22 +121,22 @@ export default function Home() {
         className="pointer-events-none absolute bottom-[10%] left-[15%] h-[350px] w-[350px] rounded-full bg-cyan-500/10 blur-[100px]"
       />
 
-      {/* NAVBAR */}
+      {/* NAVBAR — một hàng mọi kích thước; chữ/nút scale theo màn hình */}
       <nav className="relative z-10 border-b border-zinc-200/50 bg-white/50 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/50">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <div className="mx-auto flex max-w-7xl flex-nowrap items-center justify-between gap-2 overflow-x-auto px-3 py-3.5 [scrollbar-width:none] sm:gap-4 sm:px-6 sm:py-4 md:overflow-visible [&::-webkit-scrollbar]:hidden">
+          <h1 className="shrink-0 whitespace-nowrap text-[clamp(0.6875rem,0.4rem+3.2vw,1.5rem)] font-bold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
             Internal Consultant AI
           </h1>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
             <Link
               href="/register"
-              className="rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+              className="rounded-lg border border-zinc-300 bg-white px-2.5 py-2 text-[11px] font-medium leading-none text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
             >
               Apply Now
             </Link>
             <Link
               href="/login"
-              className="rounded-xl bg-emerald-500 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600"
+              className="rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-medium leading-none text-white shadow-md shadow-emerald-500/25 transition hover:bg-emerald-600 sm:rounded-xl sm:px-5 sm:py-2.5 sm:text-sm sm:shadow-lg sm:shadow-emerald-500/30"
             >
               Sign in
             </Link>
