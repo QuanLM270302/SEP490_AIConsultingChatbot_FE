@@ -4,6 +4,9 @@ import type {
   JwtResponse,
   ForgotPasswordRequest,
   MessageResponse,
+  VerifyResetOtpRequest,
+  VerifyResetOtpResponse,
+  ResetPasswordForgotRequest,
 } from "@/types/auth";
 
 const JSON_HEADERS = {
@@ -62,6 +65,34 @@ export async function forgotPassword(
   body: ForgotPasswordRequest
 ): Promise<MessageResponse> {
   const res = await fetch(`${AUTH_BASE}/forgot-password`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  });
+  return handleResponse<MessageResponse>(res);
+}
+
+/** POST /api/v1/auth/verify-reset-otp — bước 2; trả về resetSessionToken (hiệu lực ~10 phút) */
+export async function verifyResetOtp(
+  body: VerifyResetOtpRequest
+): Promise<VerifyResetOtpResponse> {
+  const res = await fetch(`${AUTH_BASE}/verify-reset-otp`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  });
+  const data = await handleResponse<VerifyResetOtpResponse>(res);
+  if (typeof data.resetSessionToken !== "string" || !data.resetSessionToken.trim()) {
+    throw new Error("Phản hồi server không hợp lệ: thiếu resetSessionToken.");
+  }
+  return data;
+}
+
+/** POST /api/v1/auth/reset-password — bước 3; chỉ resetSessionToken + newPassword (không gửi OTP) */
+export async function resetPasswordForgot(
+  body: ResetPasswordForgotRequest
+): Promise<MessageResponse> {
+  const res = await fetch(`${AUTH_BASE}/reset-password`, {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
