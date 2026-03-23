@@ -4,9 +4,13 @@ import { useRef, useState, FormEvent, KeyboardEvent, ClipboardEvent } from "reac
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { forgotPassword, verifyResetOtp, resetPasswordForgot } from "@/lib/api/auth";
+import {
+  getNewPasswordValidationMessage,
+  PASSWORD_HINT_VI,
+  isValidResetSessionToken,
+} from "@/lib/password-policy";
 
 const OTP_LEN = 6;
-const MIN_PASSWORD_LEN = 6;
 
 type Step = "email" | "otp" | "password" | "done";
 type Pulse = "idle" | "error" | "success";
@@ -146,8 +150,8 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError(null);
     setPasswordPulse("idle");
-    if (!resetSessionToken) {
-      setError("Phiên đặt lại mật khẩu không hợp lệ. Vui lòng xác thực OTP lại.");
+    if (!resetSessionToken || !isValidResetSessionToken(resetSessionToken)) {
+      setError("Phiên đặt lại mật khẩu không hợp lệ (token). Vui lòng xác thực OTP lại.");
       setStep("otp");
       return;
     }
@@ -156,9 +160,10 @@ export default function ForgotPasswordPage() {
       setError("Mật khẩu mới và xác nhận không khớp.");
       return;
     }
-    if (newPassword.length < MIN_PASSWORD_LEN) {
+    const pwdMsg = getNewPasswordValidationMessage(newPassword);
+    if (pwdMsg) {
       flashPulse(setPasswordPulse, "error", 700);
-      setError(`Mật khẩu mới cần ít nhất ${MIN_PASSWORD_LEN} ký tự.`);
+      setError(pwdMsg);
       return;
     }
     setLoading(true);
@@ -209,7 +214,7 @@ export default function ForgotPasswordPage() {
               "Nhập email đăng nhập; mã có thể gửi tới email liên hệ nếu đã cấu hình."}
             {step === "otp" && "Nhập mã 6 số đã gửi tới email (hiệu lực 15 phút)."}
             {step === "password" &&
-              "Đặt mật khẩu mới (ít nhất 6 ký tự). Phiên xác thực còn hiệu lực khoảng 10 phút."}
+              "Phiên đặt lại mật khẩu còn hiệu lực khoảng 10 phút."}
             {step === "done" && "Mật khẩu đã được cập nhật."}
           </p>
         </div>
@@ -291,6 +296,9 @@ export default function ForgotPasswordPage() {
               Tài khoản:{" "}
               <span className="font-medium text-zinc-700 dark:text-zinc-300">{email}</span>
             </p>
+            <p className="rounded-lg border border-zinc-200/80 bg-zinc-50 px-3 py-2 text-xs leading-relaxed text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400">
+              {PASSWORD_HINT_VI}
+            </p>
             <motion.div
               className="space-y-1.5 text-left"
               animate={
@@ -313,7 +321,7 @@ export default function ForgotPasswordPage() {
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={MIN_PASSWORD_LEN}
+                minLength={8}
                 value={newPassword}
                 onChange={(e) => {
                   setNewPassword(e.target.value);
@@ -345,7 +353,7 @@ export default function ForgotPasswordPage() {
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={MIN_PASSWORD_LEN}
+                minLength={8}
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
