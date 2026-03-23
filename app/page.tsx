@@ -1,17 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Search, Shield, Database, Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Search, Shield, Database, Sparkles, ArrowRight, CheckCircle2, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function Home() {
   const [text, setText] = useState("");
-  const [currentQA, setCurrentQA] = useState<{
-    question: string;
-    answer: string;
-    sources: string[];
-  } | null>(null);
+  const [qaIndex, setQaIndex] = useState(0);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [themeReady, setThemeReady] = useState(false);
 
   const qaData = [
     {
@@ -57,14 +55,10 @@ export default function Home() {
   ];
 
   useEffect(() => {
-    // Pick random Q&A on mount
-    const randomQA = qaData[Math.floor(Math.random() * qaData.length)];
-    setCurrentQA(randomQA);
-  }, []);
-
-  useEffect(() => {
+    const currentQA = qaData[qaIndex];
     if (!currentQA) return;
-    
+
+    setText("");
     let i = 0;
     const interval = setInterval(() => {
       setText(currentQA.question.slice(0, i));
@@ -72,7 +66,39 @@ export default function Home() {
       if (i > currentQA.question.length) clearInterval(interval);
     }, 50);
     return () => clearInterval(interval);
-  }, [currentQA]);
+  }, [qaIndex]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setQaIndex((prev) => (prev + 1) % qaData.length);
+    }, 5500);
+    return () => clearInterval(timer);
+  }, [qaData.length]);
+
+  useEffect(() => {
+    const saved =
+      typeof window !== "undefined" ? localStorage.getItem("theme") : null;
+    const preferred =
+      saved === "light" || saved === "dark"
+        ? saved
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(preferred);
+    setTheme(preferred);
+    setThemeReady(true);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(next);
+    localStorage.setItem("theme", next);
+    setTheme(next);
+  };
+
+  const currentQA = qaData[qaIndex];
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -80,20 +106,24 @@ export default function Home() {
       <div className="absolute inset-0 animate-gradient bg-gradient-to-br from-zinc-50 via-white to-emerald-50/30 dark:from-zinc-950 dark:via-black dark:to-emerald-950/20" />
       
       {/* GRID PATTERN */}
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+      <motion.div
+        animate={{ backgroundPosition: ["0px 0px", "24px 24px"] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a1f_1px,transparent_1px),linear-gradient(to_bottom,#0f172a1f_1px,transparent_1px)] bg-[size:24px_24px] dark:bg-[linear-gradient(to_right,#10b9812e_1px,transparent_1px),linear-gradient(to_bottom,#10b9812e_1px,transparent_1px)]"
+      />
       
       {/* DOT PATTERN - Top Right */}
-      <div className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] opacity-40">
+      <div className="pointer-events-none absolute right-0 top-0 h-[500px] w-[500px] opacity-55 dark:opacity-45">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,#10b98120_1px,transparent_1px)] bg-[size:24px_24px]" />
       </div>
       
       {/* DOT PATTERN - Bottom Left */}
-      <div className="pointer-events-none absolute bottom-0 left-0 h-[500px] w-[500px] opacity-40">
+      <div className="pointer-events-none absolute bottom-0 left-0 h-[500px] w-[500px] opacity-55 dark:opacity-45">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,#10b98120_1px,transparent_1px)] bg-[size:24px_24px]" />
       </div>
 
       {/* ANIMATED GRADIENT ORBS */}
-      <div className="pointer-events-none absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 bg-emerald-500/5 blur-[120px]" />
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 bg-emerald-500/15 blur-[120px] dark:bg-emerald-500/10" />
       
       <motion.div
         animate={{
@@ -101,11 +131,11 @@ export default function Home() {
           y: [0, 50, 0],
         }}
         transition={{
-          duration: 20,
+          duration: 12,
           repeat: Infinity,
           ease: "easeInOut",
         }}
-        className="pointer-events-none absolute right-[10%] top-[20%] h-[400px] w-[400px] rounded-full bg-teal-500/10 blur-[100px]"
+        className="pointer-events-none absolute right-[10%] top-[20%] h-[400px] w-[400px] rounded-full bg-teal-500/22 blur-[95px] mix-blend-multiply dark:bg-teal-500/16 dark:mix-blend-screen"
       />
       
       <motion.div
@@ -114,11 +144,42 @@ export default function Home() {
           y: [0, 80, 0],
         }}
         transition={{
-          duration: 25,
+          duration: 15,
           repeat: Infinity,
           ease: "easeInOut",
         }}
-        className="pointer-events-none absolute bottom-[10%] left-[15%] h-[350px] w-[350px] rounded-full bg-cyan-500/10 blur-[100px]"
+        className="pointer-events-none absolute bottom-[10%] left-[15%] h-[350px] w-[350px] rounded-full bg-cyan-500/20 blur-[95px] mix-blend-multiply dark:bg-cyan-500/15 dark:mix-blend-screen"
+      />
+      <motion.div
+        animate={{
+          rotate: [0, 360],
+        }}
+        transition={{
+          duration: 28,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[85vh] w-[85vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-65 blur-3xl mix-blend-multiply dark:opacity-50 dark:mix-blend-screen"
+        style={{
+          background:
+            "conic-gradient(from 0deg, rgba(16,185,129,0.18), rgba(20,184,166,0.16), rgba(6,182,212,0.18), rgba(16,185,129,0.18))",
+        }}
+      />
+      <motion.div
+        animate={{
+          x: [0, 24, 0, -24, 0],
+          y: [0, -18, 0, 18, 0],
+        }}
+        transition={{
+          duration: 14,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="pointer-events-none absolute inset-0 opacity-55 dark:opacity-42"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 15% 20%, rgba(16,185,129,0.22), transparent 35%), radial-gradient(circle at 80% 35%, rgba(20,184,166,0.2), transparent 40%), radial-gradient(circle at 30% 80%, rgba(6,182,212,0.18), transparent 42%)",
+        }}
       />
 
       {/* NAVBAR — một hàng mọi kích thước; chữ/nút scale theo màn hình */}
@@ -128,6 +189,18 @@ export default function Home() {
             Internal Consultant AI
           </h1>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white p-2 text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:rounded-xl"
+            >
+              {themeReady && theme === "dark" ? (
+                <Sun className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+              ) : (
+                <Moon className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+              )}
+            </button>
             <Link
               href="/register"
               className="rounded-lg border border-zinc-300 bg-white px-2.5 py-2 text-[11px] font-medium leading-none text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
@@ -188,26 +261,24 @@ export default function Home() {
               {/* AI RESPONSE DEMO */}
               <motion.div
                 initial={{ opacity: 0 }}
-                animate={{ opacity: currentQA && text.length === currentQA.question.length ? 1 : 0 }}
+                animate={{ opacity: text.length === currentQA.question.length ? 1 : 0 }}
                 transition={{ duration: 0.5 }}
                 className="space-y-4 p-6"
               >
-                {currentQA && (
-                  <div className="rounded-2xl bg-emerald-500/10 p-4 text-left">
-                    <p className="text-sm text-zinc-900 dark:text-zinc-50">
-                      {currentQA.answer}
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      <span>Sources:</span>
-                      {currentQA.sources.map((source, idx) => (
-                        <span key={idx} className="rounded-lg bg-zinc-100 px-2 py-1 dark:bg-zinc-800">
-                          {source}
-                        </span>
-                      ))}
-                    </div>
+                <div className="rounded-2xl bg-emerald-500/10 p-4 text-left">
+                  <p className="text-sm text-zinc-900 dark:text-zinc-50">
+                    {currentQA.answer}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <span>Sources:</span>
+                    {currentQA.sources.map((source, idx) => (
+                      <span key={idx} className="rounded-lg bg-zinc-100 px-2 py-1 dark:bg-zinc-800">
+                        {source}
+                      </span>
+                    ))}
                   </div>
-                )}
+                </div>
               </motion.div>
             </div>
           </motion.div>
