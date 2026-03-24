@@ -18,22 +18,21 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [displayName, setDisplayName] = useState("Super Admin");
-  const [displayEmail, setDisplayEmail] = useState("superadmin@system.vn");
+  const initialEmail = getStoredUser()?.email ?? "superadmin@system.vn";
+  const initialName = initialEmail.split("@")[0] || "Super Admin";
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === "undefined") return "light";
+    const savedTheme = localStorage.getItem("theme");
+    return savedTheme === "dark" ? "dark" : "light";
+  });
+  const [displayName, setDisplayName] = useState(initialName);
+  const [displayEmail] = useState(initialEmail);
   const { language, toggleLanguage } = useLanguageStore();
   const menuRef = useRef<HTMLDivElement>(null);
   
   const t = translations[language];
 
   useEffect(() => {
-    const currentUser = getStoredUser();
-    const email = currentUser?.email ?? "superadmin@system.vn";
-    setDisplayEmail(email);
-
-    const fallbackName = email.split("@")[0] || "Super Admin";
-    setDisplayName(fallbackName);
-
     getProfile()
       .then((profile) => {
         if (profile?.fullName?.trim()) {
@@ -45,21 +44,13 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
       });
   }, []);
 
-  // Load theme from localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-    }
-  }, []);
+    localStorage.setItem("theme", theme);
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
 
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
   // Close menu when clicking outside
