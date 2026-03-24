@@ -250,7 +250,11 @@ export async function createSubscriptionPlan(body: CreateSubscriptionPlanRequest
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to create plan"));
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => "Failed to create plan");
+    console.error("❌ Backend error response:", errorText);
+    throw new Error(errorText);
+  }
   return res.json();
 }
 

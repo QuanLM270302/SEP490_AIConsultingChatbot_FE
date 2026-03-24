@@ -9,6 +9,7 @@ import {
   PASSWORD_HINT_VI,
   isValidResetSessionToken,
 } from "@/lib/password-policy";
+import { AuthHeroPanel } from "@/components/auth/AuthHeroPanel";
 
 const OTP_LEN = 6;
 
@@ -203,21 +204,33 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950">
-      <div className="w-full max-w-md space-y-6 rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Quên mật khẩu
-          </h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {step === "email" &&
-              "Nhập email đăng nhập; mã có thể gửi tới email liên hệ nếu đã cấu hình."}
-            {step === "otp" && "Nhập mã 6 số đã gửi tới email (hiệu lực 15 phút)."}
-            {step === "password" &&
-              "Phiên đặt lại mật khẩu còn hiệu lực khoảng 10 phút."}
-            {step === "done" && "Mật khẩu đã được cập nhật."}
-          </p>
-        </div>
+    <div className="flex min-h-screen">
+      {/* Left: Forgot Password Form */}
+      <div className="flex w-full flex-col items-center justify-center border-zinc-200 bg-white px-6 py-12 dark:border-zinc-800 dark:bg-zinc-900 lg:w-1/2 lg:border-r lg:px-12 lg:py-16">
+        <div className="w-full max-w-md">
+          <Link
+            href="/login"
+            className="mb-6 inline-flex items-center gap-2 text-sm text-zinc-600 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Login
+          </Link>
+
+          <div className="mb-6 space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+              Quên mật khẩu
+            </h1>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {step === "email" &&
+                "Nhập email đăng nhập; mã có thể gửi tới email liên hệ nếu đã cấu hình."}
+              {step === "otp" && "Nhập mã 6 số đã gửi tới email (hiệu lực 15 phút)."}
+              {step === "password" &&
+                "Phiên đặt lại mật khẩu còn hiệu lực khoảng 10 phút."}
+              {step === "done" && "Mật khẩu đã được cập nhật."}
+            </p>
+          </div>
 
         <AnimatePresence mode="wait">
           {error && (
@@ -278,7 +291,7 @@ export default function ForgotPasswordPage() {
             </motion.div>
             <Link
               href="/login"
-              className="block w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="block w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-sm font-medium text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-700"
             >
               Đăng nhập
             </Link>
@@ -366,7 +379,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus-visible:ring-zinc-50"
+              className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-60"
             >
               {loading ? "Đang cập nhật…" : "Đặt lại mật khẩu"}
             </button>
@@ -422,7 +435,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus-visible:ring-zinc-50"
+              className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-60"
             >
               {loading ? "Đang xác thực…" : "Xác thực"}
             </button>
@@ -480,7 +493,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus-visible:ring-zinc-50"
+              className="flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-60"
             >
               {loading ? "Đang gửi…" : "Gửi OTP"}
             </button>
@@ -488,16 +501,30 @@ export default function ForgotPasswordPage() {
         )}
 
         {step !== "done" && (
-          <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+            Nhớ mật khẩu?{" "}
             <Link
               href="/login"
-              className="font-medium text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-50"
+              className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
             >
-              Quay lại đăng nhập
+              Đăng nhập
             </Link>
           </p>
         )}
+        </div>
       </div>
+
+      {/* Right: Hero Panel with Video Background */}
+      <AuthHeroPanel>
+        <blockquote className="mx-auto max-w-md">
+          <p className="text-2xl font-medium leading-relaxed text-white/95 md:text-2xl">
+            Secure password recovery with OTP verification. Your account security is our priority.
+          </p>
+          <footer className="mt-6 text-lg font-semibold uppercase tracking-wider text-emerald-400/90">
+            Internal Consultant Platform
+          </footer>
+        </blockquote>
+      </AuthHeroPanel>
     </div>
   );
 }
