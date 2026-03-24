@@ -14,8 +14,11 @@ import {
   type CreateAdminRoleRequest,
 } from "@/lib/api/admin";
 import { Eye, Loader2, MoreVertical, Pencil, Plus, Search, Shield, Trash2 } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 export default function SuperAdminRolesPage() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [list, setList] = useState<AdminRoleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +35,7 @@ export default function SuperAdminRolesPage() {
     setError(null);
     getAdminRoles()
       .then(setList)
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải roles"))
+      .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load roles" : "Lỗi tải roles"))
       .finally(() => setLoading(false));
   };
 
@@ -75,16 +78,16 @@ export default function SuperAdminRolesPage() {
       const data = await getAdminRoleById(roleId);
       setDetail(data);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Không thể lấy chi tiết role");
+      alert(e instanceof Error ? e.message : isEn ? "Cannot fetch role details" : "Không thể lấy chi tiết role");
     }
   };
 
   const onDelete = async (role: AdminRoleResponse) => {
     if (role.isSystemRole) {
-      alert("Không thể xóa system role.");
+      alert(isEn ? "Cannot delete a system role." : "Không thể xóa system role.");
       return;
     }
-    if (!confirm(`Bạn có chắc muốn xóa role "${role.name ?? role.code ?? role.id}"?`)) return;
+    if (!confirm(isEn ? `Are you sure you want to delete role "${role.name ?? role.code ?? role.id}"?` : `Bạn có chắc muốn xóa role "${role.name ?? role.code ?? role.id}"?`)) return;
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoadingId(role.id);
@@ -92,7 +95,7 @@ export default function SuperAdminRolesPage() {
       await deleteAdminRole(role.id);
       load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Xóa role thất bại");
+      alert(e instanceof Error ? e.message : isEn ? "Delete role failed" : "Xóa role thất bại");
     } finally {
       setActionLoadingId(null);
     }
@@ -111,7 +114,9 @@ export default function SuperAdminRolesPage() {
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Role Management</h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Quản lý role và phân quyền hệ thống tại Super Admin
+              {isEn
+                ? "Manage system roles and permissions in Super Admin"
+                : "Quản lý role và phân quyền hệ thống tại Super Admin"}
             </p>
           </div>
           <button
@@ -120,7 +125,7 @@ export default function SuperAdminRolesPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600"
           >
             <Plus className="h-4 w-4" />
-            Tạo role mới
+            {isEn ? "Create new role" : "Tạo role mới"}
           </button>
         </div>
 
@@ -132,7 +137,7 @@ export default function SuperAdminRolesPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm theo role code / tên / tenant..."
+                placeholder={isEn ? "Search by role code / name / tenant..." : "Tìm theo role code / tên / tenant..."}
                 className="w-full rounded-lg border-0 bg-zinc-50 py-2 pl-10 pr-4 text-sm text-zinc-900 ring-1 ring-inset ring-zinc-200 focus:ring-2 focus:ring-green-500 dark:bg-zinc-900/50 dark:text-white dark:ring-zinc-800"
               />
             </div>
@@ -141,7 +146,7 @@ export default function SuperAdminRolesPage() {
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12">
               <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-              <span className="text-sm text-zinc-500">Đang tải…</span>
+              <span className="text-sm text-zinc-500">{isEn ? "Loading..." : "Đang tải…"}</span>
             </div>
           ) : error ? (
             <div className="p-6 text-sm text-red-600 dark:text-red-400">{error}</div>
@@ -153,14 +158,14 @@ export default function SuperAdminRolesPage() {
                     <th className="px-6 py-4 font-medium">Role</th>
                     <th className="px-6 py-4 font-medium">Code</th>
                     <th className="px-6 py-4 font-medium">Scope</th>
-                    <th className="px-6 py-4 font-medium text-right">Thao tác</th>
+                    <th className="px-6 py-4 font-medium text-right">{isEn ? "Actions" : "Thao tác"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-6 py-8 text-center text-sm text-zinc-500">
-                        Không có role nào.
+                        {isEn ? "No roles found." : "Không có role nào."}
                       </td>
                     </tr>
                   ) : (
@@ -168,7 +173,7 @@ export default function SuperAdminRolesPage() {
                       <tr key={role.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
                         <td className="px-6 py-4">
                           <p className="font-medium text-zinc-900 dark:text-white">{role.name ?? "—"}</p>
-                          <p className="text-xs text-zinc-500">{role.description ?? "Không có mô tả"}</p>
+                          <p className="text-xs text-zinc-500">{role.description ?? (isEn ? "No description" : "Không có mô tả")}</p>
                         </td>
                         <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.code ?? "—"}</td>
                         <td className="px-6 py-4">
@@ -178,7 +183,7 @@ export default function SuperAdminRolesPage() {
                             </span>
                           ) : (
                             <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700 ring-1 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-300">
-                              {role.tenantName ?? "Tenant role"}
+                              {role.tenantName ?? (isEn ? "Tenant role" : "Tenant role")}
                             </span>
                           )}
                         </td>
@@ -397,7 +402,7 @@ export default function SuperAdminRolesPage() {
               onClick={() => onView(openMenuId)}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              <Eye className="h-4 w-4" /> Xem chi tiết
+              <Eye className="h-4 w-4" /> {isEn ? "View details" : "Xem chi tiết"}
             </button>
             <button
               type="button"
@@ -409,7 +414,7 @@ export default function SuperAdminRolesPage() {
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              <Pencil className="h-4 w-4" /> Cập nhật role
+              <Pencil className="h-4 w-4" /> {isEn ? "Update role" : "Cập nhật role"}
             </button>
             <button
               type="button"
@@ -419,7 +424,7 @@ export default function SuperAdminRolesPage() {
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
             >
-              <Trash2 className="h-4 w-4" /> Xóa role
+              <Trash2 className="h-4 w-4" /> {isEn ? "Delete role" : "Xóa role"}
             </button>
           </div>
         </>

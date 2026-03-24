@@ -1,10 +1,14 @@
 "use client";
 
 import { MoreVertical } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 const organizations: { id: number; name: string; users: number; documents: number; aiQueries: number; status: string; plan: string; createdAt: string }[] = [];
 
 export function OrganizationsTable() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
+
   return (
     <div className="overflow-hidden rounded-3xl bg-white shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
       <div className="overflow-x-auto">
@@ -12,10 +16,10 @@ export function OrganizationsTable() {
           <thead className="bg-zinc-50 dark:bg-zinc-900">
             <tr>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Tổ chức
+                {isEn ? "Organization" : "Tổ chức"}
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Người dùng
+                {isEn ? "Users" : "Người dùng"}
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
                 Documents
@@ -24,13 +28,13 @@ export function OrganizationsTable() {
                 AI Queries
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Trạng thái
+                {isEn ? "Status" : "Trạng thái"}
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Gói
+                {isEn ? "Plan" : "Gói"}
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Ngày tạo
+                {isEn ? "Created At" : "Ngày tạo"}
               </th>
               <th className="relative px-6 py-4">
                 <span className="sr-only">Actions</span>
@@ -41,7 +45,7 @@ export function OrganizationsTable() {
             {organizations.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-6 py-8 text-center text-sm text-zinc-500">
-                  Dữ liệu tổ chức sẽ được tải từ API.
+                  {isEn ? "Organization data will be loaded from API." : "Dữ liệu tổ chức sẽ được tải từ API."}
                 </td>
               </tr>
             ) : null}
@@ -71,7 +75,7 @@ export function OrganizationsTable() {
                         : "bg-red-500/10 text-red-600 dark:text-red-400"
                     }`}
                   >
-                    {org.status === "active" ? "Hoạt động" : org.status === "trial" ? "Dùng thử" : "Tạm ngưng"}
+                    {org.status === "active" ? (isEn ? "Active" : "Hoạt động") : org.status === "trial" ? (isEn ? "Trial" : "Dùng thử") : (isEn ? "Suspended" : "Tạm ngưng")}
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">

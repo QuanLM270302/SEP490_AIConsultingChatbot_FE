@@ -1,6 +1,7 @@
 "use client";
 
 import { Zap, CheckCircle, AlertTriangle, Activity } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 const metrics = [
   { name: "Avg Response Time", value: "—", status: "good" as const, icon: Zap, change: "—" },
@@ -10,6 +11,8 @@ const metrics = [
 ];
 
 export function AIPerformance() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   return (
     <div className="rounded-3xl bg-white p-8 shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
       <div className="mb-6">
@@ -17,7 +20,7 @@ export function AIPerformance() {
           AI Performance
         </h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Hiệu suất AI chatbot platform
+          {isEn ? "AI chatbot platform performance" : "Hiệu suất AI chatbot platform"}
         </p>
       </div>
 

@@ -13,8 +13,11 @@ import {
   type CreateStaffRequest,
 } from "@/lib/api/admin";
 import { UserPlus, MoreVertical, Eye, UserCheck, UserX, Trash2, Loader2, Search } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 export default function StaffManagementPage() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [list, setList] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +33,7 @@ export default function StaffManagementPage() {
     setError(null);
     getStaffList()
       .then(setList)
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải danh sách"))
+      .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load list" : "Lỗi tải danh sách"))
       .finally(() => setLoading(false));
   };
 
@@ -90,7 +93,7 @@ export default function StaffManagementPage() {
   };
 
   const handleDelete = (userId: string) => {
-    if (!confirm("Bạn có chắc muốn xóa tài khoản STAFF này?")) return;
+    if (!confirm(isEn ? "Are you sure you want to delete this STAFF account?" : "Bạn có chắc muốn xóa tài khoản STAFF này?")) return;
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoading(userId);
@@ -121,11 +124,9 @@ export default function StaffManagementPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-              Quản lý Staff
-            </h1>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{isEn ? "Staff Management" : "Quản lý Staff"}</h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Tạo, xem, kích hoạt / vô hiệu hóa, xóa tài khoản STAFF
+              {isEn ? "Create, view, activate/deactivate, and delete STAFF accounts" : "Tạo, xem, kích hoạt / vô hiệu hóa, xóa tài khoản STAFF"}
             </p>
           </div>
           <button
@@ -134,7 +135,7 @@ export default function StaffManagementPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
           >
             <UserPlus className="h-4 w-4" />
-            Thêm Staff
+            {isEn ? "Add Staff" : "Thêm Staff"}
           </button>
         </div>
 
@@ -144,7 +145,7 @@ export default function StaffManagementPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
               <input
                 type="text"
-                placeholder="Tìm theo tên hoặc email..."
+                placeholder={isEn ? "Search by name or email..." : "Tìm theo tên hoặc email..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-lg border-0 bg-zinc-50 py-2 pl-10 pr-4 text-sm text-zinc-900 ring-1 ring-inset ring-zinc-200 focus:ring-2 focus:ring-green-500 dark:bg-zinc-900/50 dark:text-white dark:ring-zinc-800"
@@ -155,7 +156,7 @@ export default function StaffManagementPage() {
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12">
               <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-              <span className="text-sm text-zinc-500">Đang tải…</span>
+              <span className="text-sm text-zinc-500">{isEn ? "Loading..." : "Đang tải…"}</span>
             </div>
           ) : error ? (
             <div className="p-6 text-sm text-red-600 dark:text-red-400">{error}</div>
@@ -164,17 +165,17 @@ export default function StaffManagementPage() {
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="border-b border-zinc-200 bg-zinc-50/50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
                   <tr>
-                    <th className="px-6 py-4 font-medium">Tên / Email</th>
-                    <th className="px-6 py-4 font-medium">SĐT</th>
-                    <th className="px-6 py-4 font-medium">Trạng thái</th>
-                    <th className="px-6 py-4 font-medium text-right">Thao tác</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Name / Email" : "Tên / Email"}</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Phone" : "SĐT"}</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Status" : "Trạng thái"}</th>
+                    <th className="px-6 py-4 font-medium text-right">{isEn ? "Actions" : "Thao tác"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-6 py-8 text-center text-sm text-zinc-500">
-                        Chưa có staff. Bấm &quot;Thêm Staff&quot; để tạo.
+                        {isEn ? 'No staff yet. Click "Add Staff" to create one.' : 'Chưa có staff. Bấm "Thêm Staff" để tạo.'}
                       </td>
                     </tr>
                   ) : (
@@ -196,7 +197,7 @@ export default function StaffManagementPage() {
                             }`}
                           >
                             <span className={`h-1.5 w-1.5 rounded-full ${staff.isActive ? "bg-green-500" : "bg-zinc-400"}`} />
-                            {staff.isActive ? "Active" : "Vô hiệu hóa"}
+                            {staff.isActive ? "Active" : isEn ? "Inactive" : "Vô hiệu hóa"}
                           </span>
                         </td>
                         <td className="relative px-6 py-4 text-right">
@@ -371,7 +372,7 @@ export default function StaffManagementPage() {
               onClick={() => handleViewDetail(openMenuId)}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              <Eye className="h-4 w-4" /> Xem chi tiết
+              <Eye className="h-4 w-4" /> {isEn ? "View details" : "Xem chi tiết"}
             </button>
             {list.find((s) => s.id === openMenuId)?.isActive ? (
               <button
@@ -380,7 +381,7 @@ export default function StaffManagementPage() {
                 disabled={!!actionLoading}
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-60 dark:text-amber-400 dark:hover:bg-amber-950/30"
               >
-                <UserX className="h-4 w-4" /> Vô hiệu hóa
+                <UserX className="h-4 w-4" /> {isEn ? "Deactivate" : "Vô hiệu hóa"}
               </button>
             ) : (
               <button
@@ -389,7 +390,7 @@ export default function StaffManagementPage() {
                 disabled={!!actionLoading}
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-green-700 hover:bg-green-50 disabled:opacity-60 dark:text-green-400 dark:hover:bg-green-950/30"
               >
-                <UserCheck className="h-4 w-4" /> Kích hoạt
+                <UserCheck className="h-4 w-4" /> {isEn ? "Activate" : "Kích hoạt"}
               </button>
             )}
             <button
@@ -398,7 +399,7 @@ export default function StaffManagementPage() {
               disabled={!!actionLoading}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
             >
-              <Trash2 className="h-4 w-4" /> Xóa
+              <Trash2 className="h-4 w-4" /> {isEn ? "Delete" : "Xóa"}
             </button>
           </div>
         </>

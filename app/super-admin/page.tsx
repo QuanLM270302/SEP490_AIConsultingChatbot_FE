@@ -1,3 +1,5 @@
+"use client";
+
 import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import { PlatformStats } from "@/components/super-admin/PlatformStats";
 import { RecentActivity } from "@/components/super-admin/RecentActivity";
@@ -7,8 +9,12 @@ import { TenantDistribution } from "@/components/super-admin/TenantDistribution"
 import { TenantGrowth } from "@/components/super-admin/TenantGrowth";
 import { AIPerformance } from "@/components/super-admin/AIPerformance";
 import { SystemHealth } from "@/components/super-admin/SystemHealth";
+import { useLanguageStore } from "@/lib/language-store";
 
 export default function SuperAdminDashboard() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
+
   return (
     <SuperAdminLayout>
       <div className="space-y-8">
@@ -17,7 +23,7 @@ export default function SuperAdminDashboard() {
             Platform Dashboard
           </h1>
           <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Quản lý và giám sát toàn bộ nền tảng
+            {isEn ? "Manage and monitor the entire platform" : "Quản lý và giám sát toàn bộ nền tảng"}
           </p>
         </div>
 

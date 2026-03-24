@@ -13,10 +13,31 @@ import {
   type SubscriptionPlanResponse,
 } from "@/lib/api/admin";
 import { MoreVertical, Pencil, Trash2, Loader2, Eye, Plus } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 type Filter = "all" | "active";
 
+function getLocalizedPlanName(code?: string | null, fallback?: string | null, isEn?: boolean) {
+  const normalized = (code ?? "").toUpperCase();
+  const enMap: Record<string, string> = {
+    TRIAL: "Trial Plan",
+    STARTER: "Starter Plan",
+    STANDARD: "Standard Plan",
+    ENTERPRISE: "Enterprise Plan",
+  };
+  const viMap: Record<string, string> = {
+    TRIAL: "Gói Dùng Thử",
+    STARTER: "Gói Khởi Đầu",
+    STANDARD: "Gói Tiêu Chuẩn",
+    ENTERPRISE: "Gói Doanh Nghiệp",
+  };
+  const mapped = isEn ? enMap[normalized] : viMap[normalized];
+  return mapped ?? fallback ?? "—";
+}
+
 export function SubscriptionPlansTable() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [plans, setPlans] = useState<SubscriptionPlanResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +54,7 @@ export function SubscriptionPlansTable() {
     setError(null);
     (filter === "active" ? getActiveSubscriptionPlans() : getSubscriptionPlans())
       .then(setPlans)
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải plans"))
+      .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load plans" : "Lỗi tải plans"))
       .finally(() => setLoading(false));
   };
 
@@ -73,13 +94,13 @@ export function SubscriptionPlansTable() {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm("Bạn có chắc muốn deactivate plan này?")) return;
+    if (!confirm(isEn ? "Are you sure you want to deactivate this plan?" : "Bạn có chắc muốn deactivate plan này?")) return;
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoading(id);
     deleteSubscriptionPlan(id)
       .then(load)
-      .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"))
+      .catch((e) => alert(e instanceof Error ? e.message : isEn ? "Error" : "Lỗi"))
       .finally(() => setActionLoading(null));
   };
 
@@ -94,21 +115,21 @@ export function SubscriptionPlansTable() {
             className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-600"
           >
             <Plus className="h-4 w-4" />
-            Tạo plan
+            {isEn ? "Create plan" : "Tạo plan"}
           </button>
           <button
             type="button"
             onClick={() => setFilter("all")}
             className={`rounded-xl px-3 py-1.5 text-sm font-medium ${filter === "all" ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
           >
-            Tất cả
+            {isEn ? "All" : "Tất cả"}
           </button>
           <button
             type="button"
             onClick={() => setFilter("active")}
             className={`rounded-xl px-3 py-1.5 text-sm font-medium ${filter === "active" ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
           >
-            Đang active
+            {isEn ? "Active" : "Đang active"}
           </button>
         </div>
       </div>
@@ -116,7 +137,7 @@ export function SubscriptionPlansTable() {
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-2xl bg-white py-12 dark:bg-zinc-950">
           <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-          <span className="text-sm text-zinc-500">Đang tải…</span>
+          <span className="text-sm text-zinc-500">{isEn ? "Loading..." : "Đang tải…"}</span>
         </div>
       ) : error ? (
         <div className="rounded-2xl bg-white p-6 text-sm text-red-600 dark:bg-zinc-950 dark:text-red-400">{error}</div>
@@ -126,17 +147,17 @@ export function SubscriptionPlansTable() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50">
                 <tr>
-                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Code / Tên</th>
-                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Giá (tháng)</th>
-                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Giới hạn</th>
-                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Trạng thái</th>
-                  <th className="px-6 py-3 text-right font-semibold text-zinc-700 dark:text-zinc-300">Thao tác</th>
+                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Code / Name" : "Code / Tên"}</th>
+                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Price (month)" : "Giá (tháng)"}</th>
+                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Limits" : "Giới hạn"}</th>
+                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Status" : "Trạng thái"}</th>
+                  <th className="px-6 py-3 text-right font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Actions" : "Thao tác"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {plans.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">Chưa có plan.</td>
+                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">{isEn ? "No plans yet." : "Chưa có plan."}</td>
                   </tr>
                 ) : (
                   plans.map((p) => (
@@ -144,7 +165,7 @@ export function SubscriptionPlansTable() {
                       <td className="px-6 py-4">
                         <div>
                           <p className="font-medium text-zinc-900 dark:text-white">{p.code ?? p.id}</p>
-                          <p className="text-xs text-zinc-500">{p.name ?? "—"}</p>
+                          <p className="text-xs text-zinc-500">{getLocalizedPlanName(p.code, p.name, isEn)}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">

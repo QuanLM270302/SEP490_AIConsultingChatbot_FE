@@ -12,10 +12,13 @@ import {
   type AdminTenantSummary,
 } from "@/lib/api/admin";
 import { Loader2, Eye, Filter, ChevronDown } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 type FilterMode = "all" | "active";
 
 export default function SubscriptionsPage() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [list, setList] = useState<AdminSubscriptionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,17 +34,17 @@ export default function SubscriptionsPage() {
     if (tenantIdFilter.trim()) {
       getAdminSubscriptionsByTenant(tenantIdFilter.trim())
         .then(setList)
-        .catch((e) => setError(e instanceof Error ? e.message : "Lỗi"))
+        .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Error" : "Lỗi"))
         .finally(() => setLoading(false));
     } else if (filter === "active") {
       getActiveAdminSubscriptions()
         .then(setList)
-        .catch((e) => setError(e instanceof Error ? e.message : "Lỗi"))
+        .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Error" : "Lỗi"))
         .finally(() => setLoading(false));
     } else {
       getAdminSubscriptions()
         .then(setList)
-        .catch((e) => setError(e instanceof Error ? e.message : "Lỗi"))
+        .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Error" : "Lỗi"))
         .finally(() => setLoading(false));
     }
   };
@@ -53,13 +56,13 @@ export default function SubscriptionsPage() {
   useEffect(() => {
     getAdminTenants()
       .then(setTenants)
-      .catch((e) => setTenantsError(e instanceof Error ? e.message : "Không tải được danh sách tenant"));
+      .catch((e) => setTenantsError(e instanceof Error ? e.message : isEn ? "Cannot load tenant list" : "Không tải được danh sách tenant"));
   }, []);
 
   const handleViewDetail = (id: string) => {
     getAdminSubscriptionById(id)
       .then(setDetail)
-      .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"));
+      .catch((e) => alert(e instanceof Error ? e.message : isEn ? "Error" : "Lỗi"));
   };
 
   return (
@@ -67,10 +70,12 @@ export default function SubscriptionsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-            Subscriptions – Tenant đã mua
+            {isEn ? "Subscriptions - Purchased by Tenants" : "Subscriptions - Tenant đã mua"}
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Xem tất cả subscriptions, lọc theo trạng thái active hoặc theo tenant
+            {isEn
+              ? "View all subscriptions, filter by active status or tenant"
+              : "Xem tất cả subscriptions, lọc theo trạng thái active hoặc theo tenant"}
           </p>
         </div>
 
@@ -83,7 +88,7 @@ export default function SubscriptionsPage() {
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
                     <Filter className="h-4 w-4" />
                   </span>
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Lọc</span>
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{isEn ? "Filter" : "Lọc"}</span>
                 </div>
                 <div className="flex items-center gap-2 rounded-full bg-zinc-100/80 p-1 dark:bg-zinc-800/80">
                   <button
@@ -98,7 +103,7 @@ export default function SubscriptionsPage() {
                           : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
                     }`}
                   >
-                    Tất cả
+                    {isEn ? "All" : "Tất cả"}
                   </button>
                   <button
                     type="button"
@@ -112,7 +117,7 @@ export default function SubscriptionsPage() {
                           : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
                     }`}
                   >
-                    Đang active
+                    {isEn ? "Active" : "Đang active"}
                   </button>
                 </div>
               </div>
@@ -122,7 +127,7 @@ export default function SubscriptionsPage() {
                   htmlFor="sub-tenant-filter"
                   className="shrink-0 text-sm font-medium text-zinc-600 dark:text-zinc-400"
                 >
-                  Tenant
+                  {isEn ? "Tenant" : "Tenant"}
                 </label>
                 <div className="relative min-w-48 max-w-full flex-1 sm:max-w-[20rem] sm:flex-initial">
                   <select
@@ -131,7 +136,7 @@ export default function SubscriptionsPage() {
                     onChange={(e) => setTenantIdFilter(e.target.value)}
                     className="h-10 w-full cursor-pointer appearance-none rounded-xl border border-zinc-200 bg-white py-2 pl-3.5 pr-10 text-sm font-medium text-zinc-900 shadow-sm transition hover:border-zinc-300 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-500 dark:focus:border-green-500"
                   >
-                    <option value="">Tất cả tenant</option>
+                    <option value="">{isEn ? "All tenants" : "Tất cả tenant"}</option>
                     {tenants.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
@@ -154,7 +159,7 @@ export default function SubscriptionsPage() {
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-16">
               <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-              <span className="text-sm text-zinc-500 dark:text-zinc-400">Đang tải…</span>
+              <span className="text-sm text-zinc-500 dark:text-zinc-400">{isEn ? "Loading..." : "Đang tải…"}</span>
             </div>
           ) : error ? (
             <div className="px-6 py-10 text-center text-sm text-red-600 dark:text-red-400">{error}</div>
@@ -163,19 +168,19 @@ export default function SubscriptionsPage() {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50">
                   <tr>
-                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Tenant / Gói</th>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Tenant / Plan" : "Tenant / Gói"}</th>
                     <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Tier</th>
-                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Trạng thái</th>
-                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Giá / Chu kỳ</th>
-                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Bắt đầu / Hết hạn</th>
-                    <th className="px-6 py-3 text-right font-semibold text-zinc-700 dark:text-zinc-300">Thao tác</th>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Status" : "Trạng thái"}</th>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Price / Cycle" : "Giá / Chu kỳ"}</th>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Start / End" : "Bắt đầu / Hết hạn"}</th>
+                    <th className="px-6 py-3 text-right font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Actions" : "Thao tác"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {list.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
-                        Chưa có subscription hoặc không tìm thấy theo bộ lọc.
+                        {isEn ? "No subscriptions found for the selected filters." : "Chưa có subscription hoặc không tìm thấy theo bộ lọc."}
                       </td>
                     </tr>
                   ) : (
@@ -205,7 +210,7 @@ export default function SubscriptionsPage() {
                             onClick={() => handleViewDetail(s.id)}
                             className="inline-flex items-center gap-1 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                           >
-                            <Eye className="h-3.5 w-3.5" /> Chi tiết
+                            <Eye className="h-3.5 w-3.5" /> {isEn ? "Details" : "Chi tiết"}
                           </button>
                         </td>
                       </tr>
