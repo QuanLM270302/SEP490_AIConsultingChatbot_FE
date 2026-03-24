@@ -46,6 +46,14 @@ export const translations = {
     monthlyRevenue: 'Doanh thu tháng',
     totalOrganizations: 'Tổng tổ chức',
     activeOrganizations: 'Tổ chức hoạt động',
+    openSidebar: 'Mở thanh bên',
+    superAdmin: 'Quản trị hệ thống',
+    platformMenu: 'Menu nền tảng',
+    systemStatus: 'Trạng thái hệ thống',
+    healthy: 'Ổn định',
+    uptime: 'Thời gian hoạt động',
+    activeOrgs: 'Tổ chức đang hoạt động',
+    totalUsersLabel: 'Tổng người dùng',
   },
   en: {
     // Common
@@ -94,6 +102,14 @@ export const translations = {
     monthlyRevenue: 'Monthly Revenue',
     totalOrganizations: 'Total Organizations',
     activeOrganizations: 'Active Organizations',
+    openSidebar: 'Open sidebar',
+    superAdmin: 'Super Admin',
+    platformMenu: 'Platform menu',
+    systemStatus: 'System status',
+    healthy: 'Healthy',
+    uptime: 'Uptime',
+    activeOrgs: 'Active orgs',
+    totalUsersLabel: 'Total users',
   },
 };
 
