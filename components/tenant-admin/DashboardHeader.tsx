@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { Menu, User, LogOut, Settings, Sun, Moon, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/api/auth";
-import { getAccessToken, clearAuth } from "@/lib/auth-store";
+import { getAccessToken, clearAuth, getStoredUser } from "@/lib/auth-store";
+import { getProfile } from "@/lib/api/profile";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
@@ -18,10 +19,31 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [displayName, setDisplayName] = useState("Tenant Admin");
+  const [displayEmail, setDisplayEmail] = useState("tenantadmin@company.vn");
   const { language, toggleLanguage } = useLanguageStore();
   const menuRef = useRef<HTMLDivElement>(null);
   
   const t = translations[language];
+
+  useEffect(() => {
+    const currentUser = getStoredUser();
+    const email = currentUser?.email ?? "tenantadmin@company.vn";
+    setDisplayEmail(email);
+
+    const fallbackName = email.split("@")[0] || "Tenant Admin";
+    setDisplayName(fallbackName);
+
+    getProfile()
+      .then((profile) => {
+        if (profile?.fullName?.trim()) {
+          setDisplayName(profile.fullName.trim());
+        }
+      })
+      .catch(() => {
+        // Keep fallback from auth store email when profile request fails.
+      });
+  }, []);
 
   // Load theme from localStorage
   useEffect(() => {
