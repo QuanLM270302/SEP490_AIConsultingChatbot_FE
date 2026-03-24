@@ -11,6 +11,7 @@ import { getProfile } from "@/lib/api/profile";
 import { roleToPath, hasAllowedRole } from "@/lib/auth-routes";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { useAppTheme } from "@/lib/use-app-theme";
 
 const ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
 const ROLE_TENANT_ADMIN = "ROLE_TENANT_ADMIN";
@@ -24,25 +25,45 @@ const navLinks = [
   { href: "/staff", label: "Staff", roles: [ROLE_STAFF] },
 ];
 
+/** Same nav on server + first client paint as after hydration (avoids getStoredUser() SSR/client mismatch). */
+function homeHrefFromPathname(pathname: string): string {
+  if (pathname.startsWith("/staff")) return "/staff";
+  if (pathname.startsWith("/super-admin")) return "/super-admin";
+  if (pathname.startsWith("/tenant-admin")) return "/tenant-admin";
+  if (pathname.startsWith("/employee")) return "/employee";
+  return "/employee";
+}
+
+function navLinksMatchingPath(pathname: string) {
+  return navLinks.filter(
+    (link) => pathname === link.href || pathname.startsWith(`${link.href}/`)
+  );
+}
+
 export function AppHeader() {
   const router = useRouter();
   const pathname = usePathname();
-  const user = getStoredUser();
-  const roles = user?.roles ?? [];
+  const [mounted, setMounted] = useState(false);
   const { language, toggleLanguage } = useLanguageStore();
   const t = translations[language];
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const allowedLinks = navLinks.filter((link) => hasAllowedRole(roles, link.roles));
-  const homeHref = roles.length ? roleToPath(roles) : "/employee";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const user = mounted ? getStoredUser() : null;
+  const roles = user?.roles ?? [];
+  const allowedLinks = mounted
+    ? navLinks.filter((link) => hasAllowedRole(roles, link.roles))
+    : navLinksMatchingPath(pathname);
+  const homeHref =
+    mounted && roles.length > 0 ? roleToPath(roles) : homeHrefFromPathname(pathname);
   const displayEmail = user?.email ?? "user@company.com";
   const [displayName, setDisplayName] = useState(displayEmail.split("@")[0] || "User");
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "light";
-    const savedTheme = localStorage.getItem("theme");
-    return savedTheme === "dark" ? "dark" : "light";
-  });
+  const { theme, toggleTheme } = useAppTheme();
 
   useEffect(() => {
     getProfile()
@@ -55,11 +76,6 @@ export function AppHeader() {
         // keep fallback name from email
       });
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
 
   useEffect(() => {
     const onMouseDown = (event: MouseEvent) => {
@@ -81,10 +97,6 @@ export function AppHeader() {
       router.push("/login");
       router.refresh();
     }
-  };
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
   return (

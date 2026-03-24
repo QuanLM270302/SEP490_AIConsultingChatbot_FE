@@ -5,7 +5,7 @@ import { Search, Shield, Database, Sparkles, ArrowRight, CheckCircle2, Moon, Sun
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { applyTheme, onThemeChange, resolveTheme, toggleTheme as toggleThemeMode, type ThemeMode } from "@/lib/theme";
+import { useAppTheme } from "@/lib/use-app-theme";
 import { getAccessToken, getStoredUser } from "@/lib/auth-store";
 import { roleToPath } from "@/lib/auth-routes";
 
@@ -13,7 +13,7 @@ export default function Home() {
   const router = useRouter();
   const [text, setText] = useState("");
   const [qaIndex, setQaIndex] = useState(0);
-  const [theme, setTheme] = useState<ThemeMode>("light");
+  const { theme, toggleTheme: toggleAppTheme } = useAppTheme();
   const [themeReady, setThemeReady] = useState(false);
 
   const qaData = [
@@ -89,18 +89,11 @@ export default function Home() {
   }, [qaData.length]);
 
   useEffect(() => {
-    const currentTheme = resolveTheme();
-    applyTheme(currentTheme);
-    setTheme(currentTheme);
     setThemeReady(true);
-
-    return onThemeChange((nextTheme) => {
-      setTheme(nextTheme);
-    });
   }, []);
 
   const toggleTheme = () => {
-    setTheme((prevTheme) => toggleThemeMode(prevTheme));
+    toggleAppTheme();
   };
 
   const currentQA = qaData[qaIndex];

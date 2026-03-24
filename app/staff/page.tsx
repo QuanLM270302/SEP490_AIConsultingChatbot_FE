@@ -5,7 +5,6 @@ import Link from "next/link";
 import { AppHeader } from "@/components/layout/AppHeader";
 import {
   Building2,
-  Users,
   FileText,
   CreditCard,
   ClipboardCheck,
@@ -20,7 +19,6 @@ import {
   Bot,
 } from "lucide-react";
 import {
-  getStaffDashboard,
   getTenants,
   getTenantById,
   approveTenant,
@@ -36,6 +34,10 @@ import {
   type Transaction,
   type TransactionStatus,
 } from "@/lib/api/staff";
+import {
+  fetchPlatformDashboard,
+  parsePlatformDashboardJson,
+} from "@/lib/api/platform-dashboard";
 
 const statusLabel: Record<TenantStatus, string> = {
   PENDING: "Chờ duyệt",
@@ -89,9 +91,34 @@ export default function StaffDashboardPage() {
   const loadDashboard = () => {
     setStatsLoading(true);
     setError(null);
-    getStaffDashboard()
-      .then(setStats)
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải thống kê"))
+    void fetchPlatformDashboard(true)
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error("Không tải được thống kê dashboard");
+        const parsed = parsePlatformDashboardJson(true, data);
+        const totalUsersRaw = data.totalUsers;
+        const totalUsers =
+          typeof totalUsersRaw === "number" && Number.isFinite(totalUsersRaw)
+            ? totalUsersRaw
+            : parsed.tenants.active;
+        setStats({
+          tenants: {
+            total: parsed.tenants.total,
+            active: parsed.tenants.active,
+            pending: parsed.tenants.pending,
+            suspended: parsed.tenants.suspended,
+            ...(parsed.tenants.activePercentage > 0
+              ? { activePercentage: parsed.tenants.activePercentage }
+              : {}),
+          },
+          totalUsers,
+          subscriptions: { total: parsed.staffSubscriptionsTotal },
+          totalDocuments: parsed.staffTotalDocuments,
+        });
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Lỗi tải thống kê");
+        setStats(null);
+      })
       .finally(() => setStatsLoading(false));
   };
 
@@ -306,11 +333,6 @@ export default function StaffDashboardPage() {
                   label="Tạm ngưng"
                   value={stats.tenants.suspended}
                   accent="zinc"
-                />
-                <StatCard
-                  icon={Users}
-                  label="Tổng users"
-                  value={stats.totalUsers}
                 />
                 <StatCard
                   icon={CreditCard}

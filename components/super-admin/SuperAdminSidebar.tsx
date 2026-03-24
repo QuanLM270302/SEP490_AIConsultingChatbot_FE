@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -14,11 +15,100 @@ import {
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { getStoredUser } from "@/lib/auth-store";
+import {
+  fetchPlatformDashboard,
+  parsePlatformDashboardJson,
+  staffActiveOrganizationsCount,
+  type SystemStatusUi,
+} from "@/lib/api/platform-dashboard";
+
+type SidebarSystemStatus = {
+  systemStatus: SystemStatusUi;
+  systemStatusLabelRaw: string;
+  activeOrgs: number;
+  adminPlatformUsers: number;
+};
+
+const DEFAULT_STATUS: SidebarSystemStatus = {
+  systemStatus: "Unknown",
+  systemStatusLabelRaw: "",
+  activeOrgs: 0,
+  adminPlatformUsers: 0,
+};
+
+type SuperAdminSidebarProps = {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+};
 
 export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
   const pathname = usePathname();
   const { language } = useLanguageStore();
   const t = translations[language];
+  const [statusData, setStatusData] = useState<SidebarSystemStatus>(DEFAULT_STATUS);
+  const roles = getStoredUser()?.roles ?? [];
+  const isStaff = roles.some((role) => role.includes("STAFF"));
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchDashboardStatus = async () => {
+      try {
+        const roles = getStoredUser()?.roles ?? [];
+        const fetchIsStaff = roles.some((role) => role.includes("STAFF"));
+        const { ok, data } = await fetchPlatformDashboard(fetchIsStaff);
+        if (!ok) throw new Error("Failed to load dashboard status");
+        const parsed = parsePlatformDashboardJson(fetchIsStaff, data);
+
+        if (!cancelled) {
+          setStatusData({
+            systemStatus: parsed.systemStatus,
+            systemStatusLabelRaw: parsed.systemStatusLabelRaw,
+            activeOrgs: staffActiveOrganizationsCount(parsed),
+            adminPlatformUsers: parsed.adminPlatformUsers,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setStatusData(DEFAULT_STATUS);
+        }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && pathname.startsWith("/super-admin")) {
+        void fetchDashboardStatus();
+      }
+    };
+
+    void fetchDashboardStatus();
+    const intervalId = window.setInterval(() => {
+      void fetchDashboardStatus();
+    }, 30000);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [pathname]);
+
+  const statusLabel =
+    statusData.systemStatusLabelRaw.trim() ||
+    (statusData.systemStatus === "Healthy"
+      ? t.healthy
+      : statusData.systemStatus === "Unhealthy"
+        ? t.unhealthy
+        : t.unknown);
+
+  const statusDotClass =
+    statusData.systemStatus === "Healthy"
+      ? "bg-lime-400"
+      : statusData.systemStatus === "Unhealthy"
+        ? "bg-red-500"
+        : "bg-zinc-400";
   
   const navigation = [
     { name: t.dashboard, href: "/super-admin", icon: LayoutDashboard },
@@ -110,23 +200,22 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
                   {t.systemStatus}
                 </p>
                 <span className="inline-flex items-center gap-1 text-[11px]">
-                  <span className="h-2 w-2 rounded-full bg-lime-400" />
-                  {t.healthy}
+                  <span className={cn("h-2 w-2 rounded-full", statusDotClass)} />
+                  {statusLabel}
                 </span>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span>{t.uptime}</span>
-                  <span>99.9%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>{t.activeOrgs}</span>
-                  <span>24</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>{t.totalUsersLabel}</span>
-                  <span>1,234</span>
-                </div>
+                {isStaff ? (
+                  <div className="flex items-center justify-between">
+                    <span>{t.activeOrganizations}</span>
+                    <span>{statusData.activeOrgs.toLocaleString()}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span>{t.platformTotalUsers}</span>
+                    <span>{statusData.adminPlatformUsers.toLocaleString()}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

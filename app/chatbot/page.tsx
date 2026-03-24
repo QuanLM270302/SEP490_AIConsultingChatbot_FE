@@ -20,6 +20,7 @@ import { getAccessToken, getStoredUser, clearAuth } from "@/lib/auth-store";
 import { logout } from "@/lib/api/auth";
 import { getProfile } from "@/lib/api/profile";
 import { translations } from "@/lib/translations";
+import { useAppTheme } from "@/lib/use-app-theme";
 
 export default function ChatbotPage() {
   const router = useRouter();
@@ -41,11 +42,7 @@ export default function ChatbotPage() {
   const [topK, setTopK] = useState<number>(5);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "light";
-    const savedTheme = localStorage.getItem("theme");
-    return savedTheme === "dark" ? "dark" : "light";
-  });
+  const { theme, toggleTheme } = useAppTheme();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const currentUser = getStoredUser();
   const displayEmail = currentUser?.email ?? "superadmin@system.vn";
@@ -71,11 +68,6 @@ export default function ChatbotPage() {
         // Keep fallback from email when profile API fails.
       });
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
 
   useEffect(() => {
     const onMouseDown = (event: MouseEvent) => {
@@ -176,10 +168,6 @@ export default function ChatbotPage() {
       router.push("/login");
       router.refresh();
     }
-  };
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
   return (

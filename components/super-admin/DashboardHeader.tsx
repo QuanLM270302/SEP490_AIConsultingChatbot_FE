@@ -8,6 +8,9 @@ import { getAccessToken, clearAuth, getStoredUser } from "@/lib/auth-store";
 import { getProfile } from "@/lib/api/profile";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { useAppTheme } from "@/lib/use-app-theme";
+
+const SUPER_FALLBACK_EMAIL = "superadmin@system.vn";
 
 interface DashboardHeaderProps {
   title: string;
@@ -18,19 +21,21 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const initialEmail = getStoredUser()?.email ?? "superadmin@system.vn";
-  const initialName = initialEmail.split("@")[0] || "Super Admin";
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === "undefined") return "light";
-    const savedTheme = localStorage.getItem("theme");
-    return savedTheme === "dark" ? "dark" : "light";
-  });
-  const [displayName, setDisplayName] = useState(initialName);
-  const [displayEmail] = useState(initialEmail);
+  const { theme, toggleTheme } = useAppTheme();
+  const [displayName, setDisplayName] = useState(
+    () => SUPER_FALLBACK_EMAIL.split("@")[0] || "Super Admin"
+  );
+  const [displayEmail, setDisplayEmail] = useState(SUPER_FALLBACK_EMAIL);
   const { language, toggleLanguage } = useLanguageStore();
   const menuRef = useRef<HTMLDivElement>(null);
-  
+
   const t = translations[language];
+
+  useEffect(() => {
+    const email = getStoredUser()?.email ?? SUPER_FALLBACK_EMAIL;
+    setDisplayEmail(email);
+    setDisplayName(email.split("@")[0] || "Super Admin");
+  }, []);
 
   useEffect(() => {
     getProfile()
@@ -43,15 +48,6 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
         // Keep fallback from auth store email when profile request fails.
       });
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
 
   // Close menu when clicking outside
   useEffect(() => {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 // import { AuthGuard } from "@/components/auth/AuthGuard"; // Tạm thời tắt để xem UI
+import { ThemeRouteSync } from "@/components/theme/ThemeRouteSync";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -46,6 +47,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ThemeRouteSync />
         {/* Tạm thời bỏ AuthGuard để xem UI */}
         {children}
         {/* <AuthGuard>{children}</AuthGuard> */}

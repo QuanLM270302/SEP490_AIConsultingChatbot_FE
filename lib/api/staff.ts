@@ -48,6 +48,7 @@ export interface StaffDashboardStats {
     suspended: number;
     activePercentage?: number;
   };
+  /** BE reuses this key for active organization count (same as tenants.active); not platform user count. */
   totalUsers: number;
   subscriptions: { total: number };
   totalDocuments: number;
