@@ -28,7 +28,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
     { name: t.departments, href: "/tenant-admin/departments", icon: Building },
     { name: t.roles, href: "/tenant-admin/roles", icon: Shield },
     { name: t.documents, href: "/tenant-admin/documents", icon: FileText },
-    { name: t.aiChatbot, href: "/chatbot", icon: Bot },
+    { name: "AI Chatbot", href: "/chatbot", icon: Bot },
     { name: t.analytics, href: "/tenant-admin/analytics", icon: BarChart3 },
     { name: t.subscription, href: "/tenant-admin/subscription", icon: CreditCard },
   ];

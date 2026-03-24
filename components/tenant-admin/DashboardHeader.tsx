@@ -4,11 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { Menu, User, LogOut, Settings, Sun, Moon, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/api/auth";
-import { getAccessToken, clearAuth, getStoredUser } from "@/lib/auth-store";
-import { getProfile } from "@/lib/api/profile";
+import { getAccessToken, clearAuth } from "@/lib/auth-store";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
-import { applyTheme, onThemeChange, resolveTheme, toggleTheme as toggleThemeMode, type ThemeMode } from "@/lib/theme";
 
 interface DashboardHeaderProps {
   title: string;
@@ -19,49 +17,27 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [theme, setTheme] = useState<ThemeMode>("light");
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const { language, toggleLanguage } = useLanguageStore();
   const menuRef = useRef<HTMLDivElement>(null);
   
   const t = translations[language];
-  const currentUser = getStoredUser();
-  const displayEmail = currentUser?.email ?? "unknown@system.local";
-  const [displayName, setDisplayName] = useState(() => {
-    if (!currentUser?.email) return "User";
-    const localPart = currentUser.email.split("@")[0] ?? "";
-    return localPart || "User";
-  });
 
+  // Load theme from localStorage
   useEffect(() => {
-    let isMounted = true;
-    const loadProfileName = async () => {
-      try {
-        const profile = await getProfile();
-        if (!isMounted) return;
-        const fullName = profile.fullName?.trim();
-        if (fullName) setDisplayName(fullName);
-      } catch {
-        // Keep fallback name from email when profile request fails
-      }
-    };
-    void loadProfileName();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const currentTheme = resolveTheme();
-    applyTheme(currentTheme);
-    setTheme(currentTheme);
-
-    return onThemeChange((nextTheme) => {
-      setTheme(nextTheme);
-    });
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    }
   }, []);
 
   const toggleTheme = () => {
-    setTheme((prevTheme) => toggleThemeMode(prevTheme));
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 
   // Close menu when clicking outside
@@ -196,7 +172,7 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
             {/* Header */}
             <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t.settings}</h3>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Settings</h3>
                 <button
                   onClick={() => setIsSettingsOpen(false)}
                   className="rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
@@ -246,7 +222,7 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
                   <div>
                     <p className="text-sm font-medium text-zinc-900 dark:text-white">{t.language}</p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {language === 'en' ? t.languageEnglish : t.languageVietnamese}
+                      {language === 'en' ? 'English' : 'Tiếng Việt'}
                     </p>
                   </div>
                 </div>
@@ -265,7 +241,7 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
                 onClick={() => setIsSettingsOpen(false)}
                 className="w-full rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600"
               >
-                {t.done}
+                Done
               </button>
             </div>
           </div>

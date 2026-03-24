@@ -24,7 +24,7 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
     { name: t.dashboard, href: "/super-admin", icon: LayoutDashboard },
     { name: t.organizations, href: "/super-admin/organizations", icon: Building2 },
     { name: t.roles, href: "/super-admin/roles", icon: Shield },
-    { name: t.aiChatbot, href: "/chatbot", icon: Bot },
+    { name: "AI Chatbot", href: "/chatbot", icon: Bot },
     { name: t.staff, href: "/super-admin/staff", icon: Users },
     { name: t.pricing, href: "/super-admin/pricing", icon: CreditCard },
     { name: t.subscriptions, href: "/super-admin/subscriptions", icon: CreditCard },

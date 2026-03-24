@@ -492,10 +492,13 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     e.preventDefault();
     setLoading(true);
     try {
+      // Use defaultName from selected type if name is empty
+      const planName = name.trim() || selectedType?.defaultName || planType;
+      
       const body: CreateSubscriptionPlanRequest = {
         planType,
-        name: name.trim() || undefined,
-        description: description.trim() || undefined,
+        name: planName,
+        description: description.trim() || "Default description",
         monthlyPrice: Math.max(0, toNum(monthlyPrice, 0)),
         quarterlyPrice: Math.max(0, toNum(quarterlyPrice, 0)),
         yearlyPrice: Math.max(0, toNum(yearlyPrice, 0)),
@@ -510,12 +513,21 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         ragChunkSize: 512,
         enableRag: true,
         isTrial: planType === "TRIAL",
-        trialDays: planType === "TRIAL" ? 14 : undefined,
         displayOrder: 0,
       };
+      
+      // Only add optional fields if they have values
+      if (planType === "TRIAL") {
+        body.trialDays = 14;
+      }
+      
+      console.log("📤 Request body:", JSON.stringify(body, null, 2));
+      console.log("📤 selectedType:", selectedType);
+      console.log("📤 planName:", planName);
       await createSubscriptionPlan(body);
       onSuccess();
     } catch (err) {
+      console.error("❌ Error creating plan:", err);
       alert(err instanceof Error ? err.message : "Tạo plan thất bại");
     } finally {
       setLoading(false);
@@ -528,17 +540,28 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       <div className="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo subscription plan</h3>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          {/* Plan Type Dropdown - Moved to top */}
           <div>
-            <label className="block text-xs text-zinc-500">Tên gói *</label>
-            <input 
-              type="text" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-              placeholder="Nhập tên gói (VD: Gói Starter)" 
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Plan type *</label>
+            <select
+              value={planType}
+              onChange={(e) => setPlanType(e.target.value as SubscriptionPlanTypeOption["code"])}
               required
-              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
-            />
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+            >
+              {types.map((t) => (
+                <option key={t.code} value={t.code}>
+                  {t.code} - {t.defaultName}
+                </option>
+              ))}
+            </select>
+            {selectedType && (
+              <p className="mt-1 text-xs text-zinc-500">
+                {selectedType.defaultName}
+              </p>
+            )}
           </div>
+
           <div>
             <label className="block text-xs text-zinc-500">Mô tả</label>
             <input 
@@ -629,9 +652,6 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               />
             </div>
           </div>
-
-          {/* Hidden Plan Type - auto set to STARTER */}
-          <input type="hidden" value={planType} />
 
           <div className="mt-6 flex gap-2">
             <button 
