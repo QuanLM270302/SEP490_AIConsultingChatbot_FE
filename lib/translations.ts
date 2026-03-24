@@ -38,6 +38,12 @@ export const translations = {
     departments: 'Phòng ban',
     documents: 'Tài liệu',
     subscription: 'Gói đăng ký',
+    tenantAdmin: 'Quản trị tổ chức',
+    management: 'Quản lý',
+    currentPlan: 'Gói hiện tại',
+    usersLabel: 'Người dùng',
+    storage: 'Dung lượng',
+    backToHome: 'Về trang chủ',
     
     // Stats & Metrics
     totalUsers: 'Tổng người dùng',
@@ -94,6 +100,12 @@ export const translations = {
     departments: 'Departments',
     documents: 'Documents',
     subscription: 'Subscription',
+    tenantAdmin: 'Tenant Admin',
+    management: 'Management',
+    currentPlan: 'Current plan',
+    usersLabel: 'Users',
+    storage: 'Storage',
+    backToHome: 'Back to home',
     
     // Stats & Metrics
     totalUsers: 'Total Users',

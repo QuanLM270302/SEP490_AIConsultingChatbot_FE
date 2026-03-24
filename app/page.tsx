@@ -4,9 +4,13 @@ import { motion } from "framer-motion";
 import { Search, Shield, Database, Sparkles, ArrowRight, CheckCircle2, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { applyTheme, onThemeChange, resolveTheme, toggleTheme as toggleThemeMode, type ThemeMode } from "@/lib/theme";
+import { getAccessToken, getStoredUser } from "@/lib/auth-store";
+import { roleToPath } from "@/lib/auth-routes";
 
 export default function Home() {
+  const router = useRouter();
   const [text, setText] = useState("");
   const [qaIndex, setQaIndex] = useState(0);
   const [theme, setTheme] = useState<ThemeMode>("light");
@@ -54,6 +58,14 @@ export default function Home() {
       sources: ["Office Management Guide", "Booking System Manual"],
     },
   ];
+
+  useEffect(() => {
+    const token = getAccessToken();
+    const user = getStoredUser();
+    if (token && user?.roles?.length) {
+      router.replace(roleToPath(user.roles));
+    }
+  }, [router]);
 
   useEffect(() => {
     const currentQA = qaData[qaIndex];

@@ -207,7 +207,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen overflow-x-hidden bg-linear-to-br from-zinc-50 via-emerald-50/30 to-violet-50/30 dark:from-zinc-950 dark:via-emerald-950/20 dark:to-violet-950/20">
+      <div className="min-h-screen overflow-x-hidden bg-white dark:bg-zinc-950">
         <AppHeader />
         <main className="flex flex-1 items-center justify-center px-6 py-10">
           <div className="flex flex-col items-center gap-3">
@@ -221,7 +221,7 @@ export default function ProfilePage() {
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen overflow-x-hidden bg-linear-to-br from-zinc-50 via-emerald-50/30 to-violet-50/30 dark:from-zinc-950 dark:via-emerald-950/20 dark:to-violet-950/20">
+      <div className="min-h-screen overflow-x-hidden bg-white dark:bg-zinc-950">
         <AppHeader />
         <main className="flex flex-1 items-center justify-center px-6 py-10">
           <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-6 py-4 text-rose-800 shadow-lg dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
@@ -233,7 +233,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-linear-to-br from-zinc-50 via-emerald-50/30 to-violet-50/30 dark:from-zinc-950 dark:via-emerald-950/20 dark:to-violet-950/20">
+    <div className="min-h-screen overflow-x-hidden bg-white dark:bg-zinc-950">
       <AppHeader />
       <main className="min-w-0 overflow-auto">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">

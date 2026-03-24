@@ -211,13 +211,17 @@ export default function ChatbotPage() {
               <button
                 type="button"
                 onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                className="inline-flex items-center gap-2 rounded-full border border-emerald-500/35 bg-zinc-950/90 px-3 py-1.5 text-white shadow-sm transition hover:border-emerald-400 hover:bg-zinc-900"
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm transition ${
+                  theme === "dark"
+                    ? "border-emerald-500/35 bg-zinc-950/90 text-white hover:border-emerald-400 hover:bg-zinc-900"
+                    : "border-emerald-500/45 bg-white text-zinc-900 hover:border-emerald-500 hover:bg-emerald-50"
+                }`}
               >
                 <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white">
                   <User className="h-4 w-4" />
                 </span>
-                <span className="max-w-40 truncate text-sm font-semibold">{displayName}</span>
-                <ChevronDown className={`h-4 w-4 text-zinc-300 transition ${isUserMenuOpen ? "rotate-180" : ""}`} />
+                <span className={`max-w-40 truncate text-sm font-semibold ${theme === "dark" ? "text-white" : "text-zinc-900"}`}>{displayName}</span>
+                <ChevronDown className={`h-4 w-4 transition ${theme === "dark" ? "text-zinc-300" : "text-zinc-500"} ${isUserMenuOpen ? "rotate-180" : ""}`} />
               </button>
               {isUserMenuOpen && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">

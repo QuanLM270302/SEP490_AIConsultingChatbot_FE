@@ -108,9 +108,7 @@ export function AppHeader() {
                 className={`rounded-xl px-3.5 py-1.5 text-sm font-medium leading-none transition ${
                   isActive
                     ? "bg-green-500 text-white"
-                    : label === "Super Admin"
-                      ? "rounded-full border border-emerald-500/60 bg-emerald-50 px-4 py-1.5 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
-                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                    : "rounded-full border border-emerald-500/60 bg-emerald-50 px-4 py-1.5 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
                 }`}
               >
                 {label}
@@ -123,14 +121,18 @@ export function AppHeader() {
         <button
           type="button"
           onClick={() => setIsUserMenuOpen((prev) => !prev)}
-          className="inline-flex items-center gap-2 rounded-full border border-emerald-500/35 bg-zinc-950/90 px-3 py-1.5 text-white shadow-sm transition hover:border-emerald-400 hover:bg-zinc-900"
+          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm transition ${
+            theme === "dark"
+              ? "border-emerald-500/35 bg-zinc-950/90 text-white hover:border-emerald-400 hover:bg-zinc-900"
+              : "border-emerald-500/45 bg-white text-zinc-900 hover:border-emerald-500 hover:bg-emerald-50"
+          }`}
         >
           <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white">
             <User className="h-4 w-4 text-white" />
           </div>
-          <span className="max-w-36 truncate text-xs font-semibold text-white">{displayName}</span>
+          <span className={`max-w-36 truncate text-xs font-semibold ${theme === "dark" ? "text-white" : "text-zinc-900"}`}>{displayName}</span>
           <svg
-            className={`h-4 w-4 text-zinc-300 transition-transform ${isUserMenuOpen ? "rotate-180" : ""}`}
+            className={`h-4 w-4 transition-transform ${theme === "dark" ? "text-zinc-300" : "text-zinc-500"} ${isUserMenuOpen ? "rotate-180" : ""}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
