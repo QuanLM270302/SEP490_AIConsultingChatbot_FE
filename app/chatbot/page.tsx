@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import type { Message } from "@/types/chat";
-import { AIBoxSidebar } from "@/components/chat/AIBoxSidebar";
 import { ChatHistorySidebar } from "@/components/chat/ChatHistorySidebar";
 import { ChatHeader } from "@/components/chat/ChatHeader";
 import { ChatMessageList } from "@/components/chat/ChatMessageList";
@@ -14,9 +13,12 @@ import { listCategoriesFlat } from "@/lib/api/categories";
 import { listTagsActive } from "@/lib/api/tags";
 import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
 import { useEffect } from "react";
+import { useLanguageStore } from "@/lib/language-store";
 
 export default function ChatbotPage() {
   const router = useRouter();
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -82,12 +84,18 @@ export default function ChatbotPage() {
       setCurrentQuestion("");
       setSelectedMessage(newMessage.id);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Không thể kết nối tới chatbot. Vui lòng thử lại.";
+      const message = err instanceof Error
+        ? err.message
+        : isEn
+          ? "Cannot connect to chatbot. Please try again."
+          : "Không thể kết nối tới chatbot. Vui lòng thử lại.";
       setError(message);
       const fallbackMessage: Message = {
         id: userMessageId,
         question,
-        answer: `**Lỗi:** ${message}\n\nKiểm tra kết nối mạng hoặc liên hệ quản trị viên nếu lỗi tiếp tục.`,
+        answer: isEn
+          ? `**Error:** ${message}\n\nPlease check your network connection or contact your administrator if the issue persists.`
+          : `**Lỗi:** ${message}\n\nKiểm tra kết nối mạng hoặc liên hệ quản trị viên nếu lỗi tiếp tục.`,
         references: [],
         timestamp: new Date(),
         rating: null,
@@ -116,50 +124,50 @@ export default function ChatbotPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-zinc-50">
-      <AIBoxSidebar />
+    <div className="flex min-h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
+      <ChatHistorySidebar
+        open={isHistoryOpen}
+        onToggle={() => setIsHistoryOpen((prev) => !prev)}
+        onSelectChat={(chatId) => {
+          setCurrentChatId(chatId || null);
+        }}
+        currentChatId={currentChatId}
+      />
 
-      <div className="flex flex-1">
-        <main className="flex flex-1 flex-col bg-zinc-950">
+      <div className={`flex flex-1 transition-[padding] duration-300 ${isHistoryOpen ? "lg:pl-72" : "lg:pl-14"}`}>
+        <main className="flex flex-1 flex-col bg-white dark:bg-zinc-950">
           <div className="flex items-center gap-3 px-6 pt-6">
             <button
               type="button"
               onClick={() => router.back()}
-              className="inline-flex items-center gap-2 rounded-full border border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-600 hover:bg-zinc-900"
+              className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-900"
             >
               <ArrowLeftIcon className="h-4 w-4" />
-              <span>Quay lại</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsHistoryOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-600 hover:bg-zinc-900"
-            >
-              Lịch sử chat
+              <span>{isEn ? "Back" : "Quay lại"}</span>
             </button>
           </div>
 
           {error && (
-            <div className="mx-6 mt-3 rounded-lg bg-red-900/30 px-4 py-2 text-sm text-red-200">
+            <div className="mx-6 mt-3 rounded-lg bg-red-100 px-4 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-200">
               {error}
             </div>
           )}
 
           <ChatHeader />
 
-          <div className="mx-6 mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
-              RAG Filters
+          <div className="mx-6 mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600 dark:text-zinc-400">
+              {isEn ? "RAG Filters" : "Bộ lọc RAG"}
             </p>
             <div className="grid gap-3 lg:grid-cols-3">
               <div>
-                <label className="mb-1 block text-xs text-zinc-400">Category</label>
+                <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">{isEn ? "Category" : "Danh mục"}</label>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 >
-                  <option value="">Tất cả category</option>
+                  <option value="">{isEn ? "All categories" : "Tất cả category"}</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -169,19 +177,19 @@ export default function ChatbotPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs text-zinc-400">Top K</label>
+                <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">{isEn ? "Top K" : "Top K"}</label>
                 <input
                   type="number"
                   min={1}
                   max={20}
                   value={topK}
                   onChange={(e) => setTopK(Math.min(20, Math.max(1, Number(e.target.value) || 5)))}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs text-zinc-400">Tags</label>
+                <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">{isEn ? "Tags" : "Thẻ"}</label>
                 <div className="flex flex-wrap gap-2">
                   {tags.slice(0, 12).map((t) => {
                     const active = selectedTagIds.includes(t.id);
@@ -193,7 +201,7 @@ export default function ChatbotPage() {
                         className={`rounded-full px-2.5 py-1 text-xs transition ${
                           active
                             ? "bg-green-500 text-white"
-                            : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                            : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                         }`}
                       >
                         {t.name}
@@ -222,15 +230,6 @@ export default function ChatbotPage() {
           />
         </main>
       </div>
-
-      <ChatHistorySidebar
-        open={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
-        onSelectChat={(chatId) => {
-          setCurrentChatId(chatId || null);
-        }}
-        currentChatId={currentChatId}
-      />
     </div>
   );
 }

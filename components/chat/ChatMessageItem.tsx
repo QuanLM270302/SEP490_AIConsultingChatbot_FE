@@ -1,3 +1,5 @@
+"use client";
+
 import type { Message } from "@/types/chat";
 import { MessageBubble } from "./MessageBubble";
 import { ReferencesSection } from "./ReferencesSection";
@@ -21,7 +23,7 @@ export function ChatMessageItem({ message, onRate }: ChatMessageItemProps) {
           AI
         </div>
         <div className="flex-1 space-y-4">
-          <div className="rounded-lg bg-zinc-900 px-4 py-3 text-sm leading-relaxed text-zinc-100">
+          <div className="rounded-lg bg-zinc-100 px-4 py-3 text-sm leading-relaxed text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">
             <div className="whitespace-pre-line">
               {formatAnswer(message.answer)}
             </div>
