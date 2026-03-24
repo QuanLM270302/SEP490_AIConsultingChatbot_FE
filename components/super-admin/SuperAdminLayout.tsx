@@ -3,6 +3,8 @@
 import { SuperAdminSidebar } from "./SuperAdminSidebar";
 import { DashboardHeader } from "./DashboardHeader";
 import { useState } from "react";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 interface SuperAdminLayoutProps {
   children: React.ReactNode;
@@ -10,6 +12,8 @@ interface SuperAdminLayoutProps {
 
 export function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { language } = useLanguageStore();
+  const t = translations[language];
 
   return (
     <div className="flex min-h-screen bg-linear-to-br from-zinc-100 via-white to-zinc-100 px-4 py-6 dark:from-zinc-900 dark:via-black dark:to-zinc-900 sm:px-6 lg:px-10">
@@ -17,7 +21,7 @@ export function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       
       <main className="flex-1 px-0 py-2 sm:px-4 lg:px-6 lg:pl-72">
         <DashboardHeader 
-          title="Super Admin"
+          title={t.superAdmin}
           onMenuClick={() => setSidebarOpen(true)} 
         />
         

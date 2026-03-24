@@ -12,24 +12,23 @@ import {
   Users,
   CreditCard,
 } from "lucide-react";
-
-const navigation = [
-  { name: "Dashboard", href: "/super-admin", icon: LayoutDashboard },
-  { name: "Organizations", href: "/super-admin/organizations", icon: Building2 },
-  { name: "Roles & Permissions", href: "/super-admin/roles", icon: Shield },
-  { name: "AI Chatbot", href: "/chatbot", icon: Bot },
-  { name: "Staff", href: "/super-admin/staff", icon: Users },
-  { name: "Subscription Plans", href: "/super-admin/pricing", icon: CreditCard },
-  { name: "Subscriptions (đã mua)", href: "/super-admin/subscriptions", icon: CreditCard },
-];
-
-interface SuperAdminSidebarProps {
-  open: boolean;
-  setOpen: (open: boolean) => void;
-}
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
   const pathname = usePathname();
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  
+  const navigation = [
+    { name: t.dashboard, href: "/super-admin", icon: LayoutDashboard },
+    { name: t.organizations, href: "/super-admin/organizations", icon: Building2 },
+    { name: t.roles, href: "/super-admin/roles", icon: Shield },
+    { name: t.aiChatbot, href: "/chatbot", icon: Bot },
+    { name: t.staff, href: "/super-admin/staff", icon: Users },
+    { name: t.pricing, href: "/super-admin/pricing", icon: CreditCard },
+    { name: t.subscriptions, href: "/super-admin/subscriptions", icon: CreditCard },
+  ];
 
   return (
     <>
@@ -57,7 +56,7 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
                   <Shield className="h-5 w-5" />
                 </div>
                 <span className="text-lg font-semibold text-zinc-900 dark:text-white">
-                  Super Admin
+                  {t.superAdmin}
                 </span>
               </Link>
               <button
@@ -71,7 +70,7 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
             {/* Navigation */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Platform Menu
+                {t.platformMenu}
               </p>
             </div>
 
@@ -108,24 +107,24 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
             <div className="space-y-3 rounded-2xl bg-zinc-50 p-4 text-xs text-zinc-600 shadow-sm dark:bg-zinc-900 dark:text-zinc-300">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-zinc-800 dark:text-zinc-100">
-                  System Status
+                  {t.systemStatus}
                 </p>
                 <span className="inline-flex items-center gap-1 text-[11px]">
                   <span className="h-2 w-2 rounded-full bg-lime-400" />
-                  Healthy
+                  {t.healthy}
                 </span>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span>Uptime</span>
+                  <span>{t.uptime}</span>
                   <span>99.9%</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Active Orgs</span>
+                  <span>{t.activeOrgs}</span>
                   <span>24</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Total Users</span>
+                  <span>{t.totalUsersLabel}</span>
                   <span>1,234</span>
                 </div>
               </div>

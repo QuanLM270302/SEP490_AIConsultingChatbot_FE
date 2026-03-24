@@ -14,25 +14,24 @@ import {
   CreditCard,
   X,
 } from "lucide-react";
-
-const navigation = [
-  { name: "Dashboard", href: "/tenant-admin", icon: LayoutDashboard },
-  { name: "Employees", href: "/tenant-admin/employees", icon: Users },
-  { name: "Departments", href: "/tenant-admin/departments", icon: Building },
-  { name: "Roles & Permissions", href: "/tenant-admin/roles", icon: Shield },
-  { name: "Documents", href: "/tenant-admin/documents", icon: FileText },
-  { name: "AI Chatbot", href: "/chatbot", icon: Bot },
-  { name: "AI Analytics", href: "/tenant-admin/analytics", icon: BarChart3 },
-  { name: "Subscription", href: "/tenant-admin/subscription", icon: CreditCard },
-];
-
-interface TenantAdminSidebarProps {
-  open: boolean;
-  setOpen: (open: boolean) => void;
-}
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
   const pathname = usePathname();
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  
+  const navigation = [
+    { name: t.dashboard, href: "/tenant-admin", icon: LayoutDashboard },
+    { name: t.employees, href: "/tenant-admin/employees", icon: Users },
+    { name: t.departments, href: "/tenant-admin/departments", icon: Building },
+    { name: t.roles, href: "/tenant-admin/roles", icon: Shield },
+    { name: t.documents, href: "/tenant-admin/documents", icon: FileText },
+    { name: t.aiChatbot, href: "/chatbot", icon: Bot },
+    { name: t.analytics, href: "/tenant-admin/analytics", icon: BarChart3 },
+    { name: t.subscription, href: "/tenant-admin/subscription", icon: CreditCard },
+  ];
 
   return (
     <>
@@ -57,7 +56,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
                   <Building className="h-5 w-5" />
                 </div>
                 <span className="text-lg font-semibold text-zinc-900 dark:text-white">
-                  Tenant Admin
+                  {t.tenantAdmin}
                 </span>
               </Link>
               <button
@@ -70,7 +69,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Management
+                {t.management}
               </p>
             </div>
 
@@ -108,7 +107,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
             <div className="space-y-3 rounded-2xl bg-linear-to-br from-green-50 to-emerald-50 p-4 text-xs dark:from-green-950/30 dark:to-emerald-950/30">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-zinc-800 dark:text-zinc-100">
-                  Current Plan
+                  {t.currentPlan}
                 </p>
                 <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
                   —
@@ -116,11 +115,11 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
               </div>
               <div className="space-y-2 text-zinc-600 dark:text-zinc-400">
                 <div className="flex items-center justify-between">
-                  <span>Users</span>
+                  <span>{t.usersLabel}</span>
                   <span className="font-semibold text-zinc-900 dark:text-white">—</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Storage</span>
+                  <span>{t.storage}</span>
                   <span className="font-semibold text-zinc-900 dark:text-white">—</span>
                 </div>
               </div>
@@ -130,7 +129,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
               href="/"
               className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
             >
-              ← Về trang chủ
+              ← {t.backToHome}
             </Link>
           </div>
         </div>
