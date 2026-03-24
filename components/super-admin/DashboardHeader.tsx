@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Menu, User, LogOut, Settings } from "lucide-react";
+import { Menu, User, LogOut, Settings, Sun, Moon, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/api/auth";
+import { getAccessToken, clearAuth } from "@/lib/auth-store";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 interface DashboardHeaderProps {
   title: string;
@@ -13,7 +16,29 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const { language, toggleLanguage } = useLanguageStore();
   const menuRef = useRef<HTMLDivElement>(null);
+  
+  const t = translations[language];
+
+  // Load theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  };
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -34,10 +59,17 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      const token = getAccessToken();
+      if (token) {
+        await logout(token);
+      }
+      clearAuth();
       router.push("/login");
     } catch (error) {
       console.error("Logout failed:", error);
+      // Clear auth anyway
+      clearAuth();
+      router.push("/login");
     }
   };
 
@@ -103,18 +135,18 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   <User className="h-4 w-4" />
-                  <span>Profile</span>
+                  <span>{t.profile}</span>
                 </button>
 
                 <button
                   onClick={() => {
-                    router.push("/settings");
+                    setIsSettingsOpen(true);
                     setIsUserMenuOpen(false);
                   }}
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   <Settings className="h-4 w-4" />
-                  <span>Settings</span>
+                  <span>{t.settings}</span>
                 </button>
 
                 <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-800" />
@@ -124,13 +156,97 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span>Logout</span>
+                  <span>{t.logout}</span>
                 </button>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-zinc-900/70 backdrop-blur-sm" onClick={() => setIsSettingsOpen(false)} />
+          <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl dark:bg-zinc-900">
+            {/* Header */}
+            <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Settings</h3>
+                <button
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-4 p-6">
+              {/* Theme Toggle */}
+              <div className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+                <div className="flex items-center gap-3">
+                  {theme === 'light' ? (
+                    <Sun className="h-5 w-5 text-amber-500" />
+                  ) : (
+                    <Moon className="h-5 w-5 text-blue-500" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900 dark:text-white">{t.theme}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {theme === 'light' ? t.lightMode : t.darkMode}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={toggleTheme}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    theme === 'dark' ? 'bg-emerald-500' : 'bg-zinc-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform ${
+                      theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Language Toggle */}
+              <div className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+                <div className="flex items-center gap-3">
+                  <Globe className="h-5 w-5 text-emerald-500" />
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900 dark:text-white">{t.language}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {language === 'en' ? 'English' : 'Tiếng Việt'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={toggleLanguage}
+                  className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-medium text-white transition hover:bg-emerald-600"
+                >
+                  {language === 'en' ? 'EN' : 'VI'}
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="w-full rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

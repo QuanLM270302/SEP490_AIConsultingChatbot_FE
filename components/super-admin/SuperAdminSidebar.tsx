@@ -12,24 +12,23 @@ import {
   Users,
   CreditCard,
 } from "lucide-react";
-
-const navigation = [
-  { name: "Dashboard", href: "/super-admin", icon: LayoutDashboard },
-  { name: "Organizations", href: "/super-admin/organizations", icon: Building2 },
-  { name: "Roles & Permissions", href: "/super-admin/roles", icon: Shield },
-  { name: "AI Chatbot", href: "/chatbot", icon: Bot },
-  { name: "Staff", href: "/super-admin/staff", icon: Users },
-  { name: "Subscription Plans", href: "/super-admin/pricing", icon: CreditCard },
-  { name: "Subscriptions (đã mua)", href: "/super-admin/subscriptions", icon: CreditCard },
-];
-
-interface SuperAdminSidebarProps {
-  open: boolean;
-  setOpen: (open: boolean) => void;
-}
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
   const pathname = usePathname();
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  
+  const navigation = [
+    { name: t.dashboard, href: "/super-admin", icon: LayoutDashboard },
+    { name: t.organizations, href: "/super-admin/organizations", icon: Building2 },
+    { name: t.roles, href: "/super-admin/roles", icon: Shield },
+    { name: "AI Chatbot", href: "/chatbot", icon: Bot },
+    { name: t.staff, href: "/super-admin/staff", icon: Users },
+    { name: t.pricing, href: "/super-admin/pricing", icon: CreditCard },
+    { name: t.subscriptions, href: "/super-admin/subscriptions", icon: CreditCard },
+  ];
 
   return (
     <>

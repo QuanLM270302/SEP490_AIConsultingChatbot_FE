@@ -14,25 +14,24 @@ import {
   CreditCard,
   X,
 } from "lucide-react";
-
-const navigation = [
-  { name: "Dashboard", href: "/tenant-admin", icon: LayoutDashboard },
-  { name: "Employees", href: "/tenant-admin/employees", icon: Users },
-  { name: "Departments", href: "/tenant-admin/departments", icon: Building },
-  { name: "Roles & Permissions", href: "/tenant-admin/roles", icon: Shield },
-  { name: "Documents", href: "/tenant-admin/documents", icon: FileText },
-  { name: "AI Chatbot", href: "/chatbot", icon: Bot },
-  { name: "AI Analytics", href: "/tenant-admin/analytics", icon: BarChart3 },
-  { name: "Subscription", href: "/tenant-admin/subscription", icon: CreditCard },
-];
-
-interface TenantAdminSidebarProps {
-  open: boolean;
-  setOpen: (open: boolean) => void;
-}
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
   const pathname = usePathname();
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  
+  const navigation = [
+    { name: t.dashboard, href: "/tenant-admin", icon: LayoutDashboard },
+    { name: t.employees, href: "/tenant-admin/employees", icon: Users },
+    { name: t.departments, href: "/tenant-admin/departments", icon: Building },
+    { name: t.roles, href: "/tenant-admin/roles", icon: Shield },
+    { name: t.documents, href: "/tenant-admin/documents", icon: FileText },
+    { name: "AI Chatbot", href: "/chatbot", icon: Bot },
+    { name: t.analytics, href: "/tenant-admin/analytics", icon: BarChart3 },
+    { name: t.subscription, href: "/tenant-admin/subscription", icon: CreditCard },
+  ];
 
   return (
     <>
