@@ -1,6 +1,8 @@
 "use client";
 
 import { MessageSquare } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 const topQueries = [
   { id: 1, question: "Làm thế nào để xin nghỉ phép?", count: 145, confidence: 98 },
@@ -11,10 +13,13 @@ const topQueries = [
 ];
 
 export function TopQueriesTable() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  
   return (
     <div className="rounded-3xl bg-white p-8 shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
       <h3 className="mb-6 text-xl font-bold text-zinc-900 dark:text-white">
-        Most Asked Questions
+        {t.mostAskedQuestions}
       </h3>
       <div className="space-y-4">
         {topQueries.map((query, index) => (
@@ -34,14 +39,14 @@ export function TopQueriesTable() {
               <div className="mt-2 flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
                 <span className="flex items-center gap-1">
                   <MessageSquare className="h-3 w-3" />
-                  {query.count} queries
+                  {query.count} {t.queries}
                 </span>
                 <span className={`font-semibold ${
                   query.confidence >= 95 ? "text-green-600 dark:text-green-400" :
                   query.confidence >= 90 ? "text-blue-600 dark:text-blue-400" :
                   "text-amber-600 dark:text-amber-400"
                 }`}>
-                  {query.confidence}% confidence
+                  {query.confidence}% {t.confidence}
                 </span>
               </div>
             </div>

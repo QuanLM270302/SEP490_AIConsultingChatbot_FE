@@ -2,8 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { getTenantDepartments } from "@/lib/api/tenant-admin";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 export function DepartmentOverview() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [departments, setDepartments] = useState<{ name: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,15 +19,15 @@ export function DepartmentOverview() {
           list.map((d) => ({ name: d.name ?? "—", count: d.employeeCount ?? 0 }))
         )
       )
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi"))
+      .catch((e) => setError(e instanceof Error ? e.message : t.error))
       .finally(() => setLoading(false));
-  }, []);
+  }, [t.error]);
 
   if (loading) {
     return (
       <div className="rounded-lg bg-white p-6 shadow dark:bg-zinc-900">
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Department Overview</h3>
-        <p className="mt-4 text-sm text-zinc-500">Đang tải…</p>
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t.departmentOverview}</h3>
+        <p className="mt-4 text-sm text-zinc-500">{t.loadingData}</p>
       </div>
     );
   }
@@ -31,7 +35,7 @@ export function DepartmentOverview() {
   if (error) {
     return (
       <div className="rounded-lg bg-white p-6 shadow dark:bg-zinc-900">
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Department Overview</h3>
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t.departmentOverview}</h3>
         <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
       </div>
     );
@@ -39,10 +43,10 @@ export function DepartmentOverview() {
 
   return (
     <div className="rounded-lg bg-white p-6 shadow dark:bg-zinc-900">
-      <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Department Overview</h3>
+      <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t.departmentOverview}</h3>
       <div className="mt-6 space-y-3">
         {departments.length === 0 ? (
-          <p className="text-sm text-zinc-500">Chưa có dữ liệu phòng ban.</p>
+          <p className="text-sm text-zinc-500">{t.noDepartmentData}</p>
         ) : (
           departments.map((dept) => (
             <div key={dept.name} className="flex items-center justify-between">

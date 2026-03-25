@@ -10,7 +10,7 @@ export function StatsCards() {
     {
       label: "Câu hỏi hôm nay",
       value: "—",
-      change: "Dữ liệu từ server",
+      change: null,
       icon: ChatBubbleLeftRightIcon,
       bgColor: "bg-green-100 dark:bg-green-900/30",
       iconColor: "text-green-600 dark:text-green-400",
@@ -18,7 +18,7 @@ export function StatsCards() {
     {
       label: "Độ chính xác",
       value: "—",
-      change: "Dữ liệu từ server",
+      change: null,
       icon: CursorArrowRaysIcon,
       bgColor: "bg-blue-100 dark:bg-blue-900/30",
       iconColor: "text-blue-600 dark:text-blue-400",
@@ -35,7 +35,7 @@ export function StatsCards() {
     {
       label: "Tài liệu truy cập",
       value: "—",
-      change: "Dữ liệu từ server",
+      change: null,
       icon: BookOpenIcon,
       bgColor: "bg-purple-100 dark:bg-purple-900/30",
       iconColor: "text-purple-600 dark:text-purple-400",

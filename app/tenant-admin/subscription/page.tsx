@@ -12,6 +12,8 @@ import type { MySubscriptionResponse } from "@/lib/api/subscription";
 import type { SelectPlanResponse } from "@/lib/api/subscription";
 import type { BillingCycle } from "@/lib/api/subscription";
 import type { SubscriptionTier } from "@/lib/api/subscription";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 type TabId = "plans" | "billing" | "history";
 
@@ -26,6 +28,8 @@ export default function TenantAdminSubscriptionPage() {
   const [paymentPending, setPaymentPending] = useState<SelectPlanResponse | null>(null);
   const [selectPlanLoading, setSelectPlanLoading] = useState(false);
   const [selectPlanError, setSelectPlanError] = useState<string | null>(null);
+  const { language } = useLanguageStore();
+  const t = translations[language];
 
   const loadSubscription = () => {
     setSubscriptionLoading(true);
@@ -88,8 +92,8 @@ export default function TenantAdminSubscriptionPage() {
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <SubscriptionHeader
           backHref="/tenant-admin"
-          title="Tenant Admin / Subscription"
-          description="Xem gói hiện tại, chọn gói mới (QR/bank transfer), hủy gói và xem lịch sử thanh toán. Payment đã tích hợp API."
+          title={t.tenantAdminSubscription}
+          description={t.subscriptionPageDescription}
         />
 
         <section className="mt-6 mb-6">
@@ -105,7 +109,7 @@ export default function TenantAdminSubscriptionPage() {
                 onUpdated={handleSubscriptionUpdated}
               />
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-                <h3 className="mb-2 font-semibold text-zinc-900 dark:text-white">Thanh toán gói subscription</h3>
+                <h3 className="mb-2 font-semibold text-zinc-900 dark:text-white">{t.createPayment} {t.subscription}</h3>
               </div>
             </div>
             {paymentPending && (
@@ -116,7 +120,7 @@ export default function TenantAdminSubscriptionPage() {
               />
             )}
             <div className="mb-8 flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Tier:</span>
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t.tier}:</span>
               <select
                 value={selectedTier}
                 onChange={(e) => setSelectedTier(e.target.value as SubscriptionTier)}
@@ -127,15 +131,15 @@ export default function TenantAdminSubscriptionPage() {
                 <option value="STANDARD">STANDARD</option>
                 <option value="ENTERPRISE">ENTERPRISE</option>
               </select>
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Chu kỳ thanh toán:</span>
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t.billingCycle}:</span>
               <select
                 value={billingCycle}
                 onChange={(e) => setBillingCycle(e.target.value as BillingCycle)}
                 className="rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
               >
-                <option value="MONTHLY">Tháng</option>
-                <option value="QUARTERLY">Quý</option>
-                <option value="YEARLY">Năm</option>
+                <option value="MONTHLY">{t.monthly}</option>
+                <option value="QUARTERLY">{t.quarterly}</option>
+                <option value="YEARLY">{t.yearly}</option>
               </select>
               <button
                 type="button"
@@ -146,7 +150,7 @@ export default function TenantAdminSubscriptionPage() {
                 onClick={handleConfirmPay}
                 className="rounded-xl bg-green-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
               >
-                {selectPlanLoading ? "Đang xử lý…" : `Tạo thanh toán (${selectedTier})`}
+                {selectPlanLoading ? t.processing : `${t.createPayment} (${selectedTier})`}
               </button>
               {selectPlanError && <p className="text-sm text-red-600 dark:text-red-400">{selectPlanError}</p>}
             </div>
@@ -161,10 +165,10 @@ export default function TenantAdminSubscriptionPage() {
         {activeTab === "billing" && (
           <section className="rounded-3xl border-2 border-zinc-200 bg-white p-8 text-sm text-zinc-700 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
             <h2 className="mb-3 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              Thông tin thanh toán
+              {t.billingInfo}
             </h2>
             <p>
-              Thanh toán qua chuyển khoản ngân hàng (QR hoặc chuyển khoản thủ công). Sau khi chọn gói ở tab &quot;Gói dịch vụ&quot;, hệ thống sẽ hiển thị mã giao dịch và thông tin chuyển khoản. Lịch sử giao dịch xem ở tab &quot;Lịch sử&quot;.
+              {t.billingInfoDescription}
             </p>
           </section>
         )}

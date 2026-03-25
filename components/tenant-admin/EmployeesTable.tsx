@@ -19,10 +19,14 @@ import {
   type DepartmentResponse,
   type RoleResponse,
 } from "@/lib/api/tenant-admin";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 type StatusFilter = "ACTIVE" | "INACTIVE" | "ALL";
 
 export function EmployeesTable() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,13 +44,13 @@ export function EmployeesTable() {
     setError(null);
     getTenantUsers(statusFilter)
       .then(setUsers)
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải danh sách"))
+      .catch((e) => setError(e instanceof Error ? e.message : t.errorLoadingData))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     loadUsers();
-  }, [statusFilter]);
+  }, [statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!openMenuId) return;
