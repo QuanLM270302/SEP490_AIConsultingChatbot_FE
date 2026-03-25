@@ -28,7 +28,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
     { name: t.departments, href: "/tenant-admin/departments", icon: Building },
     { name: t.roles, href: "/tenant-admin/roles", icon: Shield },
     { name: t.documents, href: "/tenant-admin/documents", icon: FileText },
-    { name: "AI Chatbot", href: "/chatbot", icon: Bot },
+    { name: "AI Chatbot", href: "/employee/chatplatform", icon: Bot },
     { name: t.analytics, href: "/tenant-admin/analytics", icon: BarChart3 },
     { name: t.subscription, href: "/tenant-admin/subscription", icon: CreditCard },
   ];
@@ -124,13 +124,6 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
                 </div>
               </div>
             </div>
-
-            <Link
-              href="/"
-              className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
-            >
-              ← {t.backToHome}
-            </Link>
           </div>
         </div>
       </aside>

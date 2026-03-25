@@ -46,7 +46,7 @@ export default function TenantAdminPage() {
     {
       title: "AI Chatbot",
       description: "Hỏi đáp AI trên dữ liệu nội bộ",
-      href: "/chatbot",
+      href: "/employee/chatplatform",
       icon: Bot,
       color: "bg-violet-500",
     },

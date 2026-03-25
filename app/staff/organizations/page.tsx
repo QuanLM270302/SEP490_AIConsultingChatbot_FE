@@ -1,0 +1,554 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { StaffLayout } from "@/components/staff/StaffLayout";
+import {
+  Loader2,
+  Eye,
+  Trash2,
+  X,
+} from "lucide-react";
+import {
+  getTenants,
+  getTenantById,
+  approveTenant,
+  suspendTenant,
+  activateTenant,
+  rejectTenant,
+  deleteTenant,
+  type Tenant,
+  type TenantStatus,
+} from "@/lib/api/staff";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
+
+const statusLabel: Record<TenantStatus, Record<'vi' | 'en', string>> = {
+  PENDING: { vi: "Chờ duyệt", en: "Pending" },
+  ACTIVE: { vi: "Đang hoạt động", en: "Active" },
+  REJECTED: { vi: "Từ chối", en: "Rejected" },
+  SUSPENDED: { vi: "Tạm ngưng", en: "Suspended" },
+};
+
+const statusColor: Record<TenantStatus, string> = {
+  PENDING: "bg-amber-500/20 text-amber-700 dark:text-amber-400",
+  ACTIVE: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
+  REJECTED: "bg-red-500/20 text-red-700 dark:text-red-400",
+  SUSPENDED: "bg-zinc-500/20 text-zinc-600 dark:text-zinc-400",
+};
+
+export default function StaffOrganizationsPage() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenantsLoading, setTenantsLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<TenantStatus | "ALL">("ALL");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Modals
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectTenantId, setRejectTenantId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTenantId, setDeleteTenantId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadTenants();
+  }, []);
+
+  const loadTenants = async () => {
+    try {
+      setTenantsLoading(true);
+      const data = await getTenants();
+      setTenants(data);
+    } catch (e) {
+      console.error("Failed to load tenants:", e);
+      setError("Không thể tải danh sách tenant");
+    } finally {
+      setTenantsLoading(false);
+    }
+  };
+
+  const openRejectModal = (tenantId: string) => {
+    setRejectTenantId(tenantId);
+    setRejectModalOpen(true);
+  };
+
+  const openDetailModal = async (tenantId: string) => {
+    setDetailModalOpen(true);
+    setSelectedTenant(null);
+    try {
+      const tenant = await getTenantById(tenantId);
+      setSelectedTenant(tenant);
+    } catch (e) {
+      console.error("Failed to load tenant details:", e);
+      setError("Không thể tải chi tiết tenant");
+    }
+  };
+
+  const openDeleteModal = (tenantId: string) => {
+    setDeleteTenantId(tenantId);
+    setDeleteModalOpen(true);
+  };
+
+  const handleApprove = async (tenantId: string) => {
+    try {
+      setActionLoading(tenantId);
+      setError(null);
+      await approveTenant(tenantId);
+      await loadTenants();
+    } catch (e: any) {
+      setError(e.message || "Không thể phê duyệt tenant");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectTenantId || !rejectReason.trim()) return;
+    try {
+      setActionLoading(rejectTenantId);
+      setError(null);
+      await rejectTenant(rejectTenantId, rejectReason);
+      await loadTenants();
+      setRejectModalOpen(false);
+      setRejectTenantId(null);
+      setRejectReason("");
+    } catch (e: any) {
+      setError(e.message || "Không thể từ chối tenant");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSuspend = async (tenantId: string) => {
+    try {
+      setActionLoading(tenantId);
+      setError(null);
+      await suspendTenant(tenantId);
+      await loadTenants();
+    } catch (e: any) {
+      setError(e.message || "Không thể tạm ngưng tenant");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleActivate = async (tenantId: string) => {
+    try {
+      setActionLoading(tenantId);
+      setError(null);
+      await activateTenant(tenantId);
+      await loadTenants();
+    } catch (e: any) {
+      setError(e.message || "Không thể kích hoạt lại tenant");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTenantId) return;
+    try {
+      setActionLoading(deleteTenantId);
+      setError(null);
+      await deleteTenant(deleteTenantId);
+      await loadTenants();
+      setDeleteModalOpen(false);
+      setDeleteTenantId(null);
+    } catch (e: any) {
+      setError(e.message || "Không thể xóa tenant");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const filteredTenants =
+    statusFilter === "ALL"
+      ? tenants
+      : tenants.filter((t) => t.status === statusFilter);
+
+  return (
+    <StaffLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            {t.manageOrganizations}
+          </h1>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {t.organizationsDescription}
+          </p>
+        </div>
+
+        {/* Status Filter */}
+        <div className="flex flex-wrap gap-2">
+          {(["ALL", "PENDING", "ACTIVE", "REJECTED", "SUSPENDED"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStatusFilter(s)}
+              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                statusFilter === s
+                  ? "bg-emerald-500 text-white"
+                  : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {s === "ALL" ? t.all : statusLabel[s][language]}
+            </button>
+          ))}
+        </div>
+
+        {/* Tenants Table */}
+        {tenantsLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-3xl bg-white p-8 dark:bg-zinc-950">
+            <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+            <span className="text-sm text-zinc-500">{t.loadingList}</span>
+          </div>
+        ) : filteredTenants.length === 0 ? (
+          <div className="rounded-3xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+            {t.noTenants}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/50">
+                    <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{t.nameEmail}</th>
+                    <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{t.status}</th>
+                    <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{t.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTenants.map((tenant) => (
+                    <tr
+                      key={tenant.id}
+                      className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-zinc-900 dark:text-zinc-50">{tenant.name}</div>
+                        <div className="text-xs text-zinc-500">{tenant.contactEmail}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[tenant.status]}`}
+                        >
+                          {statusLabel[tenant.status][language]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openDetailModal(tenant.id)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600"
+                            title={t.viewDetail}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+
+                          {tenant.status === "PENDING" && (
+                            <>
+                              <button
+                                type="button"
+                                disabled={actionLoading === tenant.id}
+                                onClick={() => handleApprove(tenant.id)}
+                                className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+                              >
+                                {actionLoading === tenant.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : null}
+                                {t.approve}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={actionLoading === tenant.id}
+                                onClick={() => openRejectModal(tenant.id)}
+                                className="inline-flex items-center gap-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600 disabled:opacity-50"
+                              >
+                                {t.reject}
+                              </button>
+                            </>
+                          )}
+                          {tenant.status === "ACTIVE" && (
+                            <button
+                              type="button"
+                              disabled={actionLoading === tenant.id}
+                              onClick={() => handleSuspend(tenant.id)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+                            >
+                              {actionLoading === tenant.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : null}
+                              {t.suspend}
+                            </button>
+                          )}
+                          {tenant.status === "SUSPENDED" && (
+                            <button
+                              type="button"
+                              disabled={actionLoading === tenant.id}
+                              onClick={() => handleActivate(tenant.id)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+                            >
+                              {actionLoading === tenant.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : null}
+                              {t.reactivate}
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => openDeleteModal(tenant.id)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                            title={t.delete}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+            {error}
+          </div>
+        )}
+      </div>
+
+      {/* Reject Modal */}
+      {rejectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              {t.rejectTenant}
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              {t.rejectReason}
+            </p>
+            
+            {error && (
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+                {error}
+              </div>
+            )}
+            
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder={t.rejectReasonPlaceholder}
+              rows={4}
+              className="mt-4 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:placeholder-zinc-500"
+            />
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectModalOpen(false);
+                  setRejectTenantId(null);
+                  setRejectReason("");
+                  setError(null);
+                }}
+                disabled={actionLoading !== null}
+                className="flex-1 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-300 disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={handleReject}
+                disabled={actionLoading !== null || !rejectReason.trim()}
+                className="flex-1 rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
+              >
+                {actionLoading === rejectTenantId ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t.processing}
+                  </span>
+                ) : (
+                  t.confirmReject
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
+            <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">
+              {t.deleteTenant}
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              {t.deleteConfirm}
+            </p>
+            
+            {error && (
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+                {error}
+              </div>
+            )}
+            
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setDeleteTenantId(null);
+                  setError(null);
+                }}
+                disabled={actionLoading !== null}
+                className="flex-1 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-300 disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={actionLoading !== null}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {actionLoading === deleteTenantId ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t.deleting}
+                  </span>
+                ) : (
+                  t.confirmDelete
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {detailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                {t.tenantDetail}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailModalOpen(false);
+                  setSelectedTenant(null);
+                }}
+                className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {!selectedTenant ? (
+              <div className="flex items-center justify-center gap-2 py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+                <span className="text-sm text-zinc-500">{t.loading}</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.organizationName}</label>
+                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.name}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.status}</label>
+                    <p className="mt-1">
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[selectedTenant.status]}`}>
+                        {statusLabel[selectedTenant.status][language]}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.contactEmail}</label>
+                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.contactEmail}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.companySize}</label>
+                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.companySize || "N/A"}</p>
+                  </div>
+                  {selectedTenant.address && (
+                    <div className="col-span-2">
+                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.address}</label>
+                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.address}</p>
+                    </div>
+                  )}
+                  {selectedTenant.website && (
+                    <div className="col-span-2">
+                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.website}</label>
+                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
+                        <a href={selectedTenant.website} target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">
+                          {selectedTenant.website}
+                        </a>
+                      </p>
+                    </div>
+                  )}
+                  {selectedTenant.representativeName && (
+                    <div>
+                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.representative}</label>
+                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.representativeName}</p>
+                    </div>
+                  )}
+                  {selectedTenant.representativePosition && (
+                    <div>
+                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.position}</label>
+                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.representativePosition}</p>
+                    </div>
+                  )}
+                  {selectedTenant.representativePhone && (
+                    <div>
+                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.phone}</label>
+                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.representativePhone}</p>
+                    </div>
+                  )}
+                  {selectedTenant.subscriptionId && (
+                    <div>
+                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.subscriptionId}</label>
+                      <p className="mt-1 text-xs font-mono text-zinc-900 dark:text-zinc-50">{selectedTenant.subscriptionId}</p>
+                    </div>
+                  )}
+                  {selectedTenant.requestedAt && (
+                    <div>
+                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.requestDate}</label>
+                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
+                        {new Date(selectedTenant.requestedAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                      </p>
+                    </div>
+                  )}
+                  {selectedTenant.reviewedAt && (
+                    <div>
+                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.reviewDate}</label>
+                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
+                        {new Date(selectedTenant.reviewedAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                      </p>
+                    </div>
+                  )}
+                  {selectedTenant.reviewedBy && (
+                    <div>
+                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.reviewer}</label>
+                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.reviewedBy}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </StaffLayout>
+  );
+}

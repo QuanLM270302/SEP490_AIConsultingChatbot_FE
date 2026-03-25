@@ -72,11 +72,6 @@ export function OrganizationStats() {
               <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
                 {display(key)}
               </p>
-              {!error && !loading && key !== "growth" && (
-                <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-semibold text-green-600 dark:text-green-400">
-                  Dữ liệu từ server
-                </div>
-              )}
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-green-500/10">
               <Icon className="h-5 w-5 text-green-500" />
