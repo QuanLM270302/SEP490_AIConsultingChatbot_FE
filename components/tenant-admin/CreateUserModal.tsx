@@ -10,6 +10,8 @@ interface CreateUserModalProps {
   onSuccess: () => void;
 }
 
+const SYSTEM_ROLES_TO_EXCLUDE = ['TENANT_ADMIN', 'SUPER_ADMIN', 'STAFF'];
+
 export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalProps) {
   const [fullName, setFullName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -118,7 +120,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
               className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
             >
               <option value="">-- Chọn --</option>
-              {roles.map((r) => (
+              {roles.filter((r) => !SYSTEM_ROLES_TO_EXCLUDE.some((s) => r.code?.includes(s))).map((r) => (
                 <option key={r.id} value={r.id}>{r.name ?? r.code ?? r.id}</option>
               ))}
             </select>
