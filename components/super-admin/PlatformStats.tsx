@@ -42,6 +42,7 @@ export function PlatformStats() {
   const t = translations[language];
   const [parsed, setParsed] = useState<ParsedPlatformDashboard>(EMPTY_PARSED);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const roles = getStoredUser()?.roles ?? [];
   const isStaff = roles.some((role) => role.includes("STAFF"));
@@ -58,10 +59,13 @@ export function PlatformStats() {
       if (!ok) {
         setParsed(EMPTY_PARSED);
         setLoading(false);
+        setError(true);
+        console.error("PlatformStats: failed to load dashboard stats");
         return;
       }
       setParsed(parsePlatformDashboardJson(staff, data));
       setLoading(false);
+      setError(false);
     };
 
     void load();

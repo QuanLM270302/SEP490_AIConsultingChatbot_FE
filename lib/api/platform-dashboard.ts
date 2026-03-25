@@ -113,13 +113,15 @@ export function parsePlatformDashboardJson(
 
   const adminDocumentsTotal = isStaff
     ? 0
-    : safeNum(documents.total) ||
+    : safeNum(documents.totalDocuments) ||
+      safeNum(documents.total) ||
       safeNum(data.totalDocuments) ||
       safeNum((data.documentStats as Record<string, unknown> | undefined)?.total);
 
   const adminLlmQueriesTotal = isStaff
     ? 0
-    : safeNum(llmUsage.totalQueries) ||
+    : safeNum(llmUsage.totalRequests) ||
+      safeNum(llmUsage.totalQueries) ||
       safeNum(llmUsage.queries) ||
       safeNum(llmUsage.total) ||
       safeNum(data.totalAiQueries);
@@ -150,10 +152,22 @@ export async function fetchPlatformDashboard(isStaff: boolean): Promise<{
   const endpoint = isStaff
     ? `${STAFF_BASE}/analytics/dashboard`
     : `${ADMIN_BASE}/analytics/dashboard`;
-  const res = await fetchWithAuth(endpoint);
-  if (!res.ok) return { ok: false, data: {} };
-  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  return { ok: true, data };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetchWithAuth(endpoint, { signal: controller.signal });
+    if (!res.ok) {
+      console.error("Platform dashboard fetch failed");
+      return { ok: false, data: {} };
+    }
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return { ok: true, data };
+  } catch (err) {
+    console.error("Platform dashboard fetch failed:", err);
+    return { ok: false, data: {} };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**
