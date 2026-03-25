@@ -152,21 +152,27 @@ export async function fetchPlatformDashboard(isStaff: boolean): Promise<{
   const endpoint = isStaff
     ? `${STAFF_BASE}/analytics/dashboard`
     : `${ADMIN_BASE}/analytics/dashboard`;
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), 15000); // 15 seconds
+
   try {
     const res = await fetchWithAuth(endpoint, { signal: controller.signal });
+    clearTimeout(timeout); // MUST clear before processing response
     if (!res.ok) {
-      console.error("Platform dashboard fetch failed");
+      console.error(`Platform dashboard fetch failed: ${res.status}`);
       return { ok: false, data: {} };
     }
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     return { ok: true, data };
   } catch (err) {
-    console.error("Platform dashboard fetch failed:", err);
-    return { ok: false, data: {} };
-  } finally {
     clearTimeout(timeout);
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.error('Platform dashboard fetch timed out after 15s');
+    } else {
+      console.error('Platform dashboard fetch error:', err);
+    }
+    return { ok: false, data: {} };
   }
 }
 
