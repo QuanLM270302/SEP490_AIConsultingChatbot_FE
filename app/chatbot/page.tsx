@@ -110,7 +110,11 @@ export default function ChatbotPage() {
       const newMessage: Message = {
         id: userMessageId,
         question,
-        answer: response.answer,
+        answer: response.answer && response.answer.includes("I apologize, but I encountered an error")
+          ? isEn
+            ? "Sorry, the system is busy. Please try again later."
+            : "Xin lỗi, hệ thống đang bận. Vui lòng thử lại sau."
+          : response.answer,
         references,
         timestamp: new Date(),
         rating: null,
@@ -119,23 +123,18 @@ export default function ChatbotPage() {
       setMessages((prev) => [newMessage, ...prev]);
       setCurrentQuestion("");
       setSelectedMessage(newMessage.id);
-    } catch (err) {
-      const message = err instanceof Error
-        ? err.message
-        : isEn
-          ? "Cannot connect to chatbot. Please try again."
-          : "Không thể kết nối tới chatbot. Vui lòng thử lại.";
-      setError(message);
+    } catch (_err) {
       const fallbackMessage: Message = {
         id: userMessageId,
         question,
         answer: isEn
-          ? `**Error:** ${message}\n\nPlease check your network connection or contact your administrator if the issue persists.`
-          : `**Lỗi:** ${message}\n\nKiểm tra kết nối mạng hoặc liên hệ quản trị viên nếu lỗi tiếp tục.`,
+          ? "Sorry, the system is busy. Please try again later."
+          : "Xin lỗi, hệ thống đang bận. Vui lòng thử lại sau.",
         references: [],
         timestamp: new Date(),
         rating: null,
       };
+      setError(isEn ? "Failed to get a response from the chatbot." : "Không thể nhận phản hồi từ chatbot.");
       setMessages((prev) => [fallbackMessage, ...prev]);
       setSelectedMessage(fallbackMessage.id);
     } finally {
