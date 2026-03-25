@@ -1,10 +1,13 @@
 "use client";
 
 import { PieChart } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 const planData: { name: string; count: number; color: string; percentage: number }[] = [];
 
 export function TenantDistribution() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const total = planData.reduce((sum, plan) => sum + plan.count, 0);
 
   return (
@@ -18,7 +21,7 @@ export function TenantDistribution() {
             Plan Distribution
           </h3>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Phân bố tenant theo gói
+            {isEn ? "Tenant distribution by plan" : "Phân bố tenant theo gói"}
           </p>
         </div>
       </div>
@@ -29,7 +32,7 @@ export function TenantDistribution() {
           {total}
         </p>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Total Tenants
+          {isEn ? "Total Tenants" : "Tổng tenant"}
         </p>
       </div>
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
-import Link from "next/link";
 import {
   UserCircleIcon,
   PencilSquareIcon,
@@ -12,11 +11,9 @@ import {
   BuildingOffice2Icon,
   CalendarDaysIcon,
   ClockIcon,
-  ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { getStoredUser } from "@/lib/auth-store";
-import { roleToPath } from "@/lib/auth-routes";
 import {
   getProfile,
   updateProfile,
@@ -210,7 +207,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen overflow-x-hidden bg-linear-to-br from-zinc-50 via-emerald-50/30 to-violet-50/30 dark:from-zinc-950 dark:via-emerald-950/20 dark:to-violet-950/20">
+      <div className="min-h-screen overflow-x-hidden bg-white dark:bg-zinc-950">
         <AppHeader />
         <main className="flex flex-1 items-center justify-center px-6 py-10">
           <div className="flex flex-col items-center gap-3">
@@ -224,7 +221,7 @@ export default function ProfilePage() {
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen overflow-x-hidden bg-linear-to-br from-zinc-50 via-emerald-50/30 to-violet-50/30 dark:from-zinc-950 dark:via-emerald-950/20 dark:to-violet-950/20">
+      <div className="min-h-screen overflow-x-hidden bg-white dark:bg-zinc-950">
         <AppHeader />
         <main className="flex flex-1 items-center justify-center px-6 py-10">
           <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-6 py-4 text-rose-800 shadow-lg dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
@@ -235,26 +232,10 @@ export default function ProfilePage() {
     );
   }
 
-  const user = getStoredUser();
-  const backHref = user?.roles?.length ? roleToPath(user.roles) : "/";
-
   return (
-    <div className="min-h-screen overflow-x-hidden bg-linear-to-br from-zinc-50 via-emerald-50/30 to-violet-50/30 dark:from-zinc-950 dark:via-emerald-950/20 dark:to-violet-950/20">
+    <div className="min-h-screen overflow-x-hidden bg-white dark:bg-zinc-950">
       <AppHeader />
       <main className="min-w-0 overflow-auto">
-        {/* Back bar — full width like header */}
-        <div className="border-b border-zinc-200/80 bg-white/80 py-3 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80">
-          <div className="mx-auto flex h-10 max-w-6xl items-center px-4 sm:px-6 lg:px-8">
-            <Link
-              href={backHref}
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200/80 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow hover:shadow-emerald-500/10 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300 dark:hover:border-emerald-500/50 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
-            >
-              <ArrowLeftIcon className="h-4 w-4 shrink-0" />
-              <span>Back</span>
-            </Link>
-          </div>
-        </div>
-
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Hero */}
         <div className="mb-6">
@@ -387,7 +368,7 @@ export default function ProfilePage() {
                     value={newContactEmail}
                     onChange={(e) => setNewContactEmail(e.target.value)}
                     className={inputClass}
-                    placeholder="name@company.com"
+                    placeholder="email@example.com"
                     required
                   />
                 </div>

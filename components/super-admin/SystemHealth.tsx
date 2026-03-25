@@ -1,4 +1,5 @@
 import { CheckCircle, AlertCircle } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 const services = [
   { name: "API Server", status: "operational", uptime: "99.99%" },
@@ -9,13 +10,15 @@ const services = [
 ];
 
 export function SystemHealth() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   return (
     <div className="rounded-3xl bg-white p-6 shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
       <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
         System Health
       </h3>
       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-        Tình trạng các dịch vụ hệ thống
+        {isEn ? "System service health status" : "Tình trạng các dịch vụ hệ thống"}
       </p>
       
       <div className="mt-6 space-y-3">
@@ -41,7 +44,9 @@ export function SystemHealth() {
                   {service.name}
                 </p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {service.status === "operational" ? "Hoạt động bình thường" : "Hiệu suất giảm"}
+                  {service.status === "operational"
+                    ? (isEn ? "Operational" : "Hoạt động bình thường")
+                    : (isEn ? "Degraded performance" : "Hiệu suất giảm")}
                 </p>
               </div>
             </div>

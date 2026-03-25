@@ -1,6 +1,7 @@
 "use client";
 
 import { DollarSign, TrendingUp } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 const revenueData = [
   { month: "Jan", revenue: 45000, growth: 12 },
@@ -12,6 +13,8 @@ const revenueData = [
 ];
 
 export function RevenueChart() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const maxValue = Math.max(...revenueData.map((d) => d.revenue));
   const totalRevenue = revenueData.reduce((sum, d) => sum + d.revenue, 0);
   const avgGrowth = (revenueData.reduce((sum, d) => sum + d.growth, 0) / revenueData.length).toFixed(1);
@@ -29,7 +32,7 @@ export function RevenueChart() {
             </h3>
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Doanh thu theo tháng (USD)
+            {isEn ? "Monthly revenue (USD)" : "Doanh thu theo tháng (USD)"}
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-2xl bg-blue-500/20 px-4 py-2">
@@ -78,7 +81,7 @@ export function RevenueChart() {
       <div className="grid grid-cols-3 gap-6 rounded-2xl bg-white/60 p-5 dark:bg-zinc-800/40">
         <div className="text-center">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Total
+            {isEn ? "Total" : "Tổng"}
           </p>
           <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">
             ${(totalRevenue / 1000).toFixed(0)}K
@@ -94,7 +97,7 @@ export function RevenueChart() {
         </div>
         <div className="text-center">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Best Month
+            {isEn ? "Best Month" : "Tháng cao nhất"}
           </p>
           <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">
             ${(maxValue / 1000).toFixed(0)}K

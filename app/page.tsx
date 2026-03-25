@@ -4,11 +4,16 @@ import { motion } from "framer-motion";
 import { Search, Shield, Database, Sparkles, ArrowRight, CheckCircle2, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAppTheme } from "@/lib/use-app-theme";
+import { getAccessToken, getStoredUser } from "@/lib/auth-store";
+import { roleToPath } from "@/lib/auth-routes";
 
 export default function Home() {
+  const router = useRouter();
   const [text, setText] = useState("");
   const [qaIndex, setQaIndex] = useState(0);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggleTheme: toggleAppTheme } = useAppTheme();
   const [themeReady, setThemeReady] = useState(false);
 
   const qaData = [
@@ -55,6 +60,14 @@ export default function Home() {
   ];
 
   useEffect(() => {
+    const token = getAccessToken();
+    const user = getStoredUser();
+    if (token && user?.roles?.length) {
+      router.replace(roleToPath(user.roles));
+    }
+  }, [router]);
+
+  useEffect(() => {
     const currentQA = qaData[qaIndex];
     if (!currentQA) return;
 
@@ -76,26 +89,11 @@ export default function Home() {
   }, [qaData.length]);
 
   useEffect(() => {
-    const saved =
-      typeof window !== "undefined" ? localStorage.getItem("theme") : null;
-    const preferred =
-      saved === "light" || saved === "dark"
-        ? saved
-        : window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light";
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(preferred);
-    setTheme(preferred);
     setThemeReady(true);
   }, []);
 
   const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(next);
-    localStorage.setItem("theme", next);
-    setTheme(next);
+    toggleAppTheme();
   };
 
   const currentQA = qaData[qaIndex];

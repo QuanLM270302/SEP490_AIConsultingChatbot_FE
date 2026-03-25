@@ -7,16 +7,16 @@ export default function AuthTemplate({
 }: {
   children: React.ReactNode;
 }) {
-  const reduce = useReducedMotion();
+  const reduceMotion = useReducedMotion();
 
   return (
     <motion.div
       className="min-h-screen w-full"
-      initial={reduce ? false : { opacity: 0, y: 20 }}
-      animate={reduce ? false : { opacity: 1, y: 0 }}
+      initial={reduceMotion ? false : { opacity: 0, scale: 0.995 }}
+      animate={reduceMotion ? false : { opacity: 1, scale: 1 }}
       transition={{
-        duration: 0.42,
-        ease: [0.22, 1, 0.36, 1],
+        duration: 0.32,
+        ease: "easeOut",
       }}
     >
       {children}

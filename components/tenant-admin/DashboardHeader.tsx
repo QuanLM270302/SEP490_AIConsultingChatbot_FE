@@ -4,9 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import { Menu, User, LogOut, Settings, Sun, Moon, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/api/auth";
-import { getAccessToken, clearAuth } from "@/lib/auth-store";
+import { getAccessToken, clearAuth, getStoredUser } from "@/lib/auth-store";
+import { getProfile } from "@/lib/api/profile";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { useAppTheme } from "@/lib/use-app-theme";
+
+const TENANT_FALLBACK_EMAIL = "tenantadmin@company.vn";
 
 interface DashboardHeaderProps {
   title: string;
@@ -17,28 +21,33 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const { theme, toggleTheme } = useAppTheme();
+  const [displayName, setDisplayName] = useState(
+    () => TENANT_FALLBACK_EMAIL.split("@")[0] || "Tenant Admin"
+  );
+  const [displayEmail, setDisplayEmail] = useState(TENANT_FALLBACK_EMAIL);
   const { language, toggleLanguage } = useLanguageStore();
   const menuRef = useRef<HTMLDivElement>(null);
-  
+
   const t = translations[language];
 
-  // Load theme from localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-    }
+    const email = getStoredUser()?.email ?? TENANT_FALLBACK_EMAIL;
+    setDisplayEmail(email);
+    setDisplayName(email.split("@")[0] || "Tenant Admin");
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-  };
+  useEffect(() => {
+    getProfile()
+      .then((profile) => {
+        if (profile?.fullName?.trim()) {
+          setDisplayName(profile.fullName.trim());
+        }
+      })
+      .catch(() => {
+        // Keep fallback from auth store email when profile request fails.
+      });
+  }, []);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -80,7 +89,7 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
         className="rounded-2xl bg-white p-3 text-zinc-700 shadow-sm shadow-green-100/60 dark:bg-zinc-950 dark:text-zinc-400 lg:hidden"
         onClick={onMenuClick}
       >
-        <span className="sr-only">Open sidebar</span>
+        <span className="sr-only">{t.openSidebar}</span>
         <Menu className="h-5 w-5" />
       </button>
 
@@ -95,7 +104,7 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
               <User className="h-4 w-4 text-white" />
             </div>
             <span className="hidden text-sm font-semibold text-zinc-900 dark:text-white lg:block">
-              Tenant Admin
+              {displayName}
             </span>
             <svg
               className={`hidden h-4 w-4 text-zinc-400 transition-transform lg:block ${
@@ -119,8 +128,8 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
                     <User className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">Tenant Admin</p>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400">admin@company.com</p>
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">{displayName}</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">{displayEmail}</p>
                   </div>
                 </div>
               </div>
