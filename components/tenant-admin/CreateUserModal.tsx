@@ -56,12 +56,13 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
     }
     setLoading(true);
     try {
+      const cleanPhone = phoneNumber.replace(/-/g, '');
       const body: CreateUserRequest = {
         fullName: fullName.trim(),
         contactEmail: contactEmail.trim(),
         roleId: Number(roleId),
       };
-      if (phoneNumber.trim()) body.phoneNumber = phoneNumber.trim();
+      if (cleanPhone.trim()) body.phoneNumber = cleanPhone.trim();
       if (departmentId !== "") body.departmentId = Number(departmentId);
       await createTenantUser(body);
       onSuccess();
@@ -110,6 +111,9 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
               onChange={(e) => setPhoneNumber(e.target.value)}
               className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
             />
+            <p className="mt-1 text-xs text-zinc-500">
+              Định dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx (không dùng dấu gạch ngang)
+            </p>
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-500">Vai trò *</label>
