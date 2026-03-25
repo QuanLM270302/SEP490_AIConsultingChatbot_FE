@@ -53,7 +53,7 @@ export default function TenantAdminPage() {
     {
       title: t.aiChatbot,
       description: t.aiChatbotDescription,
-      href: "/employee/chatplatform",
+      href: "/chatbot",
       icon: Bot,
       color: "bg-violet-500",
     },
