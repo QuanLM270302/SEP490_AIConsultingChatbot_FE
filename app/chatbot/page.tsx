@@ -8,7 +8,7 @@ import { ChatMessageList } from "@/components/chat/ChatMessageList";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { chat } from "@/lib/api/chatbot";
+import { chat, getConversationHistory } from "@/lib/api/chatbot";
 import { listCategoriesFlat } from "@/lib/api/categories";
 import { listTagsActive } from "@/lib/api/tags";
 import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
@@ -176,6 +176,39 @@ export default function ChatbotPage() {
         onToggle={() => setIsHistoryOpen((prev) => !prev)}
         onSelectChat={(chatId) => {
           setCurrentChatId(chatId || null);
+          if (chatId) {
+            getConversationHistory(chatId).then((history) => {
+              if (history) {
+                // Pair consecutive USER + ASSISTANT messages into single Message objects
+                const msgs: Message[] = [];
+                for (let i = 0; i < history.messages.length; i += 2) {
+                  const userMsg = history.messages[i];
+                  const aiMsg = history.messages[i + 1];
+                  msgs.push({
+                    id: aiMsg?.id ?? userMsg?.id ?? "",
+                    question: userMsg?.content ?? "",
+                    answer: aiMsg?.content ?? "",
+                    references: (aiMsg?.sources ?? []).map((s) => ({
+                      documentId: s.documentId,
+                      documentName: s.fileName,
+                      excerpt: s.chunkContent ?? "",
+                      confidence: s.relevanceScore,
+                    })),
+                    timestamp: new Date(aiMsg?.createdAt ?? userMsg?.createdAt ?? new Date()),
+                    rating: (aiMsg?.rating as "helpful" | "not-helpful" | null) ?? null,
+                  });
+                }
+                setMessages(msgs.reverse());
+              }
+            });
+          } else {
+            setMessages([]);
+          }
+        }}
+        onNewChat={() => {
+          setConversationId(null);
+          setMessages([]);
+          setCurrentChatId(null);
         }}
         currentChatId={currentChatId}
       />
