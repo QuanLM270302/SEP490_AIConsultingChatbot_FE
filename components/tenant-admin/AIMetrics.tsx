@@ -1,39 +1,44 @@
 "use client";
 
 import { Zap, CheckCircle, AlertTriangle, Clock } from "lucide-react";
-
-const metrics = [
-  {
-    name: "Total Queries",
-    value: "24,680",
-    subtitle: "This month",
-    icon: Zap,
-    color: "blue",
-  },
-  {
-    name: "Success Rate",
-    value: "96.8%",
-    subtitle: "+1.2% from last month",
-    icon: CheckCircle,
-    color: "green",
-  },
-  {
-    name: "Avg Response Time",
-    value: "1.8s",
-    subtitle: "-0.2s improvement",
-    icon: Clock,
-    color: "purple",
-  },
-  {
-    name: "Low Confidence",
-    value: "3.2%",
-    subtitle: "124 responses",
-    icon: AlertTriangle,
-    color: "amber",
-  },
-];
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 export function AIMetrics() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  
+  const metrics = [
+    {
+      name: t.totalQueries,
+      value: "24,680",
+      subtitle: t.thisMonth,
+      icon: Zap,
+      color: "blue" as const,
+    },
+    {
+      name: t.successRate,
+      value: "96.8%",
+      subtitle: `+1.2% ${t.fromLastMonth}`,
+      icon: CheckCircle,
+      color: "green" as const,
+    },
+    {
+      name: t.avgResponseTime,
+      value: "1.8s",
+      subtitle: `-0.2s ${t.improvement}`,
+      icon: Clock,
+      color: "purple" as const,
+    },
+    {
+      name: t.lowConfidence,
+      value: "3.2%",
+      subtitle: `124 ${t.responses}`,
+      icon: AlertTriangle,
+      color: "amber" as const,
+    },
+  ];
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {metrics.map((metric) => {

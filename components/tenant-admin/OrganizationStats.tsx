@@ -3,20 +3,24 @@
 import { useState, useEffect } from "react";
 import { Users, Building, Shield, TrendingUp } from "lucide-react";
 import { getTenantDashboard, getTenantDepartments, getTenantRoles } from "@/lib/api/tenant-admin";
-
-const statConfig = [
-  { key: "employees" as const, name: "Total Employees", icon: Users },
-  { key: "departments" as const, name: "Departments", icon: Building },
-  { key: "roles" as const, name: "Active Roles", icon: Shield },
-  { key: "growth" as const, name: "Growth Rate", icon: TrendingUp },
-];
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 export function OrganizationStats() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalUsers, setTotalUsers] = useState<number | null>(null);
   const [departmentCount, setDepartmentCount] = useState<number | null>(null);
   const [roleCount, setRoleCount] = useState<number | null>(null);
+  
+  const statConfig = [
+    { key: "employees" as const, name: t.totalEmployees, icon: Users },
+    { key: "departments" as const, name: t.departments, icon: Building },
+    { key: "roles" as const, name: t.activeRoles, icon: Shield },
+    { key: "growth" as const, name: t.growthRate, icon: TrendingUp },
+  ];
 
   useEffect(() => {
     let cancelled = false;
@@ -34,13 +38,13 @@ export function OrganizationStats() {
         setRoleCount(roles?.length ?? null);
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Lỗi tải dữ liệu");
+        if (!cancelled) setError(e instanceof Error ? e.message : t.errorLoadingData);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [t.errorLoadingData]);
 
   const display = (key: string) => {
     if (loading) return "…";

@@ -1,6 +1,8 @@
 "use client";
 
 import { MessageSquare, TrendingUp } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 const usageData = [
   { day: "Mon", queries: 980 },
@@ -13,6 +15,9 @@ const usageData = [
 ];
 
 export function AIUsageChart() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  
   const maxValue = Math.max(...usageData.map((d) => d.queries));
   const totalQueries = usageData.reduce((sum, d) => sum + d.queries, 0);
   const avgQueries = Math.round(totalQueries / usageData.length);
@@ -26,17 +31,17 @@ export function AIUsageChart() {
               <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <h3 className="text-xl font-bold text-zinc-900 dark:text-white">
-              AI Usage This Week
+              {t.aiUsageThisWeek}
             </h3>
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Số lượng truy vấn AI theo ngày
+            {t.aiQueriesPerDay}
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-2xl bg-blue-500/20 px-4 py-2">
           <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-            {avgQueries}/day
+            {avgQueries}{t.perDay}
           </span>
         </div>
       </div>
@@ -73,7 +78,7 @@ export function AIUsageChart() {
       <div className="grid grid-cols-3 gap-6 rounded-2xl bg-white/60 p-5 dark:bg-zinc-800/40">
         <div className="text-center">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Total
+            {t.total}
           </p>
           <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">
             {totalQueries.toLocaleString()}
@@ -81,7 +86,7 @@ export function AIUsageChart() {
         </div>
         <div className="text-center border-x border-zinc-200 dark:border-zinc-700">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Avg/Day
+            {t.avgPerDay}
           </p>
           <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">
             {avgQueries}
@@ -89,7 +94,7 @@ export function AIUsageChart() {
         </div>
         <div className="text-center">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Peak
+            {t.peak}
           </p>
           <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">
             {maxValue}

@@ -15,10 +15,14 @@ import {
   type RoleResponse,
 } from "@/lib/api/tenant-admin";
 import { Eye, Loader2, MoreVertical, Pencil, Plus, Shield, Trash2 } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 type FilterMode = "all" | "custom" | "fixed";
 
 export default function TenantAdminRolesPage() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [filter, setFilter] = useState<FilterMode>("all");
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [permissions, setPermissions] = useState<{ code: string; name?: string }[]>([]);
@@ -123,9 +127,9 @@ export default function TenantAdminRolesPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Roles & Permissions</h1>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t.rolesAndPermissions}</h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Quản lý fixed roles và custom roles trong tenant
+              {t.manageRolesDescription}
             </p>
           </div>
           <button
@@ -134,7 +138,7 @@ export default function TenantAdminRolesPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600"
           >
             <Plus className="h-4 w-4" />
-            Tạo custom role
+            {t.addCustomRole}
           </button>
         </div>
 
@@ -150,7 +154,7 @@ export default function TenantAdminRolesPage() {
                   : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               }`}
             >
-              {f === "all" ? "Tất cả" : f === "custom" ? "Custom roles" : "Fixed roles"}
+              {f === "all" ? t.all : f === "custom" ? t.customRoles : t.fixedRoles}
             </button>
           ))}
         </div>
@@ -159,7 +163,7 @@ export default function TenantAdminRolesPage() {
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12">
               <Loader2 className="h-5 w-5 animate-spin text-green-500" />
-              <span className="text-sm text-zinc-500">Đang tải roles…</span>
+              <span className="text-sm text-zinc-500">{t.loading}…</span>
             </div>
           ) : error ? (
             <div className="p-5 text-sm text-red-600 dark:text-red-400">{error}</div>
@@ -168,18 +172,18 @@ export default function TenantAdminRolesPage() {
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="border-b border-zinc-200 bg-zinc-50/60 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
                   <tr>
-                    <th className="px-6 py-4 font-medium">Role</th>
-                    <th className="px-6 py-4 font-medium">Code</th>
-                    <th className="px-6 py-4 font-medium">Users</th>
-                    <th className="px-6 py-4 font-medium">Type</th>
-                    <th className="px-6 py-4 font-medium text-right">Thao tác</th>
+                    <th className="px-6 py-4 font-medium">{t.roleLabel}</th>
+                    <th className="px-6 py-4 font-medium">{t.codeLabel}</th>
+                    <th className="px-6 py-4 font-medium">{t.usersCount}</th>
+                    <th className="px-6 py-4 font-medium">{t.typeLabel}</th>
+                    <th className="px-6 py-4 font-medium text-right">{t.thaoTac}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                   {roles.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
-                        Không có role nào.
+                        {t.noData}
                       </td>
                     </tr>
                   ) : (
@@ -189,7 +193,7 @@ export default function TenantAdminRolesPage() {
                         <tr key={role.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
                           <td className="px-6 py-4">
                             <p className="font-medium text-zinc-900 dark:text-white">{role.name ?? "—"}</p>
-                            <p className="text-xs text-zinc-500">{role.description ?? "Không có mô tả"}</p>
+                            <p className="text-xs text-zinc-500">{role.description ?? (language === "vi" ? "Không có mô tả" : "No description")}</p>
                           </td>
                           <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.code ?? "—"}</td>
                           <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.usersCount ?? 0}</td>
@@ -197,11 +201,11 @@ export default function TenantAdminRolesPage() {
                             {fixed ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700 ring-1 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-300">
                                 <Shield className="h-3 w-3" />
-                                Fixed
+                                {t.fixed}
                               </span>
                             ) : (
                               <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700 ring-1 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-300">
-                                Custom
+                                {t.custom}
                               </span>
                             )}
                           </td>

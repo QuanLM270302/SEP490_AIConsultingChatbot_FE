@@ -7,17 +7,21 @@ import { ArrowLeft, FileText, FolderTree, Tag } from "lucide-react";
 import { DocumentsTab } from "@/components/tenant-admin/DocumentsTab";
 import { CategoriesTab } from "@/components/tenant-admin/CategoriesTab";
 import { TagsTab } from "@/components/tenant-admin/TagsTab";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 type TabId = "documents" | "categories" | "tags";
 
-const tabs: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "documents", label: "Tài liệu", icon: FileText },
-  { id: "categories", label: "Danh mục", icon: FolderTree },
-  { id: "tags", label: "Tags", icon: Tag },
-];
-
 export default function DocumentsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("documents");
+  const { language } = useLanguageStore();
+  const t = translations[language];
+
+  const tabs: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: "documents", label: t.documents, icon: FileText },
+    { id: "categories", label: t.categories, icon: FolderTree },
+    { id: "tags", label: t.tags, icon: Tag },
+  ];
 
   return (
     <div className="flex min-h-screen flex-col bg-linear-to-br from-zinc-100 via-white to-zinc-100 dark:from-zinc-900 dark:via-black dark:to-zinc-900">
@@ -29,15 +33,15 @@ export default function DocumentsPage() {
             className="inline-flex items-center gap-2 text-sm text-zinc-600 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Về Dashboard
+            {t.backToDashboard}
           </Link>
 
           <div>
             <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
-              Quản lý Tài liệu & Knowledge Base
+              {t.documentsKnowledgeBase}
             </h1>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              Chỉ Tenant Admin có quyền quản lý tài liệu, danh mục và tag. Tài liệu được dùng cho RAG chatbot.
+              {t.documentsKBDescription}
             </p>
           </div>
 
