@@ -17,7 +17,7 @@ export function ChatMessageList({
 }: ChatMessageListProps) {
   const displayMessages = selectedMessage
     ? messages.filter((msg) => msg.id === selectedMessage)
-    : messages;
+    : [...messages].reverse();
 
   if (messages.length === 0) {
     return <EmptyState onSelectExample={onSelectExample} />;
