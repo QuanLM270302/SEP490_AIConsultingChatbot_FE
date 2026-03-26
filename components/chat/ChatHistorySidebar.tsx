@@ -13,6 +13,7 @@ interface ChatHistorySidebarProps {
   onSelectChat: (chatId: string) => void;
   currentChatId: string | null;
   onNewChat: () => void;
+  refreshTrigger?: number;
 }
 
 export function ChatHistorySidebar({
@@ -21,6 +22,7 @@ export function ChatHistorySidebar({
   onSelectChat,
   currentChatId,
   onNewChat,
+  refreshTrigger = 0,
 }: ChatHistorySidebarProps) {
   const { language } = useLanguageStore();
   const isEn = language === "en";
@@ -29,7 +31,7 @@ export function ChatHistorySidebar({
 
   useEffect(() => {
     getConversations().then(setConversations).catch(() => setConversations([]));
-  }, []);
+  }, [refreshTrigger]);
 
   const getTimeCategory = (dateStr: string): "today" | "yesterday" | "last7days" | "older" => {
     const date = new Date(dateStr);
