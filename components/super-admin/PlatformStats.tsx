@@ -46,6 +46,9 @@ export function PlatformStats() {
 
   const roles = getStoredUser()?.roles ?? [];
   const isStaff = roles.some((role) => role.includes("STAFF"));
+  const isSuperAdmin = roles.some((role) => role.includes("SUPER_ADMIN"));
+
+  if (!isSuperAdmin) return null;
 
   useEffect(() => {
     let cancelled = false;

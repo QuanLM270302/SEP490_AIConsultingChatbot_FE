@@ -49,6 +49,9 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
   const [statusData, setStatusData] = useState<SidebarSystemStatus>(DEFAULT_STATUS);
   const roles = getStoredUser()?.roles ?? [];
   const isStaff = roles.some((role) => role.includes("STAFF"));
+  const isSuperAdmin = roles.some((role) => role.includes("SUPER_ADMIN"));
+
+  if (!isSuperAdmin) return null;
 
   useEffect(() => {
     let cancelled = false;
