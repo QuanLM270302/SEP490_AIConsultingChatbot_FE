@@ -186,26 +186,28 @@ export default function ChatbotPage() {
           if (chatId) {
             getConversationHistory(chatId).then((history) => {
               if (history) {
-                // Pair consecutive USER + ASSISTANT messages into single Message objects
-                const msgs: Message[] = [];
-                for (let i = 0; i < history.messages.length; i += 2) {
-                  const userMsg = history.messages[i];
-                  const aiMsg = history.messages[i + 1];
-                  msgs.push({
-                    id: aiMsg?.id ?? userMsg?.id ?? "",
-                    question: userMsg?.content ?? "",
-                    answer: aiMsg?.content ?? "",
-                    references: (aiMsg?.sources ?? []).map((s) => ({
-                      documentId: s.documentId,
-                      documentName: s.fileName,
-                      excerpt: s.chunkContent ?? "",
-                      confidence: s.relevanceScore,
-                    })),
-                    timestamp: new Date(aiMsg?.createdAt ?? userMsg?.createdAt ?? new Date()),
-                    rating: (aiMsg?.rating as "helpful" | "not-helpful" | null) ?? null,
-                  });
+                const paired: Message[] = [];
+                const msgs = history.messages;
+                for (let i = 0; i < msgs.length; i++) {
+                  if (msgs[i].role === "USER") {
+                    const assistantMsg = msgs[i + 1]?.role === "ASSISTANT" ? msgs[i + 1] : null;
+                    paired.push({
+                      id: msgs[i].id,
+                      question: msgs[i].content,
+                      answer: assistantMsg?.content ?? "",
+                      references: (assistantMsg?.sources ?? []).map((s) => ({
+                        documentId: s.documentId,
+                        documentName: s.fileName,
+                        excerpt: s.chunkContent ?? "",
+                        confidence: s.relevanceScore,
+                      })),
+                      timestamp: new Date(assistantMsg?.createdAt ?? msgs[i].createdAt ?? new Date()),
+                      rating: (assistantMsg?.rating as "helpful" | "not-helpful" | null) ?? null,
+                    });
+                    if (assistantMsg) i++; // skip the assistant message
+                  }
                 }
-                setMessages(msgs.reverse());
+                setMessages(paired.reverse());
               }
             });
           } else {
