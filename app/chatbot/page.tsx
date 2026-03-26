@@ -31,7 +31,7 @@ export default function ChatbotPage() {
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
