@@ -50,15 +50,6 @@ export function TenantStatusBreakdown({ title, subtitle, header }: TenantStatusB
         </div>
       </div>
 
-      <div className="mb-6 text-center">
-        <p className="text-5xl font-bold tabular-nums text-zinc-900 dark:text-white">
-          {loading ? "—" : sum.toLocaleString()}
-        </p>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          {isEn ? "Total tenants" : "Tổng tổ chức"}
-        </p>
-      </div>
-
       <div className="space-y-5">
         {rows.map((plan) => (
           <div key={plan.key} className="space-y-2">
@@ -109,7 +100,7 @@ export function TenantStatusBreakdown({ title, subtitle, header }: TenantStatusB
       <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-100/95 p-4 text-center ring-1 ring-zinc-200/80 dark:border-zinc-800 dark:bg-zinc-900/50">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
-            {isEn ? "Approved total (API)" : "Đã duyệt (API)"}
+            {isEn ? "Approved total" : "Tổng đã duyệt"}
           </p>
           <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900 dark:text-white">
             {loading ? "—" : parsed.tenants.total.toLocaleString()}

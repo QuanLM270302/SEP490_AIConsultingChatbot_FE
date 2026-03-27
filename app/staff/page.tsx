@@ -187,10 +187,6 @@ export default function StaffDashboardPage() {
                     {language === "en" ? "Counts and share by lifecycle status" : "Số lượng và tỷ lệ theo trạng thái vòng đời"}
                   </p>
                 </div>
-                <div className="mb-6 text-center">
-                  <p className="text-5xl font-bold text-zinc-900 dark:text-white">{tenantSum.toLocaleString()}</p>
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{language === "en" ? "Total tenants" : "Tổng tổ chức"}</p>
-                </div>
                 <div className="space-y-5">
                   {tenantRows.map((row) => {
                     const pct = tenantSum > 0 ? Math.round((row.count / tenantSum) * 1000) / 10 : 0;
@@ -215,7 +211,7 @@ export default function StaffDashboardPage() {
                 </div>
                 <div className="mt-6 rounded-2xl bg-zinc-100/95 p-4 text-center ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-0">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{language === "en" ? "Approved total (API)" : "Đã duyệt (API)"}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{language === "en" ? "Approved total" : "Tổng đã duyệt"}</p>
                     <p className="mt-1 text-xl font-bold text-zinc-900 dark:text-white">{parsed.tenants.total.toLocaleString()}</p>
                   </div>
                 </div>
