@@ -207,7 +207,7 @@ export default function ChatbotPage() {
                     if (assistantMsg) i++; // skip the assistant message
                   }
                 }
-                setMessages(paired.reverse());
+                setMessages(paired);
                 setConversationId(chatId);
               }
             });
