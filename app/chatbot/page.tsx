@@ -208,6 +208,7 @@ export default function ChatbotPage() {
                   }
                 }
                 setMessages(paired.reverse());
+                setConversationId(chatId);
               }
             });
           } else {
