@@ -127,7 +127,7 @@ export default function ChatbotPage() {
         rating: null,
       };
 
-      setMessages((prev) => [newMessage, ...prev]);
+      setMessages((prev) => [...prev, newMessage]);
       setCurrentQuestion("");
       setSelectedMessage(newMessage.id);
     } catch (_err) {
@@ -208,6 +208,7 @@ export default function ChatbotPage() {
                   }
                 }
                 setMessages(paired);
+                setSelectedMessage(null);
                 setConversationId(chatId);
               }
             });
