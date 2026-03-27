@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import {
   getAdminSubscriptions,
   getActiveAdminSubscriptions,
@@ -66,7 +65,7 @@ export default function SubscriptionsPage() {
   };
 
   return (
-    <SuperAdminLayout>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
@@ -407,6 +406,6 @@ export default function SubscriptionsPage() {
           </div>
         </div>
       )}
-    </SuperAdminLayout>
+    </>
   );
 }

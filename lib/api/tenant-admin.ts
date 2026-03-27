@@ -58,6 +58,8 @@ export interface RoleResponse {
   code?: string;
   description?: string;
   usersCount?: number;
+  /** Optional permissions list (if BE returns in role detail). */
+  permissions?: string[];
 }
 
 function firstNonNegativeInt(...values: unknown[]): number {

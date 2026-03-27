@@ -17,6 +17,11 @@ import {
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
+interface TenantAdminSidebarProps {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}
+
 export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
   const pathname = usePathname();
   const { language } = useLanguageStore();

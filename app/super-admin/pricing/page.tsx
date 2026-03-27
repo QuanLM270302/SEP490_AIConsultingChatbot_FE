@@ -1,6 +1,5 @@
 "use client";
 
-import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import { SubscriptionPlansTable } from "@/components/super-admin/SubscriptionPlansTable";
 import { useLanguageStore } from "@/lib/language-store";
 
@@ -9,7 +8,6 @@ export default function PricingPage() {
   const isEn = language === "en";
 
   return (
-    <SuperAdminLayout>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
@@ -24,6 +22,5 @@ export default function PricingPage() {
 
         <SubscriptionPlansTable />
       </div>
-    </SuperAdminLayout>
   );
 }
