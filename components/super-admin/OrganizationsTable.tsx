@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MoreVertical, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
-import { getTenants, type Tenant } from "@/lib/api/staff";
+import { getAdminTenants, type AdminTenantSummary } from "@/lib/api/admin";
 
 export function OrganizationsTable() {
   const { language } = useLanguageStore();
   const isEn = language === "en";
-  const [organizations, setOrganizations] = useState<Tenant[]>([]);
+  const [organizations, setOrganizations] = useState<AdminTenantSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,8 +20,7 @@ export function OrganizationsTable() {
     setLoading(true);
     setError(null);
     try {
-      // Try to fetch from staff API (which has full tenant details)
-      const data = await getTenants();
+      const data = await getAdminTenants();
       setOrganizations(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load organizations");
@@ -83,26 +82,17 @@ export function OrganizationsTable() {
                 {isEn ? "Organization" : "Tổ chức"}
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                {isEn ? "Contact Email" : "Email"}
-              </th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                {isEn ? "Company Size" : "Quy mô"}
+                ID
               </th>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
                 {isEn ? "Status" : "Trạng thái"}
-              </th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                {isEn ? "Created At" : "Ngày tạo"}
-              </th>
-              <th className="relative px-6 py-4">
-                <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-900 dark:bg-zinc-950">
             {organizations.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-sm text-zinc-500">
+                <td colSpan={3} className="px-6 py-8 text-center text-sm text-zinc-500">
                   {isEn ? "No organizations found." : "Không có tổ chức nào."}
                 </td>
               </tr>
@@ -114,30 +104,15 @@ export function OrganizationsTable() {
                     {org.name}
                   </div>
                 </td>
-                <td className="whitespace-nowrap px-6 py-4">
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">{org.contactEmail}</div>
+                <td className="max-w-[260px] whitespace-nowrap px-6 py-4">
+                  <div className="truncate text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                    {org.id}
+                  </div>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">
-                  <div className="text-sm text-zinc-900 dark:text-white">{org.companySize || "-"}</div>
-                </td>
-                <td className="whitespace-nowrap px-6 py-4">
-                  <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${getStatusColor(org.status)}`}>
-                    {getStatusLabel(org.status)}
+                  <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${getStatusColor(org.status ?? "")}`}>
+                    {getStatusLabel(org.status ?? "UNKNOWN")}
                   </span>
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-xs text-zinc-500 dark:text-zinc-400">
-                  {org.createdAt
-                    ? new Date(org.createdAt).toLocaleString(language === "vi" ? "vi-VN" : "en-US", {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                      })
-                    : "-"}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                  <button className="rounded-full p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-500 dark:hover:bg-zinc-900">
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
                 </td>
               </tr>
             ))}
