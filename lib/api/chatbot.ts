@@ -30,9 +30,15 @@ export async function getConversations(): Promise<ConversationSummary[]> {
   const res = await fetchWithAuth(`${CHATBOT_BASE}/history?page=0&size=50`);
   if (!res.ok) return [];
   const data = await res.json();
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data.content)) return data.content;
-  return [];
+  const items: Record<string, unknown>[] = Array.isArray(data) ? data : (data.content ?? []);
+  return items.map((c) => ({
+    id: c.conversationId,
+    title: c.title,
+    status: c.status,
+    startedAt: c.startedAt,
+    lastMessageAt: c.lastMessageAt,
+    totalMessages: c.totalMessages,
+  }));
 }
 
 // GET /api/v1/chatbot/history/{id}
