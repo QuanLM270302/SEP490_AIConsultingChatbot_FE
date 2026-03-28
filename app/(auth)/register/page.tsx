@@ -2,8 +2,8 @@
 
 import { useState, FormEvent } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { AuthHeroPanel } from "@/components/auth/AuthHeroPanel";
+import { AuthHomePlainLink } from "@/components/auth/AuthHomePlainLink";
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
@@ -114,13 +114,7 @@ export default function RegisterPage() {
       {/* Left: Register form */}
       <div className="flex w-full flex-col items-center justify-center border-zinc-200 bg-white px-6 py-12 dark:border-zinc-800 dark:bg-zinc-900 lg:w-1/2 lg:border-r lg:px-12 lg:py-16">
         <div className="w-full max-w-md">
-          <Link
-            href="/"
-            className="mb-6 inline-flex items-center gap-2 text-sm text-zinc-600 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
+          <AuthHomePlainLink className="mb-8 pt-0" />
 
           <div className="mb-6 space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">

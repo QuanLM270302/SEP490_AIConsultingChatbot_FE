@@ -43,7 +43,8 @@ export const translations = {
     currentPlan: 'Gói hiện tại',
     usersLabel: 'Người dùng',
     storage: 'Dung lượng',
-    backToHome: 'Về trang chủ',
+    backToHome: 'Quay lại trang chủ',
+    or: 'hoặc',
     
     // Stats & Metrics
     totalUsers: 'Tổng người dùng',
@@ -422,6 +423,7 @@ export const translations = {
     usersLabel: 'Users',
     storage: 'Storage',
     backToHome: 'Back to home',
+    or: 'or',
     
     // Stats & Metrics
     totalUsers: 'Total Users',
