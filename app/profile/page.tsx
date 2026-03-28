@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, useRef, useMemo, FormEvent } from "react";
 import {
   UserCircleIcon,
   PencilSquareIcon,
@@ -26,6 +26,15 @@ import type {
   UpdateProfileRequest,
   ChangePasswordRequest,
 } from "@/types/profile";
+import {
+  DOB_UNDER_18_MESSAGE,
+  formatDobDigitsInput,
+  formatDobDisplay,
+  isoDateToDdMmYyyy,
+  isAtLeastYearsOld,
+  parseDdMmYyyy,
+  validateDobForSubmit,
+} from "@/lib/date-of-birth";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -52,7 +61,18 @@ export default function ProfilePage() {
 
   // Update form state
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
+  /** Hiển thị/nhập dd/mm/yyyy; khi gửi API chuyển sang ISO trong handleUpdate */
+  const [dateOfBirthDisplay, setDateOfBirthDisplay] = useState("");
+  /** Cảnh báo tuổi: chỉ sau khi user sửa DOB và lần đầu nhập đủ ngày hợp lệ nhưng chưa đủ 18 */
+  const [dobUnder18Notice, setDobUnder18Notice] = useState<string | null>(null);
+  const dobEditedRef = useRef(false);
+  const under18NoticeShownRef = useRef(false);
+  const dobPickerRef = useRef<HTMLInputElement>(null);
+  const dobPickerIsoValue = useMemo(() => {
+    const r = parseDdMmYyyy(dateOfBirthDisplay);
+    if (r.ok && r.iso) return r.iso;
+    return "";
+  }, [dateOfBirthDisplay]);
   const [address, setAddress] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -98,12 +118,50 @@ export default function ProfilePage() {
       .then((data) => {
         setProfile(data);
         setPhoneNumber(data.phoneNumber ?? "");
-        setDateOfBirth(data.dateOfBirth ? data.dateOfBirth.slice(0, 10) : "");
+        setDateOfBirthDisplay(isoDateToDdMmYyyy(data.dateOfBirth));
         setAddress(data.address ?? "");
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load profile"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!dobEditedRef.current) return;
+    const r = parseDdMmYyyy(dateOfBirthDisplay);
+    if (!r.ok || r.iso === null) {
+      setDobUnder18Notice(null);
+      under18NoticeShownRef.current = false;
+      return;
+    }
+    const [y, mo, d] = r.iso.split("-").map(Number);
+    const birth = new Date(y, mo - 1, d);
+    if (isAtLeastYearsOld(birth, 18)) {
+      setDobUnder18Notice(null);
+      under18NoticeShownRef.current = false;
+      return;
+    }
+    if (!under18NoticeShownRef.current) {
+      setDobUnder18Notice(DOB_UNDER_18_MESSAGE);
+      under18NoticeShownRef.current = true;
+    }
+  }, [dateOfBirthDisplay]);
+
+  const openDobPicker = () => {
+    dobEditedRef.current = true;
+    const el = dobPickerRef.current;
+    if (!el) return;
+    const picker = (el as HTMLInputElement & { showPicker?: () => void })
+      .showPicker;
+    if (typeof picker === "function") {
+      try {
+        picker.call(el);
+      } catch {
+        el.click();
+      }
+    } else {
+      el.click();
+    }
+  };
 
   const handleUpdate = async (e: FormEvent) => {
     e.preventDefault();
@@ -111,9 +169,19 @@ export default function ProfilePage() {
     setUpdateSuccess(false);
     setUpdateLoading(true);
     try {
+      const dobCheck = validateDobForSubmit(dateOfBirthDisplay);
+      if (!dobCheck.ok) {
+        const alreadyShownUnder18 =
+          dobCheck.message === DOB_UNDER_18_MESSAGE && dobUnder18Notice !== null;
+        if (!alreadyShownUnder18) {
+          setUpdateError(dobCheck.message);
+        }
+        setUpdateLoading(false);
+        return;
+      }
       const body: UpdateProfileRequest = {
         phoneNumber: phoneNumber.trim() || null,
-        dateOfBirth: dateOfBirth ? dateOfBirth : null,
+        dateOfBirth: dobCheck.iso,
         address: address.trim() || null,
       };
       const updated = await updateProfile(body);
@@ -202,6 +270,9 @@ export default function ProfilePage() {
 
   const inputClass =
     "block w-full rounded-xl border border-zinc-200 bg-white/80 px-3 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus:border-violet-400 dark:focus:ring-violet-400/30";
+  /** Một viền: text + icon lịch cuối dòng */
+  const dobCompositeClass =
+    "flex w-full min-w-0 items-stretch rounded-xl border border-zinc-200 bg-white/80 text-sm text-zinc-900 shadow-sm outline-none transition focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-400/30 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus-within:border-violet-400 dark:focus-within:ring-violet-400/30";
   const labelClass =
     "block text-sm font-medium text-zinc-700 dark:text-zinc-300";
 
@@ -276,7 +347,7 @@ export default function ProfilePage() {
                   { icon: EnvelopeIcon, label: "Contact email", value: profile.contactEmail ?? "—" },
                   { icon: UserCircleIcon, label: "Full name", value: profile.fullName },
                   { icon: PhoneIcon, label: "Phone", value: profile.phoneNumber ?? "—" },
-                  { icon: CalendarDaysIcon, label: "Date of birth", value: formatDate(profile.dateOfBirth) },
+                  { icon: CalendarDaysIcon, label: "Date of birth", value: formatDobDisplay(profile.dateOfBirth) },
                   { icon: MapPinIcon, label: "Address", value: profile.address ?? "—" },
                   { icon: BuildingOffice2Icon, label: "Role", value: profile.roleName ?? "—" },
                   { icon: BuildingOffice2Icon, label: "Department", value: profile.departmentName ?? "—" },
@@ -321,8 +392,55 @@ export default function ProfilePage() {
                   <input id="phone" type="text" maxLength={20} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className={inputClass} />
                 </div>
                 <div>
-                  <label htmlFor="dob" className={labelClass}>Date of birth</label>
-                  <input id="dob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputClass} />
+                  <label htmlFor="dob" className={labelClass}>
+                    Date of birth
+                  </label>
+                  <div className={dobCompositeClass}>
+                    <input
+                      id="dob"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="bday"
+                      placeholder="dd/mm/yyyy"
+                      maxLength={10}
+                      value={dateOfBirthDisplay}
+                      onChange={(e) => {
+                        dobEditedRef.current = true;
+                        setDateOfBirthDisplay(formatDobDigitsInput(e.target.value));
+                      }}
+                      className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 outline-none focus:ring-0 dark:bg-transparent"
+                    />
+                    <input
+                      ref={dobPickerRef}
+                      type="date"
+                      className="sr-only"
+                      tabIndex={-1}
+                      aria-hidden
+                      value={dobPickerIsoValue}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        dobEditedRef.current = true;
+                        if (v) setDateOfBirthDisplay(isoDateToDdMmYyyy(v));
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={openDobPicker}
+                      className="flex shrink-0 items-center justify-center rounded-r-xl px-2.5 py-2.5 text-emerald-600 transition hover:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/15"
+                      title="Chọn ngày từ lịch"
+                      aria-label="Mở lịch chọn ngày sinh"
+                    >
+                      <CalendarDaysIcon className="h-5 w-5" aria-hidden />
+                    </button>
+                  </div>
+                  {dobUnder18Notice && (
+                    <div
+                      className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+                      role="alert"
+                    >
+                      {dobUnder18Notice}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="address" className={labelClass}>Address</label>
