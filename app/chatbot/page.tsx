@@ -129,7 +129,7 @@ export default function ChatbotPage() {
 
       setMessages((prev) => [...prev, newMessage]);
       setCurrentQuestion("");
-      setSelectedMessage(newMessage.id);
+      setSelectedMessage(null);
     } catch (_err) {
       const fallbackMessage: Message = {
         id: userMessageId,
@@ -143,7 +143,7 @@ export default function ChatbotPage() {
       };
       setError(isEn ? "Failed to get a response from the chatbot." : "Không thể nhận phản hồi từ chatbot.");
       setMessages((prev) => [fallbackMessage, ...prev]);
-      setSelectedMessage(fallbackMessage.id);
+      setSelectedMessage(null);
     } finally {
       setIsLoading(false);
     }

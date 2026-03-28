@@ -40,6 +40,7 @@ const VISIBILITY_LABELS: Record<DocumentVisibility, string> = {
   COMPANY_WIDE: "Toàn công ty",
   SPECIFIC_DEPARTMENTS: "Theo phòng ban",
   SPECIFIC_ROLES: "Theo vai trò",
+  SPECIFIC_DEPARTMENTS_AND_ROLES: "Theo phòng ban VÀ vai trò",
 };
 
 function prettifyDocumentAccessError(message: string): string {
@@ -116,16 +117,26 @@ export function DocumentsTab() {
       const description = (form.elements.namedItem("description") as HTMLInputElement)?.value || undefined;
       const visibility = uploadVisibility;
       const accessibleDepartments =
-        visibility === "SPECIFIC_DEPARTMENTS" ? selectedDepartmentIds : null;
+        visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES"
+          ? selectedDepartmentIds
+          : null;
       const accessibleRoles =
-        visibility === "SPECIFIC_ROLES" ? selectedRoleIds : null;
+        visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES"
+          ? selectedRoleIds
+          : null;
 
-      if (visibility === "SPECIFIC_DEPARTMENTS" && selectedDepartmentIds.length === 0) {
+      if (
+        (visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+        selectedDepartmentIds.length === 0
+      ) {
         setError("Vui lòng chọn ít nhất 1 phòng ban.");
         setUploading(false);
         return;
       }
-      if (visibility === "SPECIFIC_ROLES" && selectedRoleIds.length === 0) {
+      if (
+        (visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+        selectedRoleIds.length === 0
+      ) {
         setError("Vui lòng chọn ít nhất 1 vai trò.");
         setUploading(false);
         return;
@@ -327,8 +338,8 @@ export function DocumentsTab() {
               onChange={(e) => {
                 const v = e.target.value as DocumentVisibility;
                 setUploadVisibility(v);
-                if (v !== "SPECIFIC_DEPARTMENTS") setSelectedDepartmentIds([]);
-                if (v !== "SPECIFIC_ROLES") setSelectedRoleIds([]);
+                if (v !== "SPECIFIC_DEPARTMENTS" && v !== "SPECIFIC_DEPARTMENTS_AND_ROLES") setSelectedDepartmentIds([]);
+                if (v !== "SPECIFIC_ROLES" && v !== "SPECIFIC_DEPARTMENTS_AND_ROLES") setSelectedRoleIds([]);
               }}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
@@ -337,7 +348,7 @@ export function DocumentsTab() {
               ))}
             </select>
           </div>
-          {uploadVisibility === "SPECIFIC_DEPARTMENTS" && (
+          {(uploadVisibility === "SPECIFIC_DEPARTMENTS" || uploadVisibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Chọn phòng ban
@@ -375,7 +386,7 @@ export function DocumentsTab() {
               </p>
             </div>
           )}
-          {uploadVisibility === "SPECIFIC_ROLES" && (
+          {(uploadVisibility === "SPECIFIC_ROLES" || uploadVisibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Chọn vai trò
@@ -688,17 +699,28 @@ function UpdateAccessModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (visibility === "SPECIFIC_DEPARTMENTS" && selectedDepartmentIds.length === 0) {
+    if (
+      (visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+      selectedDepartmentIds.length === 0
+    ) {
       return;
     }
-    if (visibility === "SPECIFIC_ROLES" && selectedRoleIds.length === 0) {
+    if (
+      (visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+      selectedRoleIds.length === 0
+    ) {
       return;
     }
     const body: UpdateDocumentAccessRequest = {
       visibility,
       accessibleDepartments:
-        visibility === "SPECIFIC_DEPARTMENTS" ? selectedDepartmentIds : null,
-      accessibleRoles: visibility === "SPECIFIC_ROLES" ? selectedRoleIds : null,
+        visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES"
+          ? selectedDepartmentIds
+          : null,
+      accessibleRoles:
+        visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES"
+          ? selectedRoleIds
+          : null,
     };
     onSave(body);
   };
@@ -726,7 +748,7 @@ function UpdateAccessModal({
               ))}
             </select>
           </div>
-          {visibility === "SPECIFIC_DEPARTMENTS" && (
+          {(visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Chọn phòng ban
@@ -763,7 +785,7 @@ function UpdateAccessModal({
               )}
             </div>
           )}
-          {visibility === "SPECIFIC_ROLES" && (
+          {(visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Chọn vai trò
