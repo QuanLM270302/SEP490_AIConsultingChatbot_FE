@@ -44,7 +44,7 @@ export function StaffSidebar({ open, setOpen }: StaffSidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-6 left-4 z-50 w-64 shrink-0 rounded-3xl bg-white p-6 shadow-lg shadow-green-100/60 transition-transform duration-300 dark:bg-zinc-950 dark:shadow-black/50 lg:translate-x-0",
+          "fixed inset-y-6 left-4 z-50 w-64 shrink-0 rounded-3xl bg-white p-6 shadow-lg shadow-blue-100/60 transition-transform duration-300 dark:bg-zinc-950 dark:shadow-black/50 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -53,7 +53,7 @@ export function StaffSidebar({ open, setOpen }: StaffSidebarProps) {
             {/* Logo */}
             <div className="flex items-center justify-between">
               <Link href="/staff" className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-500 text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-blue-400 to-blue-600 text-white shadow-lg shadow-blue-500/30">
                   <UserCog className="h-5 w-5" />
                 </div>
                 <span className="text-lg font-semibold text-zinc-900 dark:text-white">
@@ -68,35 +68,66 @@ export function StaffSidebar({ open, setOpen }: StaffSidebarProps) {
               </button>
             </div>
 
-            {/* Navigation */}
+            {/* Section Label */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Menu
+                {t.management}
               </p>
             </div>
 
+            {/* Navigation */}
             <nav className="space-y-1 text-sm">
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
-                const Icon = item.icon;
-
                 return (
                   <Link
-                    key={item.href}
+                    key={item.name}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-2xl px-3.5 py-2.5 font-medium transition",
+                      "flex w-full items-center justify-between rounded-2xl px-3.5 py-3 font-medium transition",
                       isActive
-                        ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
-                        : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
+                        ? "bg-blue-500 text-white shadow-sm shadow-blue-400/60"
+                        : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
                     )}
                   >
-                    <Icon className="h-[18px] w-[18px]" />
-                    {item.name}
+                    <span className="flex items-center gap-3">
+                      <span className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-2xl text-sm",
+                        isActive ? "bg-white/20" : "bg-zinc-100 dark:bg-zinc-900"
+                      )}>
+                        <item.icon className={cn("h-4 w-4", isActive ? "text-white" : "text-zinc-500")} />
+                      </span>
+                      {item.name}
+                    </span>
+                    {isActive && <span className="h-8 w-1.5 rounded-full bg-white/70" />}
                   </Link>
                 );
               })}
             </nav>
+          </div>
+
+          {/* Bottom Info Section */}
+          <div className="space-y-4">
+            <div className="space-y-3 rounded-2xl bg-linear-to-br from-blue-50 to-sky-50 p-4 text-xs dark:from-blue-950/30 dark:to-sky-950/30">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-zinc-800 dark:text-zinc-100">
+                  Staff Portal
+                </p>
+                <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-400">
+                  {t.active}
+                </span>
+              </div>
+              <div className="space-y-2 text-zinc-600 dark:text-zinc-400">
+                <div className="flex items-center justify-between">
+                  <span>{t.totalTenants}</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white">—</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>{t.pending}</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white">—</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </aside>
