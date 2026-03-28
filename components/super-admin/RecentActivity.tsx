@@ -32,7 +32,7 @@ export function RecentActivity() {
     },
     {
       id: 4,
-      message: isEn ? "Warning: high CPU usage on server 3" : "Cảnh báo: CPU usage cao trên server 3",
+      message: isEn ? "Warning: high CPU usage on server 3" : "Cảnh báo: mức dùng CPU cao trên máy chủ 3",
       time: isEn ? "3 hours ago" : "3 giờ trước",
       icon: AlertTriangle,
       bgColor: "bg-amber-500/10",

@@ -56,7 +56,7 @@ export default function SubscriptionsPage() {
   useEffect(() => {
     getAdminTenants()
       .then(setTenants)
-      .catch((e) => setTenantsError(e instanceof Error ? e.message : isEn ? "Cannot load tenant list" : "Không tải được danh sách tenant"));
+      .catch((e) => setTenantsError(e instanceof Error ? e.message : isEn ? "Cannot load tenant list" : "Không tải được danh sách tổ chức"));
   }, []);
 
   const handleViewDetail = (id: string) => {
@@ -70,12 +70,12 @@ export default function SubscriptionsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-            {isEn ? "Subscriptions - Purchased by Tenants" : "Subscriptions - Tenant đã mua"}
+            {isEn ? "Subscriptions - Purchased by Tenants" : "Gói đăng ký — tổ chức đã mua"}
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             {isEn
               ? "View all subscriptions, filter by active status or tenant"
-              : "Xem tất cả subscriptions, lọc theo trạng thái active hoặc theo tenant"}
+              : "Xem mọi gói đăng ký, lọc theo đang hoạt động hoặc theo tổ chức"}
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export default function SubscriptionsPage() {
                           : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
                     }`}
                   >
-                    {isEn ? "Active" : "Đang active"}
+                    {isEn ? "Active" : "Đang hoạt động"}
                   </button>
                 </div>
               </div>
@@ -127,7 +127,7 @@ export default function SubscriptionsPage() {
                   htmlFor="sub-tenant-filter"
                   className="shrink-0 text-sm font-medium text-zinc-600 dark:text-zinc-400"
                 >
-                  {isEn ? "Tenant" : "Tenant"}
+                  {isEn ? "Tenant" : "Tổ chức"}
                 </label>
                 <div className="relative min-w-48 max-w-full flex-1 sm:max-w-[20rem] sm:flex-initial">
                   <select
@@ -136,7 +136,7 @@ export default function SubscriptionsPage() {
                     onChange={(e) => setTenantIdFilter(e.target.value)}
                     className="h-10 w-full cursor-pointer appearance-none rounded-xl border border-zinc-200 bg-white py-2 pl-3.5 pr-10 text-sm font-medium text-zinc-900 shadow-sm transition hover:border-zinc-300 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-500 dark:focus:border-green-500"
                   >
-                    <option value="">{isEn ? "All tenants" : "Tất cả tenant"}</option>
+                    <option value="">{isEn ? "All tenants" : "Tất cả tổ chức"}</option>
                     {tenants.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
@@ -168,8 +168,8 @@ export default function SubscriptionsPage() {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50">
                   <tr>
-                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Tenant / Plan" : "Tenant / Gói"}</th>
-                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Tier</th>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Tenant / Plan" : "Tổ chức / Gói"}</th>
+                    <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Tier" : "Hạng gói"}</th>
                     <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Status" : "Trạng thái"}</th>
                     <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Price / Cycle" : "Giá / Chu kỳ"}</th>
                     <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Start / End" : "Bắt đầu / Hết hạn"}</th>
@@ -180,7 +180,7 @@ export default function SubscriptionsPage() {
                   {list.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
-                        {isEn ? "No subscriptions found for the selected filters." : "Chưa có subscription hoặc không tìm thấy theo bộ lọc."}
+                        {isEn ? "No subscriptions found for the selected filters." : "Chưa có gói đăng ký hoặc không tìm thấy theo bộ lọc."}
                       </td>
                     </tr>
                   ) : (

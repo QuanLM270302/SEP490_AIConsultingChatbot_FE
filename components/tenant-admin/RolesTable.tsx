@@ -48,7 +48,7 @@ export function RolesTable() {
             {roles.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-6 py-8 text-center text-sm text-zinc-500">
-                  Chưa có vai trò. Dữ liệu được tải từ server.
+                  Chưa có vai trò. Dữ liệu được tải từ máy chủ.
                 </td>
               </tr>
             ) : (

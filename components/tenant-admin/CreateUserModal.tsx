@@ -45,7 +45,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim() || !contactEmail.trim()) {
-      alert("Họ tên và email không được để trống.");
+      alert("Họ tên và thư điện tử không được để trống.");
       return;
     }
     if (roleId === "" || roleId === undefined) {
@@ -65,7 +65,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
       onSuccess();
       onClose();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Tạo user thất bại");
+      alert(e instanceof Error ? e.message : "Tạo người dùng thất bại");
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Email (contact) *</label>
+            <label className="block text-xs font-medium text-zinc-500">Thư điện tử (liên hệ) *</label>
             <input
               type="email"
               value={contactEmail}
@@ -138,7 +138,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
           </div>
           <div className="mt-6 flex gap-2">
             <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo user"}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo người dùng"}
             </button>
             <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
               Hủy

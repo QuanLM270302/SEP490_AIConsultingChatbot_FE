@@ -3,17 +3,17 @@
 import { Users, FileText, MessageSquare, HardDrive } from "lucide-react";
 
 const limits = [
-  { name: "Users", current: 120, max: 200, icon: Users, percentage: 60 },
-  { name: "Documents", current: 480, max: 1000, icon: FileText, percentage: 48 },
-  { name: "AI Queries", current: 24680, max: 50000, icon: MessageSquare, percentage: 49 },
-  { name: "Storage", current: "2.3GB", max: "10GB", icon: HardDrive, percentage: 23 },
+  { name: "Người dùng", current: 120, max: 200, icon: Users, percentage: 60 },
+  { name: "Tài liệu", current: 480, max: 1000, icon: FileText, percentage: 48 },
+  { name: "Truy vấn AI", current: 24680, max: 50000, icon: MessageSquare, percentage: 49 },
+  { name: "Dung lượng", current: "2,3 GB", max: "10 GB", icon: HardDrive, percentage: 23 },
 ];
 
 export function UsageLimits() {
   return (
     <div className="rounded-3xl bg-white p-8 shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
       <h3 className="mb-6 text-xl font-bold text-zinc-900 dark:text-white">
-        Usage Limits
+        Hạn mức sử dụng
       </h3>
       <div className="space-y-6">
         {limits.map((limit) => {
@@ -29,7 +29,7 @@ export function UsageLimits() {
                   </span>
                 </div>
                 <span className="text-sm font-semibold text-zinc-900 dark:text-white">
-                  {typeof limit.current === "number" ? limit.current.toLocaleString() : limit.current} / {typeof limit.max === "number" ? limit.max.toLocaleString() : limit.max}
+                  {typeof limit.current === "number" ? limit.current.toLocaleString("vi-VN") : limit.current} / {typeof limit.max === "number" ? limit.max.toLocaleString("vi-VN") : limit.max}
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-900">
@@ -43,10 +43,10 @@ export function UsageLimits() {
                 />
               </div>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                {limit.percentage}% used
+                Đã dùng {limit.percentage}%
                 {isNearLimit && (
                   <span className="ml-2 font-semibold text-amber-600 dark:text-amber-400">
-                    • Near limit
+                    · Gần đạt hạn mức
                   </span>
                 )}
               </p>

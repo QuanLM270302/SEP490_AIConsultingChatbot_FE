@@ -32,7 +32,7 @@ export function TenantGrowth() {
             </h3>
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {isEn ? "New tenants by month" : "Tenant mới theo tháng"}
+            {isEn ? "New tenants by month" : "Tổ chức mới theo tháng"}
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/20 px-4 py-2">

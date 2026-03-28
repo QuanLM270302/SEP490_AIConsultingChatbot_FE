@@ -47,7 +47,7 @@ const VISIBILITY_LABELS: Record<DocumentVisibility, string> = {
 function prettifyDocumentAccessError(message: string): string {
   const lower = message.toLowerCase();
   if (lower.includes("visibility_enum") && lower.includes("does not exist")) {
-    return "Không thể cập nhật quyền truy cập do backend chưa đồng bộ schema DB (thiếu enum visibility). Vui lòng backend kiểm tra migration/schema.";
+    return "Không thể cập nhật quyền truy cập do máy chủ chưa đồng bộ lược đồ cơ sở dữ liệu (thiếu kiểu visibility). Vui lòng kiểm tra migration/lược đồ phía máy chủ.";
   }
   return message;
 }
@@ -128,7 +128,7 @@ export function DocumentsTab() {
     const form = e.currentTarget;
     const file = (form.elements.namedItem("file") as HTMLInputElement)?.files?.[0];
     if (!file) {
-      setError("Chọn file để upload");
+      setError("Chọn tệp để tải lên");
       return;
     }
     setUploading(true);
@@ -170,7 +170,7 @@ export function DocumentsTab() {
       setSelectedRoleIds([]);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload thất bại");
+      setError(e instanceof Error ? e.message : "Tải lên thất bại");
     } finally {
       setUploading(false);
     }
@@ -241,7 +241,7 @@ export function DocumentsTab() {
       form.reset();
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload phiên bản thất bại");
+      setError(e instanceof Error ? e.message : "Tải lên phiên bản thất bại");
     } finally {
       setUploading(false);
     }
@@ -265,7 +265,7 @@ export function DocumentsTab() {
 
       <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          Upload tài liệu
+          Tải lên tài liệu
         </h3>
         <form onSubmit={handleUpload} className="flex flex-col gap-4">
           <div>
@@ -302,7 +302,7 @@ export function DocumentsTab() {
             </label>
             <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
               {tags.length === 0 ? (
-                <span className="px-2 py-1 text-xs text-zinc-500">Chưa có tags.</span>
+                <span className="px-2 py-1 text-xs text-zinc-500">Chưa có thẻ.</span>
               ) : (
                 tags.map((t) => {
                   const active = selectedTagIds.includes(t.id);
@@ -367,7 +367,7 @@ export function DocumentsTab() {
               </label>
               <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
                 {departments.length === 0 ? (
-                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có phòng ban active.</span>
+                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có phòng ban đang hoạt động.</span>
                 ) : (
                   departments.map((d) => {
                     const active = selectedDepartmentIds.includes(d.id);
@@ -405,7 +405,7 @@ export function DocumentsTab() {
               </label>
               <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
                 {roles.length === 0 ? (
-                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có roles.</span>
+                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có vai trò.</span>
                 ) : (
                   roles.map((r) => {
                     const active = selectedRoleIds.includes(r.id);
@@ -540,7 +540,7 @@ export function DocumentsTab() {
                         type="button"
                         onClick={() => setNewVersionDocId(doc.id)}
                         className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                        title="Upload phiên bản mới"
+                        title="Tải lên phiên bản mới"
                       >
                         <Upload className="h-4 w-4" />
                       </button>
@@ -559,7 +559,7 @@ export function DocumentsTab() {
             </tbody>
           </table>
           {documents.length === 0 && (
-            <p className="px-4 py-6 text-center text-sm text-zinc-500">Chưa có tài liệu nào. Hãy upload file phía trên.</p>
+            <p className="px-4 py-6 text-center text-sm text-zinc-500">Chưa có tài liệu nào. Hãy tải lên tệp phía trên.</p>
           )}
         </div>
       )}
@@ -650,7 +650,7 @@ export function DocumentsTab() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Upload phiên bản mới</h3>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Tải lên phiên bản mới</h3>
               <button type="button" onClick={() => setNewVersionDocId(null)} className="rounded p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                 <X className="h-5 w-5" />
               </button>
@@ -665,7 +665,7 @@ export function DocumentsTab() {
                 <input name="versionNote" type="text" className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" placeholder="Tùy chọn" />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" variant="primary" size="md" disabled={uploading}>{uploading ? "Đang upload…" : "Upload phiên bản"}</Button>
+                <Button type="submit" variant="primary" size="md" disabled={uploading}>{uploading ? "Đang tải lên…" : "Tải lên phiên bản"}</Button>
                 <Button type="button" variant="outline" size="md" onClick={() => setNewVersionDocId(null)}>Hủy</Button>
               </div>
             </form>

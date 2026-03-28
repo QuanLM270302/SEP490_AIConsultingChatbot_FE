@@ -21,7 +21,7 @@ export function TenantDistribution() {
             Plan Distribution
           </h3>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {isEn ? "Tenant distribution by plan" : "Phân bố tenant theo gói"}
+            {isEn ? "Tenant distribution by plan" : "Phân bổ tổ chức theo gói"}
           </p>
         </div>
       </div>
@@ -32,7 +32,7 @@ export function TenantDistribution() {
           {total}
         </p>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          {isEn ? "Total Tenants" : "Tổng tenant"}
+          {isEn ? "Total Tenants" : "Tổng số tổ chức"}
         </p>
       </div>
 
