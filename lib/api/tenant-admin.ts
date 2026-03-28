@@ -12,7 +12,28 @@ export interface TenantDashboardResponse {
     totalTokensUsed?: number;
     totalRequests?: number;
     requestsThisMonth?: number;
+    tokensThisMonth?: number;
+    averageTokensPerRequest?: number;
   };
+}
+
+/** GET /api/v1/tenant-admin/dashboard/llm-usage */
+export interface TenantLlmUsageResponse {
+  totalTokensUsed?: number;
+  totalRequests?: number;
+  tokensThisMonth?: number;
+  requestsThisMonth?: number;
+  tokensToday?: number;
+  requestsToday?: number;
+  averageTokensPerRequest?: number;
+}
+
+/** GET /api/v1/tenant-admin/dashboard/documents */
+export interface TenantDocumentDashboardStatsResponse {
+  totalDocuments?: number;
+  totalChunks?: number;
+  averageChunksPerDocument?: number;
+  embeddingStatusBreakdown?: Record<string, number>;
 }
 
 export interface TenantAnalyticsResponse {
@@ -104,6 +125,18 @@ function normalizeRoleList(list: unknown): RoleResponse[] {
 export async function getTenantDashboard(): Promise<TenantDashboardResponse> {
   const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/dashboard`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load dashboard"));
+  return res.json();
+}
+
+export async function getTenantLlmUsage(): Promise<TenantLlmUsageResponse> {
+  const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/dashboard/llm-usage`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load LLM usage"));
+  return res.json();
+}
+
+export async function getTenantDocumentDashboardStats(): Promise<TenantDocumentDashboardStatsResponse> {
+  const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/dashboard/documents`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load document statistics"));
   return res.json();
 }
 

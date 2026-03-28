@@ -31,7 +31,7 @@ export function EmptyState({ onSelectExample }: EmptyStateProps) {
           <CpuChipIcon className="h-16 w-16 text-green-500" />
         </div>
         <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {isEn ? "Welcome to the AI Chatbot" : "Chào mừng đến với AI Chatbot"}
+          {isEn ? "Welcome to the AI Chatbot" : "Chào mừng đến kênh hỏi đáp thông minh nội bộ"}
         </h2>
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
           {isEn

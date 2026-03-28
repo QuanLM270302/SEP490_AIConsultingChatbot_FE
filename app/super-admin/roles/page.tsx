@@ -34,7 +34,7 @@ export default function SuperAdminRolesPage() {
     setError(null);
     getAdminRoles()
       .then(setList)
-      .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load roles" : "Lỗi tải roles"))
+      .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load roles" : "Lỗi tải danh sách vai trò"))
       .finally(() => setLoading(false));
   };
 
@@ -77,16 +77,16 @@ export default function SuperAdminRolesPage() {
       const data = await getAdminRoleById(roleId);
       setDetail(data);
     } catch (e) {
-      alert(e instanceof Error ? e.message : isEn ? "Cannot fetch role details" : "Không thể lấy chi tiết role");
+      alert(e instanceof Error ? e.message : isEn ? "Cannot fetch role details" : "Không thể lấy chi tiết vai trò");
     }
   };
 
   const onDelete = async (role: AdminRoleResponse) => {
     if (role.isSystemRole) {
-      alert(isEn ? "Cannot delete a system role." : "Không thể xóa system role.");
+      alert(isEn ? "Cannot delete a system role." : "Không thể xóa vai trò hệ thống.");
       return;
     }
-    if (!confirm(isEn ? `Are you sure you want to delete role "${role.name ?? role.code ?? role.id}"?` : `Bạn có chắc muốn xóa role "${role.name ?? role.code ?? role.id}"?`)) return;
+    if (!confirm(isEn ? `Are you sure you want to delete role "${role.name ?? role.code ?? role.id}"?` : `Bạn có chắc muốn xóa vai trò "${role.name ?? role.code ?? role.id}"?`)) return;
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoadingId(role.id);
@@ -94,7 +94,7 @@ export default function SuperAdminRolesPage() {
       await deleteAdminRole(role.id);
       load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : isEn ? "Delete role failed" : "Xóa role thất bại");
+      alert(e instanceof Error ? e.message : isEn ? "Delete role failed" : "Xóa vai trò thất bại");
     } finally {
       setActionLoadingId(null);
     }
@@ -111,11 +111,11 @@ export default function SuperAdminRolesPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Role Management</h1>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{isEn ? "Role Management" : "Quản lý vai trò"}</h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               {isEn
                 ? "Manage system roles and permissions in Super Admin"
-                : "Quản lý role và phân quyền hệ thống tại Super Admin"}
+                : "Quản lý vai trò và phân quyền hệ thống (quản trị hệ thống)"}
             </p>
           </div>
           <button
@@ -124,7 +124,7 @@ export default function SuperAdminRolesPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600"
           >
             <Plus className="h-4 w-4" />
-            {isEn ? "Create new role" : "Tạo role mới"}
+            {isEn ? "Create new role" : "Tạo vai trò mới"}
           </button>
         </div>
 
@@ -136,7 +136,7 @@ export default function SuperAdminRolesPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={isEn ? "Search by role code / name / tenant..." : "Tìm theo role code / tên / tenant..."}
+                placeholder={isEn ? "Search by role code / name / tenant..." : "Tìm theo mã / tên vai trò / tổ chức..."}
                 className="w-full rounded-lg border-0 bg-zinc-50 py-2 pl-10 pr-4 text-sm text-zinc-900 ring-1 ring-inset ring-zinc-200 focus:ring-2 focus:ring-green-500 dark:bg-zinc-900/50 dark:text-white dark:ring-zinc-800"
               />
             </div>
@@ -154,9 +154,9 @@ export default function SuperAdminRolesPage() {
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="border-b border-zinc-200 bg-zinc-50/50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
                   <tr>
-                    <th className="px-6 py-4 font-medium">Role</th>
-                    <th className="px-6 py-4 font-medium">Code</th>
-                    <th className="px-6 py-4 font-medium">Scope</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Role" : "Vai trò"}</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Code" : "Mã"}</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Scope" : "Phạm vi"}</th>
                     <th className="px-6 py-4 font-medium text-right">{isEn ? "Actions" : "Thao tác"}</th>
                   </tr>
                 </thead>
@@ -164,7 +164,7 @@ export default function SuperAdminRolesPage() {
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-6 py-8 text-center text-sm text-zinc-500">
-                        {isEn ? "No roles found." : "Không có role nào."}
+                        {isEn ? "No roles found." : "Không có vai trò nào."}
                       </td>
                     </tr>
                   ) : (
@@ -178,11 +178,11 @@ export default function SuperAdminRolesPage() {
                         <td className="px-6 py-4">
                           {role.isSystemRole ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700 ring-1 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-300">
-                              <Shield className="h-3 w-3" /> System
+                              <Shield className="h-3 w-3" /> {isEn ? "System" : "Hệ thống"}
                             </span>
                           ) : (
                             <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700 ring-1 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-300">
-                              {role.tenantName ?? (isEn ? "Tenant role" : "Tenant role")}
+                              {role.tenantName ?? (isEn ? "Tenant role" : "Vai trò tổ chức")}
                             </span>
                           )}
                         </td>
@@ -251,10 +251,10 @@ export default function SuperAdminRolesPage() {
                       {detail.name ?? "—"}
                     </h3>
                     <div className="mt-2 flex items-center gap-2">
-                      <p className="text-sm text-emerald-50">Role Details</p>
+                      <p className="text-sm text-emerald-50">{isEn ? "Role Details" : "Chi tiết vai trò"}</p>
                       {detail.isSystemRole && (
                         <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
-                          SYSTEM ROLE
+                          {isEn ? "SYSTEM ROLE" : "VAI TRÒ HỆ THỐNG"}
                         </span>
                       )}
                     </div>
@@ -284,7 +284,7 @@ export default function SuperAdminRolesPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                       </svg>
                       <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                        Code
+                        {isEn ? "Code" : "Mã"}
                       </span>
                     </div>
                     <p className="text-lg font-bold text-zinc-900 dark:text-white">
@@ -302,11 +302,11 @@ export default function SuperAdminRolesPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                       </svg>
                       <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                        Scope
+                        {isEn ? "Scope" : "Phạm vi"}
                       </span>
                     </div>
                     <p className="text-lg font-bold text-zinc-900 dark:text-white">
-                      {detail.isSystemRole ? "System" : "Tenant"}
+                      {detail.isSystemRole ? (isEn ? "System" : "Hệ thống") : isEn ? "Tenant" : "Tổ chức"}
                     </p>
                   </div>
                 </div>
@@ -320,11 +320,11 @@ export default function SuperAdminRolesPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                        Status
+                        {isEn ? "Status" : "Trạng thái"}
                       </span>
                     </div>
                     <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                      Active
+                      {isEn ? "Active" : "Đang hoạt động"}
                     </p>
                   </div>
                 </div>
@@ -338,7 +338,7 @@ export default function SuperAdminRolesPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                      Description
+                      {isEn ? "Description" : "Mô tả"}
                     </h4>
                   </div>
                   <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
@@ -355,7 +355,7 @@ export default function SuperAdminRolesPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                     <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                      Permissions
+                      {isEn ? "Permissions" : "Quyền"}
                     </h4>
                     <span className="ml-auto rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
                       {detail.permissions.length}
@@ -385,7 +385,7 @@ export default function SuperAdminRolesPage() {
                 onClick={() => setDetail(null)}
                 className="rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-zinc-900/20 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:shadow-white/20 dark:hover:bg-zinc-100"
               >
-                Close
+                {isEn ? "Close" : "Đóng"}
               </button>
             </div>
           </div>
@@ -413,7 +413,7 @@ export default function SuperAdminRolesPage() {
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              <Pencil className="h-4 w-4" /> {isEn ? "Update role" : "Cập nhật role"}
+              <Pencil className="h-4 w-4" /> {isEn ? "Update role" : "Cập nhật vai trò"}
             </button>
             <button
               type="button"
@@ -423,7 +423,7 @@ export default function SuperAdminRolesPage() {
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
             >
-              <Trash2 className="h-4 w-4" /> {isEn ? "Delete role" : "Xóa role"}
+              <Trash2 className="h-4 w-4" /> {isEn ? "Delete role" : "Xóa vai trò"}
             </button>
           </div>
         </>
@@ -464,7 +464,7 @@ function CreateRoleModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.code?.trim() || !form.name?.trim()) {
-      alert("Code và Name là bắt buộc.");
+      alert("Mã và tên là bắt buộc.");
       return;
     }
     setLoading(true);
@@ -477,7 +477,7 @@ function CreateRoleModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       });
       onSuccess();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Tạo role thất bại");
+      alert(e instanceof Error ? e.message : "Tạo vai trò thất bại");
     } finally {
       setLoading(false);
     }
@@ -487,29 +487,29 @@ function CreateRoleModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo role mới</h3>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo vai trò mới</h3>
         <form onSubmit={submit} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Code *</label>
+            <label className="block text-xs font-medium text-zinc-500">Mã *</label>
             <input value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm uppercase dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" placeholder="TEAM_LEADER" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Name *</label>
+            <label className="block text-xs font-medium text-zinc-500">Tên *</label>
             <input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" placeholder="Team Leader" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Description</label>
+            <label className="block text-xs font-medium text-zinc-500">Mô tả</label>
             <textarea value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="mt-1 h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Tenant (để trống = system role)</label>
+            <label className="block text-xs font-medium text-zinc-500">Tổ chức (để trống = vai trò hệ thống)</label>
             <select
               value={form.tenantId ?? ""}
               onChange={(e) => setForm((p) => ({ ...p, tenantId: e.target.value || null }))}
               disabled={tenantsLoading}
               className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white disabled:opacity-60"
             >
-              <option value="">— System role (không gắn tenant) —</option>
+              <option value="">— Vai trò hệ thống (không gắn tổ chức) —</option>
               {tenants.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
@@ -517,12 +517,12 @@ function CreateRoleModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 </option>
               ))}
             </select>
-            {tenantsLoading ? <p className="mt-1 text-xs text-zinc-500">Đang tải danh sách tenant…</p> : null}
+            {tenantsLoading ? <p className="mt-1 text-xs text-zinc-500">Đang tải danh sách tổ chức…</p> : null}
             {tenantsError ? <p className="mt-1 text-xs text-red-500">{tenantsError}</p> : null}
           </div>
           <div className="mt-6 flex gap-2">
             <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">
-              {loading ? "Đang tạo..." : "Tạo role"}
+              {loading ? "Đang tạo..." : "Tạo vai trò"}
             </button>
             <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
           </div>
@@ -552,7 +552,7 @@ function EditRoleModal({
       await updateAdminRole(role.id, { name: name.trim(), description: description.trim() || undefined });
       onSuccess();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Cập nhật role thất bại");
+      alert(e instanceof Error ? e.message : "Cập nhật vai trò thất bại");
     } finally {
       setLoading(false);
     }
@@ -562,15 +562,15 @@ function EditRoleModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Cập nhật role</h3>
-        <p className="mt-1 text-xs text-zinc-500">Code: {role.code ?? "—"} (không thể thay đổi)</p>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Cập nhật vai trò</h3>
+        <p className="mt-1 text-xs text-zinc-500">Mã: {role.code ?? "—"} (không thể thay đổi)</p>
         <form onSubmit={submit} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Name</label>
+            <label className="block text-xs font-medium text-zinc-500">Tên</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Description</label>
+            <label className="block text-xs font-medium text-zinc-500">Mô tả</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div className="mt-6 flex gap-2">

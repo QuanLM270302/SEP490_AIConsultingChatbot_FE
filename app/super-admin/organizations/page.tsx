@@ -11,12 +11,12 @@ export default function OrganizationsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
-          {isEn ? "Tenant Directory" : "Danh sách Tenant"}
+          {isEn ? "Tenant Directory" : "Danh sách tổ chức"}
         </h1>
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
           {isEn
             ? "Super Admin can view registered tenants and their current status."
-            : "Super Admin chỉ xem danh sách tenant đã đăng ký và trạng thái hiện tại."}
+            : "Quản trị hệ thống chỉ xem danh sách tổ chức đã đăng ký và trạng thái hiện tại."}
         </p>
       </div>
 

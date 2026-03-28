@@ -2,6 +2,7 @@
 
 import { Zap, CheckCircle, Activity, CalendarClock } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 import { useSuperAdminDashboardAnalytics } from "@/components/super-admin/SuperAdminDashboardAnalyticsContext";
 import { formatCompactInt } from "@/components/super-admin/dashboard-chart-utils";
 
@@ -10,6 +11,7 @@ import { formatCompactInt } from "@/components/super-admin/dashboard-chart-utils
  */
 export function AIPerformance() {
   const { language } = useLanguageStore();
+  const t = translations[language];
   const isEn = language === "en";
   const { parsed, loading } = useSuperAdminDashboardAnalytics();
   const llm = parsed.llmUsage;
@@ -51,10 +53,10 @@ export function AIPerformance() {
     <div className="rounded-3xl bg-white p-8 shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
       <div className="mb-6">
         <h3 className="text-xl font-bold text-zinc-900 dark:text-white">
-          {isEn ? "AI usage summary" : "Tóm tắt sử dụng AI"}
+          {t.aiPerformancePanelTitle}
         </h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {isEn ? "Aggregated LLM metrics from the dashboard API" : "Chỉ số LLM gộp từ API dashboard"}
+          {t.aiPerformancePanelSubtitle}
         </p>
       </div>
 

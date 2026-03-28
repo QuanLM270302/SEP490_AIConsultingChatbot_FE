@@ -92,7 +92,7 @@ export default function StaffManagementPage() {
   };
 
   const handleDelete = (userId: string) => {
-    if (!confirm(isEn ? "Are you sure you want to delete this STAFF account?" : "Bạn có chắc muốn xóa tài khoản STAFF này?")) return;
+    if (!confirm(isEn ? "Are you sure you want to delete this STAFF account?" : "Bạn có chắc muốn xóa tài khoản nhân viên vận hành này?")) return;
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoading(userId);
@@ -123,9 +123,9 @@ export default function StaffManagementPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{isEn ? "Staff Management" : "Quản lý Staff"}</h1>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{isEn ? "Staff Management" : "Quản lý nhân viên vận hành"}</h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              {isEn ? "Create, view, activate/deactivate, and delete STAFF accounts" : "Tạo, xem, kích hoạt / vô hiệu hóa, xóa tài khoản STAFF"}
+              {isEn ? "Create, view, activate/deactivate, and delete STAFF accounts" : "Tạo, xem, kích hoạt / vô hiệu hóa, xóa tài khoản nhân viên vận hành"}
             </p>
           </div>
           <button
@@ -134,7 +134,7 @@ export default function StaffManagementPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
           >
             <UserPlus className="h-4 w-4" />
-            {isEn ? "Add Staff" : "Thêm Staff"}
+            {isEn ? "Add Staff" : "Thêm nhân viên"}
           </button>
         </div>
 
@@ -144,7 +144,7 @@ export default function StaffManagementPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
               <input
                 type="text"
-                placeholder={isEn ? "Search by name or email..." : "Tìm theo tên hoặc email..."}
+                placeholder={isEn ? "Search by name or email..." : "Tìm theo tên hoặc thư điện tử..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-lg border-0 bg-zinc-50 py-2 pl-10 pr-4 text-sm text-zinc-900 ring-1 ring-inset ring-zinc-200 focus:ring-2 focus:ring-green-500 dark:bg-zinc-900/50 dark:text-white dark:ring-zinc-800"
@@ -164,7 +164,7 @@ export default function StaffManagementPage() {
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="border-b border-zinc-200 bg-zinc-50/50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
                   <tr>
-                    <th className="px-6 py-4 font-medium">{isEn ? "Name / Email" : "Tên / Email"}</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Name / Email" : "Tên / thư điện tử"}</th>
                     <th className="px-6 py-4 font-medium">{isEn ? "Phone" : "SĐT"}</th>
                     <th className="px-6 py-4 font-medium">{isEn ? "Status" : "Trạng thái"}</th>
                     <th className="px-6 py-4 font-medium text-right">{isEn ? "Actions" : "Thao tác"}</th>
@@ -174,7 +174,7 @@ export default function StaffManagementPage() {
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-6 py-8 text-center text-sm text-zinc-500">
-                        {isEn ? 'No staff yet. Click "Add Staff" to create one.' : 'Chưa có staff. Bấm "Thêm Staff" để tạo.'}
+                        {isEn ? 'No staff yet. Click "Add Staff" to create one.' : 'Chưa có nhân viên vận hành. Bấm "Thêm nhân viên" để tạo.'}
                       </td>
                     </tr>
                   ) : (
@@ -431,7 +431,7 @@ function CreateStaffModal({ onClose, onSuccess }: { onClose: () => void; onSucce
       }
       onSuccess();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Tạo staff thất bại");
+      alert(e instanceof Error ? e.message : "Tạo tài khoản nhân viên vận hành thất bại");
     } finally {
       setLoading(false);
     }
@@ -441,7 +441,7 @@ function CreateStaffModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo tài khoản STAFF</h3>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo tài khoản nhân viên vận hành</h3>
         <p className="mt-1 text-xs text-zinc-500">Tạo mới tài khoản nhân viên để quản trị hệ thống.</p>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>

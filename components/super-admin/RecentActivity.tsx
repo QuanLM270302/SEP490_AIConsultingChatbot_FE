@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Building2, Clock, Shield, UserPlus } from "lucide-react";
+import { Building2, Clock, Shield, UserPlus } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { fetchAdminRecentActivities, type RecentActivityItem } from "@/lib/api/admin-analytics";
 
