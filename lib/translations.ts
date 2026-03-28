@@ -377,6 +377,59 @@ export const translations = {
     paymentStatus: 'Trạng thái',
     paymentSuccess: '✓ Thanh toán thành công',
     waitingConfirmation: '⏳ Đang chờ xác nhận',
+
+    // Profile Page
+    profilePageLoading: 'Đang tải hồ sơ…',
+    profilePageError: 'Không tải được hồ sơ',
+    profilePageNotFound: 'Không tìm thấy hồ sơ',
+    profilePersonalInformation: 'Thông tin cá nhân',
+    profileDateOfBirth: 'Ngày sinh',
+    profileLastLogin: 'Đăng nhập gần nhất',
+    profileUpdateProfile: 'Cập nhật hồ sơ',
+    profileUpdateProfileHint:
+      'Số điện thoại, ngày sinh, địa chỉ. Tên và phòng ban do Quản trị tổ chức quản lý.',
+    profileUpdatedSuccessfully: 'Cập nhật hồ sơ thành công.',
+    profileSaveChanges: 'Lưu thay đổi',
+    profileSaving: 'Đang lưu…',
+    profileDobPlaceholder: 'dd/mm/yyyy',
+    profileDobPickFromCalendar: 'Chọn ngày từ lịch',
+    profileDobOpenCalendar: 'Mở lịch chọn ngày sinh',
+    profileUpdateContactEmail: 'Cập nhật email liên hệ',
+    profileUpdateContactEmailHint:
+      'Gửi OTP đến email mới để xác thực, sau đó nhập OTP để cập nhật email liên hệ.',
+    profileOtpSentSuccess: 'OTP đã được gửi đến email mới. Vui lòng kiểm tra hộp thư.',
+    profileContactEmailUpdatedSuccess: 'Email liên hệ đã được cập nhật thành công.',
+    profileNewContactEmailLabel: 'Email liên hệ mới',
+    profileOtpSixDigits: 'Mã OTP (6 số)',
+    profileProcessing: 'Đang xử lý…',
+    profileVerifyOtpUpdate: 'Xác nhận OTP và cập nhật',
+    profileSendOtp: 'Gửi OTP',
+    profileResendOrChangeEmail: 'Gửi lại / Đổi email',
+    profileChangePasswordTitle: 'Đổi mật khẩu',
+    profileFirstLoginPasswordHint:
+      'Đăng nhập lần đầu: đặt mật khẩu mới. Không cần mật khẩu cũ.',
+    profilePasswordUpdatedSuccess: 'Đổi mật khẩu thành công.',
+    profileCurrentPasswordLabel: 'Mật khẩu hiện tại',
+    profileNewPasswordLabel: 'Mật khẩu mới',
+    profileConfirmPasswordLabel: 'Xác nhận mật khẩu mới',
+    profileUpdatingPassword: 'Đang cập nhật…',
+    profileChangePasswordButton: 'Đổi mật khẩu',
+    profileDobFormatInvalid:
+      'Ngày sinh phải đúng định dạng dd/mm/yyyy (ví dụ 15/08/2000).',
+    profileDobDateInvalid: 'Ngày sinh không hợp lệ.',
+    profileDobUnder18: 'Bạn phải đủ 18 tuổi trở lên để sử dụng ứng dụng.',
+    profilePasswordMismatch: 'Mật khẩu mới và xác nhận không khớp.',
+    profilePasswordPolicy:
+      'Mật khẩu mới phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&#^).',
+    profileContactEmailHelp:
+      'Nếu gặp lỗi PKIX/SSLHandshake khi gửi OTP, nguyên nhân thường do cấu hình SMTP/TLS (chứng chỉ) trên máy chủ. FE không thể tự sửa; hãy liên hệ quản trị viên/backend để cấu hình mail server hoặc truststore Java.',
+    profileContactEmailErrorTls:
+      'Không gửi được OTP do cấu hình email (TLS/chứng chỉ) trên máy chủ.',
+    profileContactEmailErrorMailServer: 'Không kết nối được mail server để gửi OTP.',
+    profileUpdateFailed: 'Cập nhật thất bại',
+    profileChangePasswordFailed: 'Đổi mật khẩu thất bại',
+    profileRequestOtpFailed: 'Gửi OTP thất bại',
+    profileVerifyOtpFailed: 'Xác nhận OTP thất bại',
   },
   en: {
     // Common
@@ -756,6 +809,62 @@ export const translations = {
     paymentStatus: 'Status',
     paymentSuccess: '✓ Payment successful',
     waitingConfirmation: '⏳ Waiting for confirmation',
+
+    // Profile Page
+    profilePageLoading: 'Loading profile…',
+    profilePageError: 'Failed to load profile',
+    profilePageNotFound: 'Profile not found',
+    profilePersonalInformation: 'Personal information',
+    profileDateOfBirth: 'Date of birth',
+    profileLastLogin: 'Last login',
+    profileUpdateProfile: 'Update profile',
+    profileUpdateProfileHint:
+      'Phone, date of birth, and address. Name and department are managed by Tenant Admin.',
+    profileUpdatedSuccessfully: 'Profile updated successfully.',
+    profileSaveChanges: 'Save changes',
+    profileSaving: 'Saving…',
+    profileDobPlaceholder: 'dd/mm/yyyy',
+    profileDobPickFromCalendar: 'Pick date from calendar',
+    profileDobOpenCalendar: 'Open date of birth calendar',
+    profileUpdateContactEmail: 'Update contact email',
+    profileUpdateContactEmailHint:
+      'Send an OTP to the new email to verify, then enter the OTP to update your contact email.',
+    profileOtpSentSuccess:
+      'OTP has been sent to the new email. Please check your inbox.',
+    profileContactEmailUpdatedSuccess: 'Contact email updated successfully.',
+    profileNewContactEmailLabel: 'New contact email',
+    profileOtpSixDigits: 'OTP (6 digits)',
+    profileProcessing: 'Processing…',
+    profileVerifyOtpUpdate: 'Verify OTP & update',
+    profileSendOtp: 'Send OTP',
+    profileResendOrChangeEmail: 'Resend / change email',
+    profileChangePasswordTitle: 'Change password',
+    profileFirstLoginPasswordHint:
+      'First-time login: set a new password. Old password is not required.',
+    profilePasswordUpdatedSuccess: 'Password updated successfully.',
+    profileCurrentPasswordLabel: 'Current password',
+    profileNewPasswordLabel: 'New password',
+    profileConfirmPasswordLabel: 'Confirm new password',
+    profileUpdatingPassword: 'Updating…',
+    profileChangePasswordButton: 'Change password',
+    profileDobFormatInvalid:
+      'Date of birth must be dd/mm/yyyy (e.g. 15/08/2000).',
+    profileDobDateInvalid: 'Invalid date of birth.',
+    profileDobUnder18:
+      'You must be at least 18 years old to use this application.',
+    profilePasswordMismatch: 'New password and confirmation do not match.',
+    profilePasswordPolicy:
+      'New password must be at least 8 characters and include uppercase, lowercase, a number, and a special character (@$!%*?&#^).',
+    profileContactEmailHelp:
+      'If you see PKIX/SSLHandshake errors when sending OTP, the cause is usually SMTP/TLS (certificate) configuration on the server. The frontend cannot fix this; contact your admin/backend team to configure the mail server or Java truststore.',
+    profileContactEmailErrorTls:
+      'Could not send OTP due to email (TLS/certificate) configuration on the server.',
+    profileContactEmailErrorMailServer:
+      'Could not connect to the mail server to send OTP.',
+    profileUpdateFailed: 'Update failed',
+    profileChangePasswordFailed: 'Change password failed',
+    profileRequestOtpFailed: 'Request OTP failed',
+    profileVerifyOtpFailed: 'Verify OTP failed',
   },
 };
 

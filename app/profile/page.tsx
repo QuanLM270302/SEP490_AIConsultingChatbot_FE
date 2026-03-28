@@ -27,34 +27,40 @@ import type {
   ChangePasswordRequest,
 } from "@/types/profile";
 import {
-  DOB_UNDER_18_MESSAGE,
   formatDobDigitsInput,
   formatDobDisplay,
   isoDateToDdMmYyyy,
   isAtLeastYearsOld,
   parseDdMmYyyy,
   validateDobForSubmit,
+  type DobValidationMessages,
 } from "@/lib/date-of-birth";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
-function formatDate(iso: string | null): string {
+function formatDateTime(iso: string | null, locale: string): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString();
-  } catch {
-    return iso;
-  }
-}
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString();
+    return new Date(iso).toLocaleString(locale);
   } catch {
     return iso;
   }
 }
 
 export default function ProfilePage() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  const dateLocale = language === "vi" ? "vi-VN" : "en-US";
+
+  const dobMessages: DobValidationMessages = useMemo(
+    () => ({
+      formatInvalid: t.profileDobFormatInvalid,
+      dateInvalid: t.profileDobDateInvalid,
+      under18: t.profileDobUnder18,
+    }),
+    [t.profileDobFormatInvalid, t.profileDobDateInvalid, t.profileDobUnder18]
+  );
+
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,10 +75,10 @@ export default function ProfilePage() {
   const under18NoticeShownRef = useRef(false);
   const dobPickerRef = useRef<HTMLInputElement>(null);
   const dobPickerIsoValue = useMemo(() => {
-    const r = parseDdMmYyyy(dateOfBirthDisplay);
+    const r = parseDdMmYyyy(dateOfBirthDisplay, dobMessages);
     if (r.ok && r.iso) return r.iso;
     return "";
-  }, [dateOfBirthDisplay]);
+  }, [dateOfBirthDisplay, dobMessages]);
   const [address, setAddress] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -95,9 +101,6 @@ export default function ProfilePage() {
   const [contactSuccess, setContactSuccess] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
 
-  const contactEmailHelp =
-    "Nếu bạn gặp lỗi PKIX/SSLHandshake khi gửi OTP, nguyên nhân thường do backend cấu hình SMTP/TLS (certificate) chưa đúng. FE không thể tự sửa; hãy liên hệ admin/backend để cấu hình mail server hoặc truststore Java.";
-
   const prettifyContactEmailError = (message: string) => {
     const m = message || "";
     if (
@@ -105,10 +108,10 @@ export default function ProfilePage() {
       /SSLHandshakeException/i.test(m) ||
       /unable to find valid certification path/i.test(m)
     ) {
-      return `Không gửi được OTP do cấu hình email (TLS/Certificate) trên server. ${contactEmailHelp}`;
+      return `${t.profileContactEmailErrorTls} ${t.profileContactEmailHelp}`;
     }
     if (/Mail server connection failed/i.test(m) || /MessagingException/i.test(m)) {
-      return `Không kết nối được mail server để gửi OTP. ${contactEmailHelp}`;
+      return `${t.profileContactEmailErrorMailServer} ${t.profileContactEmailHelp}`;
     }
     return message;
   };
@@ -121,13 +124,15 @@ export default function ProfilePage() {
         setDateOfBirthDisplay(isoDateToDdMmYyyy(data.dateOfBirth));
         setAddress(data.address ?? "");
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load profile"))
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : t.profilePageError)
+      )
       .finally(() => setLoading(false));
-  }, []);
+  }, [t.profilePageError]);
 
   useEffect(() => {
     if (!dobEditedRef.current) return;
-    const r = parseDdMmYyyy(dateOfBirthDisplay);
+    const r = parseDdMmYyyy(dateOfBirthDisplay, dobMessages);
     if (!r.ok || r.iso === null) {
       setDobUnder18Notice(null);
       under18NoticeShownRef.current = false;
@@ -141,10 +146,14 @@ export default function ProfilePage() {
       return;
     }
     if (!under18NoticeShownRef.current) {
-      setDobUnder18Notice(DOB_UNDER_18_MESSAGE);
+      setDobUnder18Notice(t.profileDobUnder18);
       under18NoticeShownRef.current = true;
     }
-  }, [dateOfBirthDisplay]);
+  }, [dateOfBirthDisplay, dobMessages, t.profileDobUnder18]);
+
+  useEffect(() => {
+    setDobUnder18Notice((prev) => (prev !== null ? t.profileDobUnder18 : null));
+  }, [language, t.profileDobUnder18]);
 
   const openDobPicker = () => {
     dobEditedRef.current = true;
@@ -169,10 +178,10 @@ export default function ProfilePage() {
     setUpdateSuccess(false);
     setUpdateLoading(true);
     try {
-      const dobCheck = validateDobForSubmit(dateOfBirthDisplay);
+      const dobCheck = validateDobForSubmit(dateOfBirthDisplay, dobMessages);
       if (!dobCheck.ok) {
         const alreadyShownUnder18 =
-          dobCheck.message === DOB_UNDER_18_MESSAGE && dobUnder18Notice !== null;
+          dobCheck.message === t.profileDobUnder18 && dobUnder18Notice !== null;
         if (!alreadyShownUnder18) {
           setUpdateError(dobCheck.message);
         }
@@ -188,7 +197,7 @@ export default function ProfilePage() {
       setProfile(updated);
       setUpdateSuccess(true);
     } catch (err) {
-      setUpdateError(err instanceof Error ? err.message : "Update failed");
+      setUpdateError(err instanceof Error ? err.message : t.profileUpdateFailed);
     } finally {
       setUpdateLoading(false);
     }
@@ -199,13 +208,11 @@ export default function ProfilePage() {
     const passwordPattern =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^])[A-Za-z\d@$!%*?&#^]{8,}$/;
     if (newPassword !== confirmNew) {
-      setPasswordError("Mật khẩu mới và xác nhận không khớp.");
+      setPasswordError(t.profilePasswordMismatch);
       return;
     }
     if (!passwordPattern.test(newPassword)) {
-      setPasswordError(
-        "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt."
-      );
+      setPasswordError(t.profilePasswordPolicy);
       return;
     }
     setPasswordError(null);
@@ -222,7 +229,9 @@ export default function ProfilePage() {
       setNewPassword("");
       setConfirmNew("");
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : "Change password failed");
+      setPasswordError(
+        err instanceof Error ? err.message : t.profileChangePasswordFailed
+      );
     } finally {
       setPasswordLoading(false);
     }
@@ -236,9 +245,9 @@ export default function ProfilePage() {
     try {
       await requestUpdateContactEmail({ newContactEmail: newContactEmail.trim() });
       setOtpSent(true);
-      setContactSuccess("OTP đã được gửi đến email mới. Vui lòng kiểm tra hộp thư.");
+      setContactSuccess(t.profileOtpSentSuccess);
     } catch (err) {
-      const raw = err instanceof Error ? err.message : "Request OTP failed";
+      const raw = err instanceof Error ? err.message : t.profileRequestOtpFailed;
       setContactError(prettifyContactEmailError(raw));
     } finally {
       setContactLoading(false);
@@ -255,13 +264,13 @@ export default function ProfilePage() {
         newContactEmail: newContactEmail.trim(),
         otp: otp.trim(),
       });
-      setContactSuccess("Contact email đã được cập nhật thành công.");
+      setContactSuccess(t.profileContactEmailUpdatedSuccess);
       setOtp("");
       setOtpSent(false);
       const refreshed = await getProfile();
       setProfile(refreshed);
     } catch (err) {
-      const raw = err instanceof Error ? err.message : "Verify OTP failed";
+      const raw = err instanceof Error ? err.message : t.profileVerifyOtpFailed;
       setContactError(prettifyContactEmailError(raw));
     } finally {
       setContactLoading(false);
@@ -283,7 +292,9 @@ export default function ProfilePage() {
         <main className="flex flex-1 items-center justify-center px-6 py-10">
           <div className="flex flex-col items-center gap-3">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-            <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Loading profile…</p>
+            <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              {t.profilePageLoading}
+            </p>
           </div>
         </main>
       </div>
@@ -296,7 +307,7 @@ export default function ProfilePage() {
         <AppHeader />
         <main className="flex flex-1 items-center justify-center px-6 py-10">
           <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-6 py-4 text-rose-800 shadow-lg dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
-            {error ?? "Profile not found"}
+            {error ?? t.profilePageNotFound}
           </div>
         </main>
       </div>
@@ -316,7 +327,9 @@ export default function ProfilePage() {
                 <UserCircleIcon className="h-8 w-8" />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{profile.fullName || "Profile"}</h1>
+                <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+                  {profile.fullName || t.profile}
+                </h1>
                 <p className="mt-0.5 flex items-center gap-1.5 text-sm text-white/90">
                   <EnvelopeIcon className="h-3.5 w-3.5" />
                   {profile.email}
@@ -339,20 +352,32 @@ export default function ProfilePage() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-400">
                   <UserCircleIcon className="h-4 w-4" />
                 </span>
-                Personal information
+                {t.profilePersonalInformation}
               </h2>
               <dl className="space-y-3 text-sm">
                 {[
-                  { icon: EnvelopeIcon, label: "Email", value: profile.email },
-                  { icon: EnvelopeIcon, label: "Contact email", value: profile.contactEmail ?? "—" },
-                  { icon: UserCircleIcon, label: "Full name", value: profile.fullName },
-                  { icon: PhoneIcon, label: "Phone", value: profile.phoneNumber ?? "—" },
-                  { icon: CalendarDaysIcon, label: "Date of birth", value: formatDobDisplay(profile.dateOfBirth) },
-                  { icon: MapPinIcon, label: "Address", value: profile.address ?? "—" },
-                  { icon: BuildingOffice2Icon, label: "Role", value: profile.roleName ?? "—" },
-                  { icon: BuildingOffice2Icon, label: "Department", value: profile.departmentName ?? "—" },
-                  { icon: BuildingOffice2Icon, label: "Tenant", value: profile.tenantName ?? "—" },
-                  { icon: ClockIcon, label: "Last login", value: formatDateTime(profile.lastLoginAt) },
+                  { icon: EnvelopeIcon, label: t.email, value: profile.email },
+                  { icon: EnvelopeIcon, label: t.contactEmail, value: profile.contactEmail ?? "—" },
+                  { icon: UserCircleIcon, label: t.fullName, value: profile.fullName },
+                  { icon: PhoneIcon, label: t.phone, value: profile.phoneNumber ?? "—" },
+                  {
+                    icon: CalendarDaysIcon,
+                    label: t.profileDateOfBirth,
+                    value: formatDobDisplay(profile.dateOfBirth),
+                  },
+                  { icon: MapPinIcon, label: t.address, value: profile.address ?? "—" },
+                  { icon: BuildingOffice2Icon, label: t.role, value: profile.roleName ?? "—" },
+                  {
+                    icon: BuildingOffice2Icon,
+                    label: t.department,
+                    value: profile.departmentName ?? "—",
+                  },
+                  { icon: BuildingOffice2Icon, label: t.tenant, value: profile.tenantName ?? "—" },
+                  {
+                    icon: ClockIcon,
+                    label: t.profileLastLogin,
+                    value: formatDateTime(profile.lastLoginAt, dateLocale),
+                  },
                 ].map(({ icon: Icon, label, value }) => (
                   <div key={label} className="flex gap-2">
                     <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500 dark:text-emerald-400" />
@@ -371,10 +396,10 @@ export default function ProfilePage() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:bg-violet-400/20 dark:text-violet-400">
                   <PencilSquareIcon className="h-4 w-4" />
                 </span>
-                Update profile
+                {t.profileUpdateProfile}
               </h2>
               <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-                Phone, date of birth, address. Name & department by Tenant Admin.
+                {t.profileUpdateProfileHint}
               </p>
               <form onSubmit={handleUpdate} className="space-y-3">
                 {updateError && (
@@ -384,16 +409,18 @@ export default function ProfilePage() {
                 )}
                 {updateSuccess && (
                   <p className="rounded-xl bg-emerald-50 p-2.5 text-sm text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
-                    Profile updated successfully.
+                    {t.profileUpdatedSuccessfully}
                   </p>
                 )}
                 <div>
-                  <label htmlFor="phone" className={labelClass}>Phone</label>
+                  <label htmlFor="phone" className={labelClass}>
+                    {t.phone}
+                  </label>
                   <input id="phone" type="text" maxLength={20} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className={inputClass} />
                 </div>
                 <div>
                   <label htmlFor="dob" className={labelClass}>
-                    Date of birth
+                    {t.profileDateOfBirth}
                   </label>
                   <div className={dobCompositeClass}>
                     <input
@@ -401,7 +428,7 @@ export default function ProfilePage() {
                       type="text"
                       inputMode="numeric"
                       autoComplete="bday"
-                      placeholder="dd/mm/yyyy"
+                      placeholder={t.profileDobPlaceholder}
                       maxLength={10}
                       value={dateOfBirthDisplay}
                       onChange={(e) => {
@@ -427,8 +454,8 @@ export default function ProfilePage() {
                       type="button"
                       onClick={openDobPicker}
                       className="flex shrink-0 items-center justify-center rounded-r-xl px-2.5 py-2.5 text-emerald-600 transition hover:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/15"
-                      title="Chọn ngày từ lịch"
-                      aria-label="Mở lịch chọn ngày sinh"
+                      title={t.profileDobPickFromCalendar}
+                      aria-label={t.profileDobOpenCalendar}
                     >
                       <CalendarDaysIcon className="h-5 w-5" aria-hidden />
                     </button>
@@ -443,7 +470,9 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div>
-                  <label htmlFor="address" className={labelClass}>Address</label>
+                  <label htmlFor="address" className={labelClass}>
+                    {t.address}
+                  </label>
                   <textarea id="address" rows={3} maxLength={500} value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} />
                 </div>
                 <button
@@ -451,7 +480,7 @@ export default function ProfilePage() {
                   disabled={updateLoading}
                   className="w-full rounded-xl bg-linear-to-r from-violet-500 to-purple-500 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-violet-500/30 transition hover:from-violet-600 hover:to-purple-600 disabled:opacity-60"
                 >
-                  {updateLoading ? "Saving…" : "Save changes"}
+                  {updateLoading ? t.profileSaving : t.profileSaveChanges}
                 </button>
               </form>
             </section>
@@ -462,10 +491,10 @@ export default function ProfilePage() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-600 dark:bg-cyan-400/20 dark:text-cyan-400">
                   <EnvelopeIcon className="h-4 w-4" />
                 </span>
-                Update contact email
+                {t.profileUpdateContactEmail}
               </h2>
               <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-                Gửi OTP đến email mới để xác thực, sau đó nhập OTP để cập nhật contact email.
+                {t.profileUpdateContactEmailHint}
               </p>
               {contactError && (
                 <p className="mb-3 rounded-xl bg-rose-50 p-2.5 text-sm text-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
@@ -479,7 +508,9 @@ export default function ProfilePage() {
               )}
               <form onSubmit={otpSent ? handleVerifyOtp : handleRequestOtp} className="space-y-3">
                 <div>
-                  <label htmlFor="newContactEmail" className={labelClass}>New contact email</label>
+                  <label htmlFor="newContactEmail" className={labelClass}>
+                    {t.profileNewContactEmailLabel}
+                  </label>
                   <input
                     id="newContactEmail"
                     type="email"
@@ -492,7 +523,9 @@ export default function ProfilePage() {
                 </div>
                 {otpSent && (
                   <div>
-                    <label htmlFor="otp" className={labelClass}>OTP (6 digits)</label>
+                    <label htmlFor="otp" className={labelClass}>
+                      {t.profileOtpSixDigits}
+                    </label>
                     <input
                       id="otp"
                       type="text"
@@ -511,7 +544,11 @@ export default function ProfilePage() {
                   disabled={contactLoading}
                   className="w-full rounded-xl bg-linear-to-r from-cyan-500 to-sky-500 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-cyan-500/30 transition hover:from-cyan-600 hover:to-sky-600 disabled:opacity-60"
                 >
-                  {contactLoading ? "Processing…" : otpSent ? "Verify OTP & Update" : "Send OTP"}
+                  {contactLoading
+                    ? t.profileProcessing
+                    : otpSent
+                      ? t.profileVerifyOtpUpdate
+                      : t.profileSendOtp}
                 </button>
                 {otpSent && (
                   <button
@@ -524,7 +561,7 @@ export default function ProfilePage() {
                     }}
                     className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300 dark:hover:bg-zinc-800"
                   >
-                    Resend / Change email
+                    {t.profileResendOrChangeEmail}
                   </button>
                 )}
               </form>
@@ -536,11 +573,11 @@ export default function ProfilePage() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:bg-amber-400/20 dark:text-amber-400">
                   <KeyIcon className="h-4 w-4" />
                 </span>
-                Change password
+                {t.profileChangePasswordTitle}
               </h2>
               {mustChangePassword && (
                 <p className="mb-3 text-xs text-amber-700 dark:text-amber-300">
-                  First-time login: set a new password. Old password not required.
+                  {t.profileFirstLoginPasswordHint}
                 </p>
               )}
               <form onSubmit={handleChangePassword} className="space-y-3">
@@ -551,17 +588,21 @@ export default function ProfilePage() {
                 )}
                 {passwordSuccess && (
                   <p className="rounded-xl bg-emerald-50 p-2.5 text-sm text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
-                    Password updated successfully.
+                    {t.profilePasswordUpdatedSuccess}
                   </p>
                 )}
                 {!mustChangePassword && (
                   <div>
-                    <label htmlFor="oldPassword" className={labelClass}>Current password</label>
+                    <label htmlFor="oldPassword" className={labelClass}>
+                      {t.profileCurrentPasswordLabel}
+                    </label>
                     <input id="oldPassword" type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className={inputClass} />
                   </div>
                 )}
                 <div>
-                  <label htmlFor="newPassword" className={labelClass}>New password</label>
+                  <label htmlFor="newPassword" className={labelClass}>
+                    {t.profileNewPasswordLabel}
+                  </label>
                   <input
                     id="newPassword"
                     type="password"
@@ -571,7 +612,9 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="confirmNew" className={labelClass}>Confirm new password</label>
+                  <label htmlFor="confirmNew" className={labelClass}>
+                    {t.profileConfirmPasswordLabel}
+                  </label>
                   <input id="confirmNew" type="password" value={confirmNew} onChange={(e) => setConfirmNew(e.target.value)} className={inputClass} />
                 </div>
                 <button
@@ -579,7 +622,9 @@ export default function ProfilePage() {
                   disabled={passwordLoading}
                   className="w-full rounded-xl bg-linear-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-amber-500/30 transition hover:from-amber-600 hover:to-orange-600 disabled:opacity-60"
                 >
-                  {passwordLoading ? "Updating…" : "Change password"}
+                  {passwordLoading
+                    ? t.profileUpdatingPassword
+                    : t.profileChangePasswordButton}
                 </button>
               </form>
             </section>

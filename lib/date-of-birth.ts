@@ -23,8 +23,28 @@ export type ParseDobResult =
   | { ok: true; iso: string | null }
   | { ok: false; message: string };
 
+/** Thông báo validate DOB (theo ngôn ngữ UI). */
+export type DobValidationMessages = {
+  formatInvalid: string;
+  dateInvalid: string;
+  under18: string;
+};
+
+const DEFAULT_DOB_MESSAGES_VI: DobValidationMessages = {
+  formatInvalid:
+    "Ngày sinh phải đúng định dạng dd/mm/yyyy (ví dụ 15/08/2000).",
+  dateInvalid: "Ngày sinh không hợp lệ.",
+  under18: "Bạn phải đủ 18 tuổi trở lên để sử dụng ứng dụng.",
+};
+
+/** @deprecated Dùng thông báo từ `DobValidationMessages` / bản dịch profile. */
+export const DOB_UNDER_18_MESSAGE = DEFAULT_DOB_MESSAGES_VI.under18;
+
 /** Parse "dd/mm/yyyy"; rỗng → không gửi ngày (null). */
-export function parseDdMmYyyy(input: string): ParseDobResult {
+export function parseDdMmYyyy(
+  input: string,
+  messages: DobValidationMessages = DEFAULT_DOB_MESSAGES_VI
+): ParseDobResult {
   const t = input.trim();
   if (!t) return { ok: true, iso: null };
 
@@ -32,7 +52,7 @@ export function parseDdMmYyyy(input: string): ParseDobResult {
   if (!m) {
     return {
       ok: false,
-      message: "Ngày sinh phải đúng định dạng dd/mm/yyyy (ví dụ 15/08/2000).",
+      message: messages.formatInvalid,
     };
   }
   const day = parseInt(m[1], 10);
@@ -44,7 +64,7 @@ export function parseDdMmYyyy(input: string): ParseDobResult {
     date.getMonth() !== month ||
     date.getDate() !== day
   ) {
-    return { ok: false, message: "Ngày sinh không hợp lệ." };
+    return { ok: false, message: messages.dateInvalid };
   }
   const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   return { ok: true, iso };
@@ -66,12 +86,11 @@ export function isAtLeastYearsOld(birth: Date, years: number): boolean {
   return boundary <= todayStart;
 }
 
-/** Thông báo tuổi tối thiểu (dùng chung validate + gợi ý trên form). */
-export const DOB_UNDER_18_MESSAGE =
-  "Bạn phải đủ 18 tuổi trở lên để sử dụng ứng dụng.";
-
-export function validateDobForSubmit(input: string): ParseDobResult {
-  const parsed = parseDdMmYyyy(input);
+export function validateDobForSubmit(
+  input: string,
+  messages: DobValidationMessages = DEFAULT_DOB_MESSAGES_VI
+): ParseDobResult {
+  const parsed = parseDdMmYyyy(input, messages);
   if (!parsed.ok) return parsed;
   if (parsed.iso === null) return { ok: true, iso: null };
   const [y, mo, d] = parsed.iso.split("-").map(Number);
@@ -79,7 +98,7 @@ export function validateDobForSubmit(input: string): ParseDobResult {
   if (!isAtLeastYearsOld(birth, 18)) {
     return {
       ok: false,
-      message: DOB_UNDER_18_MESSAGE,
+      message: messages.under18,
     };
   }
   return parsed;
