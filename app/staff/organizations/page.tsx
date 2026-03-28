@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { StaffLayout } from "@/components/staff/StaffLayout";
 import {
   Check,
   Loader2,
@@ -37,6 +36,7 @@ import {
 } from "@/lib/api/staff";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { requestStaffPortalStatsRefresh } from "@/lib/staff-portal-stats-refresh";
 
 const statusLabel: Record<TenantStatus, Record<'vi' | 'en', string>> = {
   PENDING: { vi: "Chờ duyệt", en: "Pending" },
@@ -115,6 +115,7 @@ export default function StaffOrganizationsPage() {
       setError(null);
       await approveTenant(tenantId);
       await loadTenants();
+      requestStaffPortalStatsRefresh();
     } catch (e: any) {
       setError(e.message || (language === "en" ? "Cannot approve tenant" : "Không thể phê duyệt tenant"));
     } finally {
@@ -129,6 +130,7 @@ export default function StaffOrganizationsPage() {
       setError(null);
       await rejectTenant(rejectTenantId, rejectReason);
       await loadTenants();
+      requestStaffPortalStatsRefresh();
       setRejectModalOpen(false);
       setRejectTenantId(null);
       setRejectReason("");
@@ -145,6 +147,7 @@ export default function StaffOrganizationsPage() {
       setError(null);
       await suspendTenant(tenantId);
       await loadTenants();
+      requestStaffPortalStatsRefresh();
     } catch (e: any) {
       setError(e.message || (language === "en" ? "Cannot suspend tenant" : "Không thể tạm ngưng tenant"));
     } finally {
@@ -172,6 +175,7 @@ export default function StaffOrganizationsPage() {
       setError(null);
       await deleteTenant(deleteTenantId);
       await loadTenants();
+      requestStaffPortalStatsRefresh();
       setDeleteModalOpen(false);
       setDeleteTenantId(null);
     } catch (e: any) {
@@ -190,7 +194,7 @@ export default function StaffOrganizationsPage() {
     "inline-flex h-8 items-center gap-1 rounded-md px-2.5 text-xs font-medium transition disabled:opacity-50";
 
   return (
-    <StaffLayout>
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -665,6 +669,6 @@ export default function StaffOrganizationsPage() {
           </div>
         </div>
       )}
-    </StaffLayout>
+    </>
   );
 }

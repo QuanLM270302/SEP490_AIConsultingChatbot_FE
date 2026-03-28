@@ -268,7 +268,9 @@ export async function fetchPlatformDashboard(isStaff: boolean): Promise<{
     const res = await fetchWithAuth(endpoint, { signal: controller.signal });
     clearTimeout(timeout);
     if (!res.ok) {
-      console.error(`Platform dashboard fetch failed: ${res.status}`);
+      if (res.status !== 401 && res.status !== 403) {
+        console.error(`Platform dashboard fetch failed: ${res.status}`);
+      }
       return { ok: false, status: res.status, data: {} };
     }
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;

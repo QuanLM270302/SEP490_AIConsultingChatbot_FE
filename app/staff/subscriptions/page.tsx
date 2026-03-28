@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { StaffLayout } from "@/components/staff/StaffLayout";
 import {
   Loader2,
   Eye,
@@ -99,7 +98,7 @@ export default function StaffSubscriptionsPage() {
   });
 
   return (
-    <StaffLayout>
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -279,6 +278,6 @@ export default function StaffSubscriptionsPage() {
           </div>
         </div>
       )}
-    </StaffLayout>
+    </>
   );
 }

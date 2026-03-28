@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { StaffPortalCard } from "@/components/staff/StaffPortalCard";
 
 interface StaffSidebarProps {
   open: boolean;
@@ -23,7 +24,7 @@ export function StaffSidebar({ open, setOpen }: StaffSidebarProps) {
   const pathname = usePathname();
   const { language } = useLanguageStore();
   const t = translations[language];
-  
+
   const navigation = [
     { name: t.dashboard, href: "/staff", icon: LayoutDashboard },
     { name: t.organizations, href: "/staff/organizations", icon: Building2 },
@@ -106,28 +107,9 @@ export function StaffSidebar({ open, setOpen }: StaffSidebarProps) {
             </nav>
           </div>
 
-          {/* Bottom Info Section */}
+          {/* Bottom Info Section — state lives in StaffPortalCard; layout keeps it mounted across /staff/* */}
           <div className="space-y-4">
-            <div className="space-y-3 rounded-2xl bg-linear-to-br from-blue-50 to-sky-50 p-4 text-xs dark:from-blue-950/30 dark:to-sky-950/30">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-zinc-800 dark:text-zinc-100">
-                  Staff Portal
-                </p>
-                <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-400">
-                  {t.active}
-                </span>
-              </div>
-              <div className="space-y-2 text-zinc-600 dark:text-zinc-400">
-                <div className="flex items-center justify-between">
-                  <span>{t.totalTenants}</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white">—</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>{t.pending}</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white">—</span>
-                </div>
-              </div>
-            </div>
+            <StaffPortalCard />
           </div>
         </div>
       </aside>

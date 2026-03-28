@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-// import { AuthGuard } from "@/components/auth/AuthGuard"; // Tạm thời tắt để xem UI
+import { AuthGuard } from "@/components/auth/AuthGuard";
 import { AlertProvider } from "@/components/ui/AlertProvider";
 import { ThemeRouteSync } from "@/components/theme/ThemeRouteSync";
 import "./globals.css";
@@ -50,9 +50,7 @@ export default function RootLayout({
       >
         <AlertProvider>
           <ThemeRouteSync />
-          {/* Tạm thời bỏ AuthGuard để xem UI */}
-          {children}
-          {/* <AuthGuard>{children}</AuthGuard> */}
+          <AuthGuard>{children}</AuthGuard>
         </AlertProvider>
       </body>
     </html>
