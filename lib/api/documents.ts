@@ -59,7 +59,7 @@ export interface UploadDocumentParams {
   categoryId?: string | null;
   tagIds?: string[] | null;
   description?: string | null;
-  visibility?: "COMPANY_WIDE" | "SPECIFIC_DEPARTMENTS" | "SPECIFIC_ROLES";
+  visibility?: "COMPANY_WIDE" | "SPECIFIC_DEPARTMENTS" | "SPECIFIC_ROLES" | "SPECIFIC_DEPARTMENTS_AND_ROLES";
   accessibleDepartments?: number[] | null;
   accessibleRoles?: number[] | null;
 }
