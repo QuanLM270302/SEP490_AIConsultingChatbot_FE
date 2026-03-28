@@ -47,19 +47,28 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
   const { language } = useLanguageStore();
   const t = translations[language];
   const [statusData, setStatusData] = useState<SidebarSystemStatus>(DEFAULT_STATUS);
-  const roles = getStoredUser()?.roles ?? [];
-  const isStaff = roles.some((role) => role.includes("STAFF"));
+  /** Tránh hydration mismatch: server không có localStorage → luôn false đến khi mount. */
+  const [mounted, setMounted] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isStaff, setIsStaff] = useState(false);
 
   useEffect(() => {
+    const roles = getStoredUser()?.roles ?? [];
+    setIsSuperAdmin(roles.some((role) => role.includes("SUPER_ADMIN")));
+    setIsStaff(roles.some((role) => role.includes("STAFF")));
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !isSuperAdmin) return;
+
     let cancelled = false;
 
     const fetchDashboardStatus = async () => {
       try {
-        const roles = getStoredUser()?.roles ?? [];
-        const fetchIsStaff = roles.some((role) => role.includes("STAFF"));
-        const { ok, data } = await fetchPlatformDashboard(fetchIsStaff);
+        const { ok, data } = await fetchPlatformDashboard(isStaff);
         if (!ok) throw new Error("Failed to load dashboard status");
-        const parsed = parsePlatformDashboardJson(fetchIsStaff, data);
+        const parsed = parsePlatformDashboardJson(isStaff, data);
 
         if (!cancelled) {
           setStatusData({
@@ -77,7 +86,7 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && pathname.startsWith("/super-admin")) {
+      if (document.visibilityState === "visible" && window.location.pathname.startsWith("/super-admin")) {
         void fetchDashboardStatus();
       }
     };
@@ -93,15 +102,17 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [pathname]);
+  }, [mounted, isSuperAdmin, isStaff]);
 
+  if (!mounted || !isSuperAdmin) return null;
+
+  /** Không dùng raw API (có thể luôn tiếng Việt); ưu tiên nhãn theo ngôn ngữ. */
   const statusLabel =
-    statusData.systemStatusLabelRaw.trim() ||
-    (statusData.systemStatus === "Healthy"
+    statusData.systemStatus === "Healthy"
       ? t.healthy
       : statusData.systemStatus === "Unhealthy"
         ? t.unhealthy
-        : t.unknown);
+        : statusData.systemStatusLabelRaw.trim() || t.unknown;
 
   const statusDotClass =
     statusData.systemStatus === "Healthy"
@@ -112,7 +123,6 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
   
   const navigation = [
     { name: t.dashboard, href: "/super-admin", icon: LayoutDashboard },
-    { name: t.organizations, href: "/super-admin/organizations", icon: Building2 },
     { name: t.roles, href: "/super-admin/roles", icon: Shield },
     { name: t.staff, href: "/super-admin/staff", icon: Users },
     { name: t.pricing, href: "/super-admin/pricing", icon: CreditCard },

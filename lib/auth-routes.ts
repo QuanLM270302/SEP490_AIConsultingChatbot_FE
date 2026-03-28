@@ -41,5 +41,5 @@ export function roleToPath(roles: string[]): string {
 /** Check if user has at least one of the allowed roles */
 export function hasAllowedRole(userRoles: string[], allowedRoles: string[]): boolean {
   if (allowedRoles.length === 0) return true;
-  return userRoles.some((r) => allowedRoles.some((a) => r.includes(a)));
+  return userRoles.some((r) => allowedRoles.some((a) => r === a));
 }

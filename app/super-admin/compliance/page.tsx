@@ -1,12 +1,10 @@
-import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import { CompliancePolicies } from "@/components/super-admin/CompliancePolicies";
 import { DataIsolation } from "@/components/super-admin/DataIsolation";
 import { AuditLogs } from "@/components/super-admin/AuditLogs";
 
 export default function CompliancePage() {
   return (
-    <SuperAdminLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
             Compliance & Data Isolation
@@ -23,6 +21,5 @@ export default function CompliancePage() {
         
         <AuditLogs />
       </div>
-    </SuperAdminLayout>
   );
 }

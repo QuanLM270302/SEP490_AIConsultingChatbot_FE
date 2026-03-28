@@ -17,11 +17,12 @@ export function ChatLayout() {
       />
       <ChatHistorySidebar
         open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
+        onToggle={() => setHistoryOpen(false)}
         onSelectChat={(chatId) => {
-          setCurrentChatId(chatId);
+          setCurrentChatId(chatId || null);
           setHistoryOpen(false);
         }}
+        onNewChat={() => setCurrentChatId(null)}
         currentChatId={currentChatId}
       />
       <ChatMain 

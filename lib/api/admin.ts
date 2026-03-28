@@ -78,6 +78,8 @@ export interface AdminRoleResponse {
   name?: string;
   description?: string;
   usersCount?: number;
+  /** Optional permissions list (used by Super Admin Roles detail modal). */
+  permissions?: string[];
   isSystemRole?: boolean;
   tenantId?: string | null;
   tenantName?: string | null;

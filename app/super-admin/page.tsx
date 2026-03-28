@@ -1,14 +1,14 @@
 "use client";
 
-import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import { PlatformStats } from "@/components/super-admin/PlatformStats";
 import { RecentActivity } from "@/components/super-admin/RecentActivity";
 import { AIQueriesChart } from "@/components/super-admin/AIQueriesChart";
-import { RevenueChart } from "@/components/super-admin/RevenueChart";
-import { TenantDistribution } from "@/components/super-admin/TenantDistribution";
-import { TenantGrowth } from "@/components/super-admin/TenantGrowth";
-import { AIPerformance } from "@/components/super-admin/AIPerformance";
+import { PlatformSubscriptionsChart } from "@/components/super-admin/PlatformSubscriptionsChart";
+import { KnowledgeVolumeChart } from "@/components/super-admin/KnowledgeVolumeChart";
+import { AdminRevenueChart } from "@/components/super-admin/AdminRevenueChart";
+import { TenantStatusBreakdown } from "@/components/super-admin/TenantStatusBreakdown";
 import { SystemHealth } from "@/components/super-admin/SystemHealth";
+import { SuperAdminDashboardAnalyticsProvider } from "@/components/super-admin/SuperAdminDashboardAnalyticsContext";
 import { useLanguageStore } from "@/lib/language-store";
 
 export default function SuperAdminDashboard() {
@@ -16,41 +16,48 @@ export default function SuperAdminDashboard() {
   const isEn = language === "en";
 
   return (
-    <SuperAdminLayout>
+    <SuperAdminDashboardAnalyticsProvider>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
-            Platform Dashboard
+            {isEn ? "Platform Dashboard" : "Bảng điều khiển nền tảng"}
           </h1>
           <p className="mt-2 text-zinc-600 dark:text-zinc-400">
             {isEn ? "Manage and monitor the entire platform" : "Quản lý và giám sát toàn bộ nền tảng"}
           </p>
         </div>
 
-        {/* Platform Stats */}
+        {/* People: chỉ KPI không trùng biểu đồ */}
         <PlatformStats />
 
-        {/* AI Usage & Revenue */}
+        {/* Doanh thu — placeholder + note BE */}
+        <AdminRevenueChart />
+
+        {/* LLM + Subscription (tách khỏi tài liệu / chunk) */}
         <div className="grid gap-8 lg:grid-cols-2">
           <AIQueriesChart />
-          <RevenueChart />
+          <PlatformSubscriptionsChart />
         </div>
-
-        {/* Tenant Growth & Plan Distribution */}
         <div className="grid gap-8 lg:grid-cols-2">
-          <TenantGrowth />
-          <TenantDistribution />
+          <KnowledgeVolumeChart />
+
+          {/* Một card tenant (status + tỷ lệ cùng layout) */}
+          <TenantStatusBreakdown
+            header="users"
+            title={isEn ? "Tenant overview" : "Tổ chức — tổng quan"}
+            subtitle={
+              isEn
+                ? "Counts and share by lifecycle status"
+                : "Số lượng và tỷ lệ theo trạng thái vòng đời"
+            }
+          />
         </div>
 
-        {/* AI Performance */}
-        <AIPerformance />
-
-        {/* System Health & Recent Activity */}
         <div className="grid gap-8 lg:grid-cols-2">
           <SystemHealth />
           <RecentActivity />
         </div>
       </div>
-    </SuperAdminLayout>
+    </SuperAdminDashboardAnalyticsProvider>
   );
 }

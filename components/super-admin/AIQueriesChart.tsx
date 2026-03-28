@@ -1,24 +1,46 @@
 "use client";
 
-import { MessageSquare, TrendingUp } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
+import { useSuperAdminDashboardAnalytics } from "@/components/super-admin/SuperAdminDashboardAnalyticsContext";
+import { formatCompactInt } from "@/components/super-admin/dashboard-chart-utils";
 
-const queryData = [
-  { month: "Jan", queries: 12400 },
-  { month: "Feb", queries: 18200 },
-  { month: "Mar", queries: 24800 },
-  { month: "Apr", queries: 28600 },
-  { month: "May", queries: 35400 },
-  { month: "Jun", queries: 45200 },
-];
-
+/**
+ * LLM usage snapshot: all-time vs this month (requests & tokens) — dữ liệu từ `llmUsage` analytics.
+ */
 export function AIQueriesChart() {
   const { language } = useLanguageStore();
   const isEn = language === "en";
-  const maxValue = Math.max(...queryData.map((d) => d.queries));
+  const { parsed, loading } = useSuperAdminDashboardAnalytics();
+  const llm = parsed.llmUsage;
+
+  const rows = [
+    {
+      key: "tr",
+      label: isEn ? "Total requests" : "Tổng request",
+      value: llm.totalRequests,
+    },
+    {
+      key: "rm",
+      label: isEn ? "Requests (this month)" : "Request tháng này",
+      value: llm.requestsThisMonth,
+    },
+    {
+      key: "tt",
+      label: isEn ? "Total tokens" : "Tổng token",
+      value: llm.totalTokensUsed,
+    },
+    {
+      key: "tm",
+      label: isEn ? "Tokens (this month)" : "Token tháng này",
+      value: llm.tokensThisMonth,
+    },
+  ];
+
+  const maxValue = Math.max(...rows.map((r) => r.value), 1);
 
   return (
-    <div className="rounded-3xl bg-gradient-to-br from-green-50 to-emerald-50 p-8 shadow-lg shadow-green-100/60 dark:from-zinc-950 dark:to-zinc-900 dark:shadow-black/40">
+    <div className="rounded-3xl bg-gradient-to-br from-green-100 to-emerald-100 p-8 shadow-lg shadow-green-100/60 dark:from-zinc-950 dark:to-zinc-900 dark:shadow-black/40">
       <div className="mb-8 flex items-start justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2">
@@ -26,40 +48,34 @@ export function AIQueriesChart() {
               <MessageSquare className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
             <h3 className="text-xl font-bold text-zinc-900 dark:text-white">
-              AI Queries Trend
+              {isEn ? "LLM usage" : "Sử dụng LLM"}
             </h3>
           </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {isEn ? "Monthly AI query volume" : "Số lượng truy vấn AI theo tháng"}
+          <p className="text-sm text-zinc-700 dark:text-zinc-400">
+            {isEn ? "Requests and tokens (all-time vs this month)" : "Request và token (tổng vs tháng hiện tại)"}
           </p>
-        </div>
-        <div className="flex items-center gap-2 rounded-2xl bg-green-500/20 px-4 py-2">
-          <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-          <span className="text-sm font-bold text-green-600 dark:text-green-400">
-            +24%
-          </span>
         </div>
       </div>
 
       <div className="space-y-5">
-        {queryData.map((data, index) => {
-          const percentage = (data.queries / maxValue) * 100;
+        {rows.map((data, index) => {
+          const percentage = loading ? 0 : (data.value / maxValue) * 100;
           return (
-            <div key={data.month} className="group space-y-2">
+            <div key={data.key} className="group space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                  {data.month}
+                  {data.label}
                 </span>
-                <span className="text-base font-bold text-zinc-900 dark:text-white">
-                  {data.queries.toLocaleString()}
+                <span className="text-base font-bold text-zinc-900 dark:text-white tabular-nums">
+                  {loading ? "—" : formatCompactInt(data.value)}
                 </span>
               </div>
-              <div className="relative h-3 overflow-hidden rounded-full bg-white/60 dark:bg-zinc-800/60">
+              <div className="relative h-3 overflow-hidden rounded-full bg-white/85 ring-1 ring-emerald-100/70 dark:bg-zinc-800/60 dark:ring-0">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-green-400 via-green-500 to-emerald-600 shadow-lg shadow-green-500/30 transition-all duration-700 ease-out group-hover:shadow-green-500/50"
-                  style={{ 
-                    width: `${percentage}%`,
-                    animationDelay: `${index * 100}ms`
+                  style={{
+                    width: `${Math.max(percentage, data.value > 0 ? 4 : 0)}%`,
+                    animationDelay: `${index * 100}ms`,
                   }}
                 />
               </div>
@@ -68,29 +84,31 @@ export function AIQueriesChart() {
         })}
       </div>
 
-      <div className="mt-8 grid grid-cols-3 gap-6 rounded-2xl bg-white/60 p-5 dark:bg-zinc-800/40">
+      <div className="mt-8 grid grid-cols-3 gap-6 rounded-2xl bg-white/95 p-5 ring-1 ring-emerald-200/70 dark:bg-zinc-800/40 dark:ring-0">
         <div className="text-center">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            {isEn ? "Avg/Day" : "TB/Ngày"}
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+            {isEn ? "Avg tokens / request" : "Token TB / request"}
           </p>
-          <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">
-            1,507
+          <p className="mt-2 text-2xl font-bold tabular-nums text-zinc-900 dark:text-white">
+            {loading
+              ? "—"
+              : Math.round(llm.averageTokensPerRequest).toLocaleString()}
           </p>
         </div>
-        <div className="text-center border-x border-zinc-200 dark:border-zinc-700">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            {isEn ? "Peak" : "Cao nhất"}
+        <div className="border-x border-zinc-200 text-center dark:border-zinc-700">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+            {isEn ? "Total requests" : "Tổng request"}
           </p>
-          <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">
-            2,840
+          <p className="mt-2 text-2xl font-bold tabular-nums text-zinc-900 dark:text-white">
+            {loading ? "—" : llm.totalRequests.toLocaleString()}
           </p>
         </div>
         <div className="text-center">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            {isEn ? "Total" : "Tổng"}
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+            {isEn ? "Total tokens" : "Tổng token"}
           </p>
-          <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">
-            164.6K
+          <p className="mt-2 text-2xl font-bold tabular-nums text-zinc-900 dark:text-white">
+            {loading ? "—" : formatCompactInt(llm.totalTokensUsed)}
           </p>
         </div>
       </div>

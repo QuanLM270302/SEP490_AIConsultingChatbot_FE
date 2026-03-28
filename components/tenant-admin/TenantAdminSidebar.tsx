@@ -17,6 +17,11 @@ import {
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
+interface TenantAdminSidebarProps {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}
+
 export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
   const pathname = usePathname();
   const { language } = useLanguageStore();
@@ -28,7 +33,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
     { name: t.departments, href: "/tenant-admin/departments", icon: Building },
     { name: t.roles, href: "/tenant-admin/roles", icon: Shield },
     { name: t.documents, href: "/tenant-admin/documents", icon: FileText },
-    { name: "AI Chatbot", href: "/employee/chatplatform", icon: Bot },
+    { name: "AI Chatbot", href: "/chatbot", icon: Bot },
     { name: t.analytics, href: "/tenant-admin/analytics", icon: BarChart3 },
     { name: t.subscription, href: "/tenant-admin/subscription", icon: CreditCard },
   ];
@@ -44,7 +49,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-6 left-4 z-50 w-64 shrink-0 rounded-3xl bg-white p-6 shadow-lg shadow-green-100/60 transition-transform duration-300 dark:bg-zinc-950 dark:shadow-black/50 lg:translate-x-0",
+          "fixed inset-y-6 left-4 z-50 w-64 shrink-0 rounded-3xl bg-white p-6 shadow-lg shadow-purple-100/60 transition-transform duration-300 dark:bg-zinc-950 dark:shadow-black/50 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -52,7 +57,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <Link href="/tenant-admin" className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-green-400 to-green-600 text-white shadow-lg shadow-green-500/30">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-purple-400 to-purple-600 text-white shadow-lg shadow-purple-500/30">
                   <Building className="h-5 w-5" />
                 </div>
                 <span className="text-lg font-semibold text-zinc-900 dark:text-white">
@@ -83,7 +88,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
                     className={cn(
                       "flex w-full items-center justify-between rounded-2xl px-3.5 py-3 font-medium transition",
                       isActive
-                        ? "bg-green-500 text-white shadow-sm shadow-green-400/60"
+                        ? "bg-purple-500 text-white shadow-sm shadow-purple-400/60"
                         : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
                     )}
                   >
@@ -104,12 +109,12 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
           </div>
 
           <div className="space-y-4">
-            <div className="space-y-3 rounded-2xl bg-linear-to-br from-green-50 to-emerald-50 p-4 text-xs dark:from-green-950/30 dark:to-emerald-950/30">
+            <div className="space-y-3 rounded-2xl bg-linear-to-br from-purple-50 to-violet-50 p-4 text-xs dark:from-purple-950/30 dark:to-violet-950/30">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-zinc-800 dark:text-zinc-100">
                   {t.currentPlan}
                 </p>
-                <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
+                <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:text-purple-400">
                   —
                 </span>
               </div>

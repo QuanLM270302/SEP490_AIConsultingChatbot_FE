@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import {
   createAdminRole,
   deleteAdminRole,
@@ -108,7 +107,7 @@ export default function SuperAdminRolesPage() {
     : list;
 
   return (
-    <SuperAdminLayout>
+    <>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -429,7 +428,7 @@ export default function SuperAdminRolesPage() {
           </div>
         </>
       ) : null}
-    </SuperAdminLayout>
+    </>
   );
 }
 
@@ -437,13 +436,29 @@ function CreateRoleModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   const [form, setForm] = useState<CreateAdminRoleRequest>({ code: "", name: "", description: "", tenantId: null });
   const [loading, setLoading] = useState(false);
   const [tenants, setTenants] = useState<AdminTenantSummary[]>([]);
-  const [tenantsLoading, setTenantsLoading] = useState(true);
+  const [tenantsLoading, setTenantsLoading] = useState(false);
+  const [tenantsError, setTenantsError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    setTenantsLoading(true);
+    setTenantsError(null);
     getAdminTenants()
-      .then(setTenants)
-      .catch(() => setTenants([]))
-      .finally(() => setTenantsLoading(false));
+      .then((data) => {
+        if (cancelled) return;
+        setTenants(data);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setTenantsError(e instanceof Error ? e.message : "Failed to load tenants");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setTenantsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const submit = async (e: React.FormEvent) => {
@@ -503,6 +518,7 @@ function CreateRoleModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               ))}
             </select>
             {tenantsLoading ? <p className="mt-1 text-xs text-zinc-500">Đang tải danh sách tổ chức…</p> : null}
+            {tenantsError ? <p className="mt-1 text-xs text-red-500">{tenantsError}</p> : null}
           </div>
           <div className="mt-6 flex gap-2">
             <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">
