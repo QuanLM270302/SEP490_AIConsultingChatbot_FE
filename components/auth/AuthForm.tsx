@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { login } from "@/lib/api/auth";
 import { setAuth } from "@/lib/auth-store";
 import { roleToPath } from "@/lib/auth-routes";
+import { AuthHomePlainLink } from "@/components/auth/AuthHomePlainLink";
 
 type AuthMode = "login";
 
@@ -163,6 +164,8 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
           >
             {loading ? "Signing in…" : "Login"}
           </button>
+
+          {mode === "login" && <AuthHomePlainLink variant="bar" />}
         </form>
       </div>
 

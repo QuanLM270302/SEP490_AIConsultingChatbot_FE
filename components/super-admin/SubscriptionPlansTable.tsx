@@ -54,7 +54,7 @@ export function SubscriptionPlansTable() {
     setError(null);
     (filter === "active" ? getActiveSubscriptionPlans() : getSubscriptionPlans())
       .then(setPlans)
-      .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load plans" : "Lỗi tải plans"))
+      .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load plans" : "Lỗi tải danh sách gói"))
       .finally(() => setLoading(false));
   };
 
@@ -94,7 +94,7 @@ export function SubscriptionPlansTable() {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm(isEn ? "Are you sure you want to deactivate this plan?" : "Bạn có chắc muốn deactivate plan này?")) return;
+    if (!confirm(isEn ? "Are you sure you want to deactivate this plan?" : "Bạn có chắc muốn ngừng kích hoạt gói này?")) return;
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoading(id);
@@ -115,7 +115,7 @@ export function SubscriptionPlansTable() {
             className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-600"
           >
             <Plus className="h-4 w-4" />
-            {isEn ? "Create plan" : "Tạo plan"}
+            {isEn ? "Create plan" : "Tạo gói"}
           </button>
           <button
             type="button"
@@ -129,7 +129,7 @@ export function SubscriptionPlansTable() {
             onClick={() => setFilter("active")}
             className={`rounded-xl px-3 py-1.5 text-sm font-medium ${filter === "active" ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
           >
-            {isEn ? "Active" : "Đang active"}
+            {isEn ? "Active" : "Đang hoạt động"}
           </button>
         </div>
       </div>
@@ -147,7 +147,7 @@ export function SubscriptionPlansTable() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50">
                 <tr>
-                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Code / Name" : "Code / Tên"}</th>
+                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Code / Name" : "Mã / Tên"}</th>
                   <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Price (month)" : "Giá (tháng)"}</th>
                   <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Limits" : "Giới hạn"}</th>
                   <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Status" : "Trạng thái"}</th>
@@ -157,7 +157,7 @@ export function SubscriptionPlansTable() {
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {plans.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">{isEn ? "No plans yet." : "Chưa có plan."}</td>
+                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">{isEn ? "No plans yet." : "Chưa có gói nào."}</td>
                   </tr>
                 ) : (
                   plans.map((p) => (
@@ -172,11 +172,13 @@ export function SubscriptionPlansTable() {
                         {p.monthlyPrice != null ? `${Number(p.monthlyPrice).toLocaleString("vi-VN")} ${p.currency ?? "VND"}` : "—"}
                       </td>
                       <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">
-                        Users: {p.maxUsers ?? "—"} · Docs: {p.maxDocuments ?? "—"}
+                        {isEn
+                          ? `Users: ${p.maxUsers ?? "—"} · Docs: ${p.maxDocuments ?? "—"}`
+                          : `Người dùng: ${p.maxUsers ?? "—"} · Tài liệu: ${p.maxDocuments ?? "—"}`}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${p.isActive ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"}`}>
-                          {p.isActive ? "Active" : "Inactive"}
+                          {p.isActive ? (isEn ? "Active" : "Đang hoạt động") : isEn ? "Inactive" : "Ngừng kích hoạt"}
                         </span>
                       </td>
                       <td className="relative px-6 py-4 text-right">
@@ -218,11 +220,11 @@ export function SubscriptionPlansTable() {
                       {detailPlan.name ?? detailPlan.code}
                     </h3>
                     <div className="mt-2 flex items-center gap-2">
-                      <p className="text-sm text-violet-50">Plan Details</p>
+                      <p className="text-sm text-violet-50">{isEn ? "Plan Details" : "Chi tiết gói"}</p>
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm ${
                         detailPlan.isActive ? 'bg-green-500/30 text-white' : 'bg-red-500/30 text-white'
                       }`}>
-                        {detailPlan.isActive ? "Active" : "Inactive"}
+                        {detailPlan.isActive ? (isEn ? "Active" : "Đang hoạt động") : isEn ? "Inactive" : "Ngừng kích hoạt"}
                       </span>
                     </div>
                   </div>
@@ -326,24 +328,24 @@ export function SubscriptionPlansTable() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                   <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                    Max users / documents / storage (GB)
+                    {isEn ? "Max users / documents / storage (GB)" : "Người dùng / tài liệu / dung lượng (GB)"}
                   </h4>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Users</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{isEn ? "Users" : "Người dùng"}</span>
                     <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
                       {detailPlan.maxUsers ?? "—"}
                     </p>
                   </div>
                   <div>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Documents</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{isEn ? "Documents" : "Tài liệu"}</span>
                     <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
                       {detailPlan.maxDocuments ?? "—"}
                     </p>
                   </div>
                   <div>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Storage</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{isEn ? "Storage" : "Dung lượng"}</span>
                     <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
                       {detailPlan.maxStorageGb ?? "—"} GB
                     </p>
@@ -359,7 +361,7 @@ export function SubscriptionPlansTable() {
                 onClick={() => setDetailPlan(null)}
                 className="rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-zinc-900/20 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:shadow-white/20 dark:hover:bg-zinc-100"
               >
-                Close
+                {isEn ? "Close" : "Đóng"}
               </button>
             </div>
           </div>
@@ -431,6 +433,8 @@ export function SubscriptionPlansTable() {
 }
 
 function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [loading, setLoading] = useState(false);
   const [types, setTypes] = useState<SubscriptionPlanTypeOption[]>([]);
   const [planType, setPlanType] = useState<SubscriptionPlanTypeOption["code"]>("STARTER");
@@ -528,7 +532,7 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       onSuccess();
     } catch (err) {
       console.error("❌ Error creating plan:", err);
-      alert(err instanceof Error ? err.message : "Tạo plan thất bại");
+      alert(err instanceof Error ? err.message : isEn ? "Failed to create plan" : "Tạo gói thất bại");
     } finally {
       setLoading(false);
     }
@@ -538,11 +542,11 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo subscription plan</h3>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{isEn ? "Create subscription plan" : "Tạo gói đăng ký"}</h3>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           {/* Plan Type Dropdown - Moved to top */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Plan type *</label>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Plan type *" : "Loại gói *"}</label>
             <select
               value={planType}
               onChange={(e) => setPlanType(e.target.value as SubscriptionPlanTypeOption["code"])}
@@ -622,7 +626,7 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           {/* Limits */}
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="block text-xs text-zinc-500">Số user</label>
+              <label className="block text-xs text-zinc-500">{isEn ? "Max users" : "Số người dùng tối đa"}</label>
               <input 
                 type="number" 
                 min="1" 
@@ -676,6 +680,8 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 }
 
 function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanResponse; onClose: () => void; onSuccess: () => void }) {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(plan.name ?? "");
   const [description, setDescription] = useState(plan.description ?? "");
@@ -734,7 +740,7 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Cập nhật plan: {plan.code}</h3>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{isEn ? `Update plan: ${plan.code}` : `Cập nhật gói: ${plan.code}`}</h3>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div><label className="block text-xs text-zinc-500">Tên *</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
           <div><label className="block text-xs text-zinc-500">Mô tả</label><input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
@@ -744,14 +750,14 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
             <div><label className="block text-xs text-zinc-500">Giá năm</label><input type="number" min="0" value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="block text-xs text-zinc-500">Max users</label><input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Max documents</label><input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Max storage (GB)</label><input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Display order</label><input type="number" min="0" value={displayOrder} onChange={(e) => setDisplayOrder(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">{isEn ? "Max users" : "Người dùng tối đa"}</label><input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">{isEn ? "Max documents" : "Tài liệu tối đa"}</label><input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">{isEn ? "Max storage (GB)" : "Dung lượng tối đa (GB)"}</label><input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">{isEn ? "Display order" : "Thứ tự hiển thị"}</label><input type="number" min="0" value={displayOrder} onChange={(e) => setDisplayOrder(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
           </div>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-green-500" />
-            <span className="text-sm text-zinc-700 dark:text-zinc-300">Đang active</span>
+            <span className="text-sm text-zinc-700 dark:text-zinc-300">{isEn ? "Active" : "Đang hoạt động"}</span>
           </label>
           <div className="mt-6 flex gap-2">
             <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Lưu"}</button>

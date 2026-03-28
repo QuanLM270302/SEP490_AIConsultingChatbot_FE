@@ -24,7 +24,7 @@ export function TagsTab() {
       const data = await listTagsManage();
       setTags(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Lỗi tải tags");
+      setError(e instanceof Error ? e.message : "Lỗi tải danh sách thẻ");
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export function TagsTab() {
   };
 
   const handleDeactivate = async (id: string) => {
-    if (!confirm("Vô hiệu hóa tag này?")) return;
+    if (!confirm("Vô hiệu hóa thẻ này?")) return;
     setError(null);
     try {
       await deactivateTag(id);
@@ -78,7 +78,7 @@ export function TagsTab() {
   if (loading) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-8 dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-sm text-zinc-500">Đang tải tags…</p>
+        <p className="text-sm text-zinc-500">Đang tải danh sách thẻ…</p>
       </div>
     );
   }
@@ -94,7 +94,7 @@ export function TagsTab() {
       <div className="flex justify-end">
         <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Tạo tag
+          Tạo thẻ
         </Button>
       </div>
 
@@ -103,7 +103,7 @@ export function TagsTab() {
           <thead className="bg-zinc-50 dark:bg-zinc-900">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Tên</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Code</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Mã</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Mô tả</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Trạng thái</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">Thao tác</th>
@@ -137,7 +137,7 @@ export function TagsTab() {
           </tbody>
         </table>
         {tags.length === 0 && (
-          <p className="px-4 py-6 text-center text-sm text-zinc-500">Chưa có tag. Tạo mới phía trên.</p>
+          <p className="px-4 py-6 text-center text-sm text-zinc-500">Chưa có thẻ nào. Hãy tạo mới phía trên.</p>
         )}
       </div>
 
@@ -145,7 +145,7 @@ export function TagsTab() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Tạo tag mới</h3>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Tạo thẻ mới</h3>
               <button type="button" onClick={() => setCreateOpen(false)} className="rounded p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                 <X className="h-5 w-5" />
               </button>
@@ -156,7 +156,7 @@ export function TagsTab() {
                 <input name="name" type="text" required className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Code * (unique)</label>
+                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Mã * (duy nhất)</label>
                 <input name="code" type="text" required className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" placeholder="VD: POLICY" />
               </div>
               <div>
@@ -223,7 +223,7 @@ function EditTagForm({
         <input value={name} onChange={(e) => setName(e.target.value)} type="text" required className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Code *</label>
+        <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Mã *</label>
         <input value={code} onChange={(e) => setCode(e.target.value)} type="text" required className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
       </div>
       <div>

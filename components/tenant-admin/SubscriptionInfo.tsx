@@ -13,7 +13,13 @@ interface SubscriptionInfoProps {
   onUpdated?: () => void;
 }
 
-const tierLabel: Record<string, string> = {
+const tierNameVi: Record<string, string> = {
+  STARTER: "Khởi đầu",
+  STANDARD: "Tiêu chuẩn",
+  ENTERPRISE: "Doanh nghiệp",
+  TRIAL: "Dùng thử",
+};
+const tierNameEn: Record<string, string> = {
   STARTER: "Starter",
   STANDARD: "Standard",
   ENTERPRISE: "Enterprise",
@@ -87,7 +93,8 @@ export function SubscriptionInfo({
     );
   }
 
-  const tier = tierLabel[subscription.tier] || subscription.tier;
+  const tierMap = language === "vi" ? tierNameVi : tierNameEn;
+  const tier = tierMap[subscription.tier] ?? subscription.tier;
   const nextDate = subscription.nextBillingDate || subscription.endDate;
   const isCancelled = !!subscription.cancelledAt;
 
@@ -113,7 +120,11 @@ export function SubscriptionInfo({
                 : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"
             }`}
           >
-            {subscription.status === "ACTIVE" ? (isCancelled ? "Đã hủy (còn hiệu lực đến hết kỳ)" : "Active") : subscription.status}
+            {subscription.status === "ACTIVE"
+              ? isCancelled
+                ? "Đã hủy (còn hiệu lực đến hết kỳ)"
+                : t.active
+              : subscription.status}
           </span>
         </div>
         <p className="text-2xl font-bold text-zinc-900 dark:text-white">

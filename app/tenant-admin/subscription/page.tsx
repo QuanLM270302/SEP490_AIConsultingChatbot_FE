@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AppHeader } from "@/components/layout/AppHeader";
-import { SubscriptionHeader } from "@/components/subscription/SubscriptionHeader";
+import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { SubscriptionTabs } from "@/components/subscription/SubscriptionTabs";
 import { SubscriptionInfo } from "@/components/tenant-admin/SubscriptionInfo";
 import { BillingHistory } from "@/components/tenant-admin/BillingHistory";
@@ -16,6 +15,23 @@ import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
 type TabId = "plans" | "billing" | "history";
+
+const TIER_LABEL_VI: Record<SubscriptionTier, string> = {
+  TRIAL: "Dùng thử",
+  STARTER: "Khởi đầu",
+  STANDARD: "Tiêu chuẩn",
+  ENTERPRISE: "Doanh nghiệp",
+};
+const TIER_LABEL_EN: Record<SubscriptionTier, string> = {
+  TRIAL: "Trial",
+  STARTER: "Starter",
+  STANDARD: "Standard",
+  ENTERPRISE: "Enterprise",
+};
+
+function tierDisplayName(tier: SubscriptionTier, lang: "vi" | "en"): string {
+  return lang === "vi" ? TIER_LABEL_VI[tier] : TIER_LABEL_EN[tier];
+}
 
 export default function TenantAdminSubscriptionPage() {
   const [activeTab, setActiveTab] = useState<TabId>("plans");
@@ -68,7 +84,9 @@ export default function TenantAdminSubscriptionPage() {
             `Gói hiện tại đã hủy nhưng vẫn còn hiệu lực đến ${until}. Bạn chỉ có thể mua gói mới sau khi gói hiện tại hết hạn.`
           );
         }
-        throw new Error("Tenant đang có gói trả phí đang active. Vui lòng hủy gói hiện tại trước.");
+        throw new Error(
+          "Tổ chức đang có gói trả phí đang hoạt động. Vui lòng hủy gói hiện tại trước."
+        );
       }
       if (!selectedTier) throw new Error("Chọn gói trước khi thanh toán");
       const data = await selectPlan(selectedTier, billingCycle);
@@ -87,16 +105,18 @@ export default function TenantAdminSubscriptionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-zinc-50 via-white to-green-50/30 text-zinc-900 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
-      <AppHeader />
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <SubscriptionHeader
-          backHref="/tenant-admin"
-          title={t.tenantAdminSubscription}
-          description={t.subscriptionPageDescription}
-        />
+    <TenantAdminLayout>
+      <div className="space-y-6 text-zinc-900 dark:text-zinc-100">
+        <div>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
+            {t.tenantAdminSubscription}
+          </h1>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            {t.subscriptionPageDescription}
+          </p>
+        </div>
 
-        <section className="mt-6 mb-6">
+        <section className="mb-6">
           <SubscriptionTabs activeTab={activeTab} onTabChange={setActiveTab} />
         </section>
 
@@ -126,10 +146,18 @@ export default function TenantAdminSubscriptionPage() {
                 onChange={(e) => setSelectedTier(e.target.value as SubscriptionTier)}
                 className="rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
               >
-                <option value="TRIAL">TRIAL</option>
-                <option value="STARTER">STARTER</option>
-                <option value="STANDARD">STANDARD</option>
-                <option value="ENTERPRISE">ENTERPRISE</option>
+                <option value="TRIAL">
+                  {language === "vi" ? TIER_LABEL_VI.TRIAL : TIER_LABEL_EN.TRIAL}
+                </option>
+                <option value="STARTER">
+                  {language === "vi" ? TIER_LABEL_VI.STARTER : TIER_LABEL_EN.STARTER}
+                </option>
+                <option value="STANDARD">
+                  {language === "vi" ? TIER_LABEL_VI.STANDARD : TIER_LABEL_EN.STANDARD}
+                </option>
+                <option value="ENTERPRISE">
+                  {language === "vi" ? TIER_LABEL_VI.ENTERPRISE : TIER_LABEL_EN.ENTERPRISE}
+                </option>
               </select>
               <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t.billingCycle}:</span>
               <select
@@ -150,7 +178,9 @@ export default function TenantAdminSubscriptionPage() {
                 onClick={handleConfirmPay}
                 className="rounded-xl bg-green-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
               >
-                {selectPlanLoading ? t.processing : `${t.createPayment} (${selectedTier})`}
+                {selectPlanLoading
+                  ? t.processing
+                  : `${t.createPayment} (${tierDisplayName(selectedTier, language)})`}
               </button>
               {selectPlanError && <p className="text-sm text-red-600 dark:text-red-400">{selectPlanError}</p>}
             </div>
@@ -176,8 +206,8 @@ export default function TenantAdminSubscriptionPage() {
         {activeTab === "history" && (
           <BillingHistory payments={payments} loading={paymentsLoading} />
         )}
-      </main>
-    </div>
+      </div>
+    </TenantAdminLayout>
   );
 }
 
