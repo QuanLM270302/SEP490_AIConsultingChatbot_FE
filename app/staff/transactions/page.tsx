@@ -7,6 +7,12 @@ import {
   Eye,
   Filter,
   X,
+  CreditCard,
+  Building2,
+  Calendar,
+  DollarSign,
+  FileText,
+  Info,
 } from "lucide-react";
 import {
   getTransactions,
@@ -236,97 +242,216 @@ export default function StaffTransactionsPage() {
 
       {/* Transaction Detail Modal */}
       {transactionDetailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                {t.transactionDetail}
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="absolute inset-0 bg-zinc-900/60" onClick={() => {
+            setTransactionDetailModalOpen(false);
+            setSelectedTransaction(null);
+          }} />
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl dark:bg-zinc-950">
+            {/* Header with gradient */}
+            <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-blue-500 to-sky-600 px-6 py-8">
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 shadow-lg backdrop-blur-sm">
+                    <CreditCard className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">{t.transactionDetail}</h3>
+                    <p className="mt-1 text-sm text-blue-100">Payment Transaction Information</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransactionDetailModalOpen(false);
+                    setSelectedTransaction(null);
+                  }}
+                  className="rounded-xl bg-white/10 p-2 text-white backdrop-blur-sm transition hover:bg-white/20"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            {!selectedTransaction ? (
+              <div className="flex items-center justify-center gap-2 py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                <span className="text-sm text-zinc-500">{t.loading}</span>
+              </div>
+            ) : (
+              <div className="space-y-4 p-6">
+                {/* Transaction Info Card */}
+                <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-white p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:to-zinc-950">
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+                      <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white">Transaction Information</h4>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.transactionId}</p>
+                        <p className="mt-0.5 truncate font-mono text-xs text-zinc-900 dark:text-white">{selectedTransaction.id}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.status}</p>
+                        <p className="mt-0.5">
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(selectedTransaction.status)}`}>
+                            {getStatusLabel(selectedTransaction.status)}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                        <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.tenant}</p>
+                        <p className="mt-0.5 truncate text-sm font-medium text-zinc-900 dark:text-white">{selectedTransaction.tenantName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.tenantId}</p>
+                        <p className="mt-0.5 truncate font-mono text-xs text-zinc-900 dark:text-white">{selectedTransaction.tenantId}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Details Card */}
+                <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-white p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:to-zinc-950">
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+                      <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white">Payment Details</h4>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                        <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.amount}</p>
+                        <p className="mt-0.5 text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                          {formatMoney(selectedTransaction.amount)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                        <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.currency}</p>
+                        <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">{selectedTransaction.currency || "VND"}</p>
+                      </div>
+                    </div>
+                    {selectedTransaction.paymentMethod && (
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                          <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.paymentMethod}</p>
+                          <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">{selectedTransaction.paymentMethod}</p>
+                        </div>
+                      </div>
+                    )}
+                    {selectedTransaction.transactionType && (
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                          <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.transactionType}</p>
+                          <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">{selectedTransaction.transactionType}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dates Card */}
+                <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-white p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:to-zinc-950">
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+                      <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white">Dates</h4>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                        <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.createdDate}</p>
+                        <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">
+                          {new Date(selectedTransaction.createdAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                        </p>
+                      </div>
+                    </div>
+                    {selectedTransaction.updatedAt && (
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                          <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.updatedDate}</p>
+                          <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">
+                            {new Date(selectedTransaction.updatedAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Description Card */}
+                {selectedTransaction.description && (
+                  <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-white p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:to-zinc-950">
+                    <div className="mb-3 flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <h4 className="font-semibold text-zinc-900 dark:text-white">{t.description}</h4>
+                    </div>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{selectedTransaction.description}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
               <button
                 type="button"
                 onClick={() => {
                   setTransactionDetailModalOpen(false);
                   setSelectedTransaction(null);
                 }}
-                className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
+                className="w-full rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-600"
               >
-                <X className="h-5 w-5" />
+                {t.close}
               </button>
             </div>
-            
-            {!selectedTransaction ? (
-              <div className="flex items-center justify-center gap-2 py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
-                <span className="text-sm text-zinc-500">{t.loading}</span>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.transactionId}</label>
-                    <p className="mt-1 text-xs font-mono text-zinc-900 dark:text-zinc-50">{selectedTransaction.id}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.status}</label>
-                    <p className="mt-1">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(selectedTransaction.status)}`}>
-                        {getStatusLabel(selectedTransaction.status)}
-                      </span>
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.tenant}</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTransaction.tenantName}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.tenantId}</label>
-                    <p className="mt-1 text-xs font-mono text-zinc-900 dark:text-zinc-50">{selectedTransaction.tenantId}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.amount}</label>
-                    <p className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-400">
-                      {formatMoney(selectedTransaction.amount)}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.currency}</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTransaction.currency || "VND"}</p>
-                  </div>
-                  {selectedTransaction.paymentMethod && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.paymentMethod}</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTransaction.paymentMethod}</p>
-                    </div>
-                  )}
-                  {selectedTransaction.transactionType && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.transactionType}</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTransaction.transactionType}</p>
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.createdDate}</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
-                      {new Date(selectedTransaction.createdAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
-                    </p>
-                  </div>
-                  {selectedTransaction.updatedAt && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.updatedDate}</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
-                        {new Date(selectedTransaction.updatedAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                {selectedTransaction.description && (
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.description}</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50 whitespace-pre-wrap">{selectedTransaction.description}</p>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}
