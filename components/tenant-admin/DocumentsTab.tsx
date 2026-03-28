@@ -35,6 +35,8 @@ import {
   ChevronDown,
   Check,
 } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 const VISIBILITY_LABELS: Record<DocumentVisibility, string> = {
   COMPANY_WIDE: "Toàn công ty",
@@ -48,6 +50,25 @@ function prettifyDocumentAccessError(message: string): string {
     return "Không thể cập nhật quyền truy cập do backend chưa đồng bộ schema DB (thiếu enum visibility). Vui lòng backend kiểm tra migration/schema.";
   }
   return message;
+}
+
+function mapEmbeddingStatusLabel(
+  raw: string | undefined,
+  t: (typeof translations)["vi"]
+): string {
+  const key = (raw ?? "").trim().toUpperCase();
+  switch (key) {
+    case "COMPLETED":
+      return t.statusCompleted;
+    case "PENDING":
+      return t.statusPending;
+    case "PROCESSING":
+      return t.statusProcessing;
+    case "FAILED":
+      return t.statusFailed;
+    default:
+      return raw?.trim() || "—";
+  }
 }
 
 export function DocumentsTab() {
@@ -70,6 +91,8 @@ export function DocumentsTab() {
   const [versions, setVersions] = useState<DocumentVersionResponse[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [newVersionDocId, setNewVersionDocId] = useState<string | null>(null);
+  const { language } = useLanguageStore();
+  const t = translations[language];
 
   const load = async () => {
     setLoading(true);
@@ -477,7 +500,9 @@ export function DocumentsTab() {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Tên / Tiêu đề</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Phạm vi</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Trạng thái embedding</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  {t.embeddingStatus}
+                </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">Thao tác</th>
               </tr>
             </thead>
@@ -491,7 +516,7 @@ export function DocumentsTab() {
                     {VISIBILITY_LABELS[doc.visibility]}
                   </td>
                   <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
-                    {doc.embeddingStatus}
+                    {mapEmbeddingStatusLabel(doc.embeddingStatus, t)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">

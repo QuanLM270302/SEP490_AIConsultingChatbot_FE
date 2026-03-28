@@ -1,41 +1,82 @@
 "use client";
 
-import { Zap, CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { Zap, Calendar, Layers, BarChart3, Loader2 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import type { TenantLlmUsageResponse } from "@/lib/api/tenant-admin";
 
-export function AIMetrics() {
+function formatInt(n: number): string {
+  return Number.isFinite(n) ? Math.trunc(n).toLocaleString() : "0";
+}
+
+export function AIMetrics({
+  data,
+  loading,
+  error,
+}: {
+  data: TenantLlmUsageResponse | null;
+  loading: boolean;
+  error: string | null;
+}) {
   const { language } = useLanguageStore();
   const t = translations[language];
-  
+
+  if (loading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex min-h-[120px] items-center justify-center rounded-3xl bg-white p-5 shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40"
+          >
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-500/60" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+        {error}
+      </div>
+    );
+  }
+
+  const reqMonth = data?.requestsThisMonth ?? 0;
+  const tokMonth = data?.tokensThisMonth ?? 0;
+  const avgTok = data?.averageTokensPerRequest ?? 0;
+  const reqToday = data?.requestsToday ?? 0;
+
   const metrics = [
     {
-      name: t.totalQueries,
-      value: "24,680",
+      name: t.requestsThisMonthLabel,
+      value: formatInt(reqMonth),
       subtitle: t.thisMonth,
       icon: Zap,
       color: "blue" as const,
     },
     {
-      name: t.successRate,
-      value: "96.8%",
-      subtitle: `+1.2% ${t.fromLastMonth}`,
-      icon: CheckCircle,
-      color: "green" as const,
-    },
-    {
-      name: t.avgResponseTime,
-      value: "1.8s",
-      subtitle: `-0.2s ${t.improvement}`,
-      icon: Clock,
+      name: t.tokensThisMonthLabel,
+      value: formatInt(tokMonth),
+      subtitle: t.thisMonth,
+      icon: Layers,
       color: "purple" as const,
     },
     {
-      name: t.lowConfidence,
-      value: "3.2%",
-      subtitle: `124 ${t.responses}`,
-      icon: AlertTriangle,
+      name: t.avgTokensPerRequestLabel,
+      value: formatInt(avgTok),
+      subtitle: t.perAssistantReply,
+      icon: BarChart3,
       color: "amber" as const,
+    },
+    {
+      name: t.requestsTodayLabel,
+      value: formatInt(reqToday),
+      subtitle: t.today,
+      icon: Calendar,
+      color: "green" as const,
     },
   ];
 
@@ -50,28 +91,34 @@ export function AIMetrics() {
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <p className="text-xs font-medium text-zinc-400">
-                  {metric.name}
-                </p>
+                <p className="text-xs font-medium text-zinc-400">{metric.name}</p>
                 <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
                   {metric.value}
                 </p>
-                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  {metric.subtitle}
-                </p>
+                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{metric.subtitle}</p>
               </div>
-              <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
-                metric.color === "blue" ? "bg-blue-500/10" :
-                metric.color === "green" ? "bg-green-500/10" :
-                metric.color === "purple" ? "bg-purple-500/10" :
-                "bg-amber-500/10"
-              }`}>
-                <Icon className={`h-5 w-5 ${
-                  metric.color === "blue" ? "text-blue-500" :
-                  metric.color === "green" ? "text-green-500" :
-                  metric.color === "purple" ? "text-purple-500" :
-                  "text-amber-500"
-                }`} />
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                  metric.color === "blue"
+                    ? "bg-blue-500/10"
+                    : metric.color === "green"
+                      ? "bg-green-500/10"
+                      : metric.color === "purple"
+                        ? "bg-purple-500/10"
+                        : "bg-amber-500/10"
+                }`}
+              >
+                <Icon
+                  className={`h-5 w-5 ${
+                    metric.color === "blue"
+                      ? "text-blue-500"
+                      : metric.color === "green"
+                        ? "text-green-500"
+                        : metric.color === "purple"
+                          ? "text-purple-500"
+                          : "text-amber-500"
+                  }`}
+                />
               </div>
             </div>
           </div>
