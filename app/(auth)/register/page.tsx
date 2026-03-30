@@ -63,8 +63,8 @@ export default function RegisterPage() {
     return (
       <div className="flex min-h-screen">
         {/* Left: Success message */}
-        <div className="flex w-full flex-col items-center justify-center border-zinc-200 bg-white px-6 py-12 dark:border-zinc-800 dark:bg-zinc-900 lg:w-1/2 lg:border-r lg:px-12 lg:py-16">
-          <div className="w-full max-w-md space-y-6 text-center">
+        <div className="flex w-full flex-col border-zinc-200 bg-white px-6 py-10 dark:border-zinc-800 dark:bg-zinc-900 sm:px-8 lg:w-1/2 lg:border-r lg:px-12 lg:py-14">
+          <div className="mx-auto w-full max-w-md space-y-6 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
               <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -112,20 +112,20 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left: Register form */}
-      <div className="flex w-full flex-col items-center justify-center border-zinc-200 bg-white px-6 py-12 dark:border-zinc-800 dark:bg-zinc-900 lg:w-1/2 lg:border-r lg:px-12 lg:py-16">
-        <div className="w-full max-w-md">
-          <AuthHomePlainLink className="mb-8 pt-0" />
+      <div className="flex w-full flex-col border-zinc-200 bg-white px-6 py-10 dark:border-zinc-800 dark:bg-zinc-900 sm:px-8 lg:w-1/2 lg:border-r lg:px-12 lg:py-14">
+        <div className="mx-auto flex w-full max-w-md flex-col">
+          <AuthHomePlainLink className="mb-8" />
 
-          <div className="mb-6 space-y-1">
+          <div className="mb-8 space-y-3">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
               Apply Now
             </h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
               Register your organization to get started with our AI-powered internal consultant.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200">
                 {error}
@@ -162,8 +162,8 @@ export default function RegisterPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="min-w-0 space-y-1.5">
                 <label htmlFor="representativeName" className="block text-sm font-medium text-zinc-800 dark:text-zinc-200">
                   Representative Name
                 </label>
@@ -177,7 +177,7 @@ export default function RegisterPage() {
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <label htmlFor="representativePosition" className="block text-sm font-medium text-zinc-800 dark:text-zinc-200">
                   Position
                 </label>
@@ -220,8 +220,8 @@ export default function RegisterPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="min-w-0 space-y-1.5">
                 <label htmlFor="website" className="block text-sm font-medium text-zinc-800 dark:text-zinc-200">
                   Website
                 </label>
@@ -235,7 +235,7 @@ export default function RegisterPage() {
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <label htmlFor="companySize" className="block text-sm font-medium text-zinc-800 dark:text-zinc-200">
                   Company Size
                 </label>

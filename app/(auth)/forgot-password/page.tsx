@@ -10,6 +10,7 @@ import {
   isValidResetSessionToken,
 } from "@/lib/password-policy";
 import { AuthHeroPanel } from "@/components/auth/AuthHeroPanel";
+import { AuthHomePlainLink } from "@/components/auth/AuthHomePlainLink";
 
 const OTP_LEN = 6;
 
@@ -206,26 +207,19 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left: Forgot Password Form */}
-      <div className="flex w-full flex-col items-center justify-center border-zinc-200 bg-white px-6 py-12 dark:border-zinc-800 dark:bg-zinc-900 lg:w-1/2 lg:border-r lg:px-12 lg:py-16">
-        <div className="w-full max-w-md">
-          <Link
-            href="/login"
-            className="mb-6 inline-flex items-center gap-2 text-sm text-zinc-600 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Login
-          </Link>
+      <div className="flex min-h-screen w-full flex-col justify-center border-zinc-200 bg-white px-6 py-10 dark:border-zinc-800 dark:bg-zinc-900 sm:px-8 lg:w-1/2 lg:border-r lg:px-12 lg:py-14">
+        <div className="mx-auto flex w-full max-w-md flex-col">
+          <AuthHomePlainLink className="mb-8" />
 
-          <div className="mb-6 space-y-1">
+          <div className="mb-8 space-y-3">
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
               Quên mật khẩu
             </h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
               {step === "email" &&
-                "Nhập email đăng nhập; mã có thể gửi tới email liên hệ nếu đã cấu hình."}
-              {step === "otp" && "Nhập mã 6 số đã gửi tới email (hiệu lực 15 phút)."}
+                "Nhập email đăng nhập của tài khoản. Mã OTP được gửi tới email liên hệ nếu tài khoản đã có; nếu chưa thì gửi tới email đăng nhập."}
+              {step === "otp" &&
+                "Nhập mã 6 số đã gửi tới đúng hộp thư đó (email liên hệ hoặc email đăng nhập). Hiệu lực 15 phút."}
               {step === "password" &&
                 "Phiên đặt lại mật khẩu còn hiệu lực khoảng 10 phút."}
               {step === "done" && "Mật khẩu đã được cập nhật."}
@@ -501,7 +495,7 @@ export default function ForgotPasswordPage() {
         )}
 
         {step !== "done" && (
-          <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-10 text-center text-sm text-zinc-600 dark:text-zinc-400">
             Nhớ mật khẩu?{" "}
             <Link
               href="/login"
