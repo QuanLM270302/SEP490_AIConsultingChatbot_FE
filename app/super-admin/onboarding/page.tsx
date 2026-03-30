@@ -1,11 +1,9 @@
-import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import { OnboardingRequests } from "@/components/super-admin/OnboardingRequests";
 import { OnboardingStats } from "@/components/super-admin/OnboardingStats";
 
 export default function OnboardingPage() {
   return (
-    <SuperAdminLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
             Phê duyệt Onboarding
@@ -18,6 +16,5 @@ export default function OnboardingPage() {
         <OnboardingStats />
         <OnboardingRequests />
       </div>
-    </SuperAdminLayout>
   );
 }

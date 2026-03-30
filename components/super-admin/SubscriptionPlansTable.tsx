@@ -722,6 +722,7 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
         maxAiTokens: Math.max(0, Math.trunc(plan.maxAiTokens ?? 100000)),
         contextWindowTokens: Math.max(1, Math.trunc(plan.contextWindowTokens ?? 4096)),
         ragChunkSize: Math.max(256, Math.trunc(plan.ragChunkSize ?? 512)),
+        enableRag: Math.max(0, Math.trunc(plan.maxRagDocuments ?? 500)) > 0,
         aiModel: plan.aiModel ?? undefined,
         embeddingModel: plan.embeddingModel ?? undefined,
         features: plan.features ?? undefined,

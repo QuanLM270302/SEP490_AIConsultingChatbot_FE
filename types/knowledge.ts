@@ -2,7 +2,8 @@
 export type DocumentVisibility =
   | "COMPANY_WIDE"
   | "SPECIFIC_DEPARTMENTS"
-  | "SPECIFIC_ROLES";
+  | "SPECIFIC_ROLES"
+  | "SPECIFIC_DEPARTMENTS_AND_ROLES";
 
 export interface DocumentTagResponse {
   id: string;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import {
   getStaffList,
   getStaffById,
@@ -120,7 +119,7 @@ export default function StaffManagementPage() {
     : list;
 
   return (
-    <SuperAdminLayout>
+    <>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -404,7 +403,7 @@ export default function StaffManagementPage() {
           </div>
         </>
       )}
-    </SuperAdminLayout>
+    </>
   );
 }
 

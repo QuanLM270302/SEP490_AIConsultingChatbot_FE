@@ -32,7 +32,7 @@ export function LogoutButton({ labelClassName }: LogoutButtonProps) {
     setLoading(false);
   };
 
-  const label = loading ? t.signingOut : t.logOut;
+  const label = loading ? (language === "en" ? "Signing out..." : "Đang đăng xuất...") : t.logout;
 
   return (
     <button

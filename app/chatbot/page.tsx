@@ -8,7 +8,7 @@ import { ChatMessageList } from "@/components/chat/ChatMessageList";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { chat } from "@/lib/api/chatbot";
+import { chat, getConversationHistory } from "@/lib/api/chatbot";
 import { listCategoriesFlat } from "@/lib/api/categories";
 import { listTagsActive } from "@/lib/api/tags";
 import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
@@ -31,7 +31,7 @@ export default function ChatbotPage() {
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,10 +40,12 @@ export default function ChatbotPage() {
   const [categoryId, setCategoryId] = useState<string>("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [topK, setTopK] = useState<number>(5);
+  const [historyRefresh, setHistoryRefresh] = useState(0);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { theme, toggleTheme } = useAppTheme();
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const currentUser = getStoredUser();
   const displayEmail = currentUser?.email ?? "superadmin@system.vn";
   const [displayName, setDisplayName] = useState(displayEmail.split("@")[0] || "Super Administrator");
@@ -78,6 +80,10 @@ export default function ChatbotPage() {
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, [isUserMenuOpen]);
 
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const question = currentQuestion.trim();
@@ -98,6 +104,7 @@ export default function ChatbotPage() {
 
       if (response.conversationId) {
         setConversationId(response.conversationId);
+        setHistoryRefresh(n => n + 1);
       }
 
       const references = (response.sources ?? []).map((s) => ({
@@ -110,34 +117,33 @@ export default function ChatbotPage() {
       const newMessage: Message = {
         id: userMessageId,
         question,
-        answer: response.answer,
+        answer: response.answer && response.answer.includes("I apologize, but I encountered an error")
+          ? isEn
+            ? "Sorry, the system is busy. Please try again later."
+            : "Xin lỗi, hệ thống đang bận. Vui lòng thử lại sau."
+          : response.answer,
         references,
         timestamp: new Date(),
         rating: null,
       };
 
-      setMessages((prev) => [newMessage, ...prev]);
+      setMessages((prev) => [...prev, newMessage]);
       setCurrentQuestion("");
-      setSelectedMessage(newMessage.id);
-    } catch (err) {
-      const message = err instanceof Error
-        ? err.message
-        : isEn
-          ? "Cannot connect to chatbot. Please try again."
-          : "Không thể kết nối tới chatbot. Vui lòng thử lại.";
-      setError(message);
+      setSelectedMessage(null);
+    } catch (_err) {
       const fallbackMessage: Message = {
         id: userMessageId,
         question,
         answer: isEn
-          ? `**Error:** ${message}\n\nPlease check your network connection or contact your administrator if the issue persists.`
-          : `**Lỗi:** ${message}\n\nKiểm tra kết nối mạng hoặc liên hệ quản trị viên nếu lỗi tiếp tục.`,
+          ? "Sorry, the system is busy. Please try again later."
+          : "Xin lỗi, hệ thống đang bận. Vui lòng thử lại sau.",
         references: [],
         timestamp: new Date(),
         rating: null,
       };
+      setError(isEn ? "Failed to get a response from the chatbot." : "Không thể nhận phản hồi từ chatbot.");
       setMessages((prev) => [fallbackMessage, ...prev]);
-      setSelectedMessage(fallbackMessage.id);
+      setSelectedMessage(null);
     } finally {
       setIsLoading(false);
     }
@@ -177,8 +183,46 @@ export default function ChatbotPage() {
         onToggle={() => setIsHistoryOpen((prev) => !prev)}
         onSelectChat={(chatId) => {
           setCurrentChatId(chatId || null);
+          if (chatId) {
+            getConversationHistory(chatId).then((history) => {
+              if (history) {
+                const paired: Message[] = [];
+                const msgs = history.messages;
+                for (let i = 0; i < msgs.length; i++) {
+                  if (msgs[i].role === "USER") {
+                    const assistantMsg = msgs[i + 1]?.role === "ASSISTANT" ? msgs[i + 1] : null;
+                    paired.push({
+                      id: msgs[i].id,
+                      question: msgs[i].content,
+                      answer: assistantMsg?.content ?? "",
+                      references: (assistantMsg?.sources ?? []).map((s) => ({
+                        documentId: s.documentId,
+                        documentName: s.fileName,
+                        excerpt: s.chunkContent ?? "",
+                        confidence: s.relevanceScore,
+                      })),
+                      timestamp: new Date(assistantMsg?.createdAt ?? msgs[i].createdAt ?? new Date()),
+                      rating: (assistantMsg?.rating as "helpful" | "not-helpful" | null) ?? null,
+                    });
+                    if (assistantMsg) i++; // skip the assistant message
+                  }
+                }
+                setMessages(paired);
+                setSelectedMessage(null);
+                setConversationId(chatId);
+              }
+            });
+          } else {
+            setMessages([]);
+          }
+        }}
+        onNewChat={() => {
+          setConversationId(null);
+          setMessages([]);
+          setCurrentChatId(null);
         }}
         currentChatId={currentChatId}
+        refreshTrigger={historyRefresh}
       />
 
       <div className={`flex flex-1 transition-[padding] duration-300 ${isHistoryOpen ? "lg:pl-72" : "lg:pl-14"}`}>
@@ -317,7 +361,7 @@ export default function ChatbotPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 py-8">
+          <div className="flex-1 overflow-y-auto px-6 py-8" ref={scrollRef}>
             <ChatMessageList
               messages={messages}
               selectedMessage={selectedMessage}

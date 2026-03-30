@@ -1,22 +1,19 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { PanelLeft, Plus, Search, Clock, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useLanguageStore } from "@/lib/language-store";
+import { getConversations } from "@/lib/api/chatbot";
+import type { ConversationSummary } from "@/types/chatbot";
 
 interface ChatHistorySidebarProps {
   open: boolean;
   onToggle: () => void;
   onSelectChat: (chatId: string) => void;
   currentChatId: string | null;
-}
-
-interface ChatHistory {
-  id: string;
-  title: string;
-  preview: string;
-  timestamp: string;
-  category: "today" | "yesterday" | "last7days" | "older";
+  onNewChat: () => void;
+  refreshTrigger?: number;
 }
 
 export function ChatHistorySidebar({
@@ -24,24 +21,63 @@ export function ChatHistorySidebar({
   onToggle,
   onSelectChat,
   currentChatId,
+  onNewChat,
+  refreshTrigger = 0,
 }: ChatHistorySidebarProps) {
   const { language } = useLanguageStore();
   const isEn = language === "en";
 
-  const chatHistory: ChatHistory[] = [];
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+
+  useEffect(() => {
+    getConversations().then(setConversations).catch(() => setConversations([]));
+  }, [refreshTrigger]);
+
+  const getTimeCategory = (dateStr: string): "today" | "yesterday" | "last7days" | "older" => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(todayStart.getDate() - 1);
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(todayStart.getDate() - 7);
+
+    if (date >= todayStart) return "today";
+    if (date >= yesterdayStart) return "yesterday";
+    if (date >= weekStart) return "last7days";
+    return "older";
+  };
+
+  const formatTimestamp = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(todayStart.getDate() - 1);
+
+    if (date >= todayStart) {
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    if (date >= yesterdayStart) {
+      return isEn ? "Yesterday" : "Hôm qua";
+    }
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  };
+
+  const safeConversations = Array.isArray(conversations) ? conversations : [];
+  const groupedChats = safeConversations.reduce((acc, conv) => {
+    const cat = getTimeCategory(conv.lastMessageAt);
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push({ ...conv, category: cat });
+    return acc;
+  }, {} as Record<string, (ConversationSummary & { category: "today" | "yesterday" | "last7days" | "older" })[]>);
+
   const categoryLabels = {
     today: isEn ? "Today" : "Hôm nay",
     yesterday: isEn ? "Yesterday" : "Hôm qua",
     last7days: isEn ? "Last 7 days" : "7 ngày qua",
     older: isEn ? "Older" : "Cũ hơn",
   };
-  const groupedChats = chatHistory.reduce((acc, chat) => {
-    if (!acc[chat.category]) {
-      acc[chat.category] = [];
-    }
-    acc[chat.category].push(chat);
-    return acc;
-  }, {} as Record<string, ChatHistory[]>);
 
   return (
     <aside
@@ -64,7 +100,7 @@ export function ChatHistorySidebar({
 
         <div className="border-b border-zinc-200 p-2 dark:border-zinc-800">
           <button
-            onClick={() => onSelectChat("")}
+            onClick={() => { onNewChat(); onSelectChat(""); }}
             className={cn(
               "flex w-full items-center rounded-lg px-2.5 py-2 text-sm text-zinc-700 transition hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800",
               !open && "justify-center"
@@ -94,33 +130,33 @@ export function ChatHistorySidebar({
                   : "Chưa có lịch sử chat. Các cuộc hội thoại sẽ hiển thị tại đây khi được đồng bộ từ server."}
               </div>
             ) : null}
-            {Object.entries(groupedChats).map(([category, chats]) => (
+            {Object.entries(groupedChats).map(([category, convs]) => (
               <div key={category} className="mb-3">
                 <h3 className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   {categoryLabels[category as keyof typeof categoryLabels]}
                 </h3>
                 <div className="space-y-1">
-                  {chats.map((chat) => (
+                  {convs.map((conv) => (
                     <button
-                      key={chat.id}
-                      onClick={() => onSelectChat(chat.id)}
+                      key={conv.id}
+                      onClick={() => onSelectChat(conv.id)}
                       className={cn(
                         "w-full rounded-lg px-3 py-2 text-left transition hover:bg-zinc-200 dark:hover:bg-zinc-800",
-                        currentChatId === chat.id && "bg-zinc-200 dark:bg-zinc-800"
+                        currentChatId === conv.id && "bg-zinc-200 dark:bg-zinc-800"
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h4 className="truncate text-sm font-medium text-zinc-900 dark:text-white">
-                            {chat.title}
+                            {conv.title}
                           </h4>
                           <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                            {chat.preview}
+                            {conv.totalMessages} {isEn ? "messages" : "tin nhắn"}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 text-xs text-zinc-400">
                           <Clock className="h-3 w-3" />
-                          <span>{chat.timestamp}</span>
+                          <span>{formatTimestamp(conv.lastMessageAt)}</span>
                         </div>
                       </div>
                     </button>
