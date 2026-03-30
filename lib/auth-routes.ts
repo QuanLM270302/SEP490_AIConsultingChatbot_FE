@@ -8,7 +8,7 @@ const ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
 const ROLE_STAFF = "ROLE_STAFF";
 
 /** Paths that don't require login (guest + general dashboard) */
-export const PUBLIC_PATHS = ["/", "/login", "/forgot-password"];
+export const PUBLIC_PATHS = ["/", "/login", "/register", "/forgot-password"];
 
 /** Path -> allowed roles (empty = any authenticated) */
 export const PATH_ALLOWED_ROLES: Record<string, string[]> = {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { StaffLayout } from "@/components/staff/StaffLayout";
 import Link from "next/link";
 import {
   Activity,
@@ -152,7 +151,6 @@ export default function StaffDashboardPage() {
         : (parsed?.system.statusLabel || parsed?.systemStatusLabelRaw || "").trim() || t.unknown;
 
   return (
-    <StaffLayout>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
@@ -396,6 +394,5 @@ export default function StaffDashboardPage() {
           </>
         )}
       </div>
-    </StaffLayout>
   );
 }
