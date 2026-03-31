@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Home, MessageSquare, Users, User, LogOut } from "lucide-react";
+import { Home, MessageSquare, Users, User, LogOut, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguageStore } from "@/lib/language-store";
 import { clearAuth } from "@/lib/auth-store";
@@ -81,7 +81,7 @@ export function NavigationSidebar({
   };
 
   return (
-    <aside className="z-40 flex w-16 flex-col items-center border-r border-zinc-200 bg-white py-5 dark:border-zinc-800 dark:bg-zinc-950">
+    <aside className="z-40 flex w-24 flex-col items-center border-r border-zinc-200 bg-white py-5 dark:border-zinc-800 dark:bg-zinc-950">
       {/* Logo */}
       <div className="group relative mb-7">
         <div
@@ -96,7 +96,7 @@ export function NavigationSidebar({
       </div>
 
       {/* Navigation Icons */}
-      <nav className="flex flex-1 flex-col gap-1">
+      <nav className="flex flex-1 flex-col gap-4">
         {navigation.map((item) => {
           const isActive = activeView === item.id;
           const Icon = item.icon;
@@ -105,37 +105,32 @@ export function NavigationSidebar({
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
-              className={`group relative flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
+              className={`group relative flex w-16 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 transition-colors ${
                 isActive 
                   ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400" 
                   : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
               }`}
               title={item.label}
             >
-              <Icon className="h-5.5 w-5.5" />
-              
-              {/* Tooltip */}
-              <span className="pointer-events-none absolute left-full ml-2 whitespace-nowrap rounded-lg bg-zinc-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-zinc-700">
-                {item.label}
-              </span>
+              <Icon className="h-6 w-6" />
+              <span className="text-[10px] font-medium leading-none">{item.label}</span>
             </button>
           );
         })}
       </nav>
 
-      <div className="mb-3 mt-2 w-10 border-t border-zinc-200 dark:border-zinc-800" />
+      <div className="mb-3 mt-2 w-14 border-t border-zinc-200 dark:border-zinc-800" />
       <button
-        onClick={onToggleHistory}
-        className={`group relative mb-3 flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
-          historyOpen
-            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
-            : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
-        }`}
-        title={language === "en" ? "Chat history" : "Lịch sử chat"}
+        onClick={() => {
+          onViewChange("chat");
+          onToggleHistory();
+        }}
+        className="group relative mb-3 flex w-16 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2.5 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
+        title={language === "en" ? "Create chat" : "Tạo chat"}
       >
-        <MessageSquare className="h-5.5 w-5.5" />
-        <span className="pointer-events-none absolute left-full ml-2 whitespace-nowrap rounded-lg bg-zinc-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-zinc-700">
-          {language === "en" ? "Chat history" : "Lịch sử chat"}
+        <Plus className="h-6 w-6" />
+        <span className="text-[10px] font-medium leading-none">
+          {language === "en" ? "Create" : "Tạo chat"}
         </span>
       </button>
 

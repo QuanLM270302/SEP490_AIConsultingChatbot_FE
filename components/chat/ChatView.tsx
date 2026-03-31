@@ -24,7 +24,7 @@ interface ChatViewProps {
   onToggleHistory: () => void;
 }
 
-export function ChatView({ isHistoryOpen }: ChatViewProps) {
+export function ChatView({ isHistoryOpen, onToggleHistory }: ChatViewProps) {
   const { language } = useLanguageStore();
   const currentUser = getStoredUser();
   const [displayName, setDisplayName] = useState(
@@ -115,7 +115,7 @@ export function ChatView({ isHistoryOpen }: ChatViewProps) {
       {/* Chat History Sidebar */}
       <ChatHistorySidebarNew
         isOpen={isHistoryOpen}
-        onClose={() => {}}
+        onClose={onToggleHistory}
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
         currentChatId={currentChatId}

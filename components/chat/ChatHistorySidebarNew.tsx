@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, MessageSquare, Clock } from "lucide-react";
+import { Plus, MessageSquare, Clock, X } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 
 interface ConversationListItem {
@@ -110,7 +110,7 @@ export function ChatHistorySidebarNew({
 
       {/* Sidebar with slide animation */}
       <aside className={`fixed top-0 z-30 flex h-full w-72 flex-col border-r border-zinc-200 bg-white transition-all duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-950 ${
-        isOpen ? "left-16" : "-left-72"
+        isOpen ? "left-24" : "-left-72"
       }`}>
         {/* Spacer for menu button */}
         <div className="h-16"></div>
@@ -124,6 +124,14 @@ export function ChatHistorySidebarNew({
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
               {language === "en" ? "Chat" : "Trò chuyện"}
             </h2>
+            <button
+              onClick={onClose}
+              className="rounded-md p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-200"
+              aria-label={language === "en" ? "Close history" : "Đóng lịch sử"}
+              title={language === "en" ? "Close" : "Đóng"}
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           {/* New Chat Button */}
