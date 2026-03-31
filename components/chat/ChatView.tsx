@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Sparkles, Menu, X, ExternalLink } from "lucide-react";
+import { Send, Paperclip, Sparkles, X, ExternalLink } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { ChatHistorySidebarNew } from "./ChatHistorySidebarNew";
+import { getStoredUser } from "@/lib/auth-store";
+import { getProfile } from "@/lib/api/profile";
+import { ChatHeader } from "./ChatHeader";
 
 interface Message {
   id: string;
@@ -16,12 +19,22 @@ interface Message {
   timestamp: Date;
 }
 
-export function ChatView() {
+interface ChatViewProps {
+  isHistoryOpen: boolean;
+  onToggleHistory: () => void;
+}
+
+export function ChatView({ isHistoryOpen }: ChatViewProps) {
   const { language } = useLanguageStore();
+  const currentUser = getStoredUser();
+  const [displayName, setDisplayName] = useState(
+    currentUser?.fullName?.trim() ||
+      currentUser?.email?.split("@")[0] ||
+      (language === "en" ? "You" : "Bạn")
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [selectedSource, setSelectedSource] = useState<{
     documentName: string;
@@ -35,6 +48,18 @@ export function ChatView() {
       behavior: "smooth" 
     });
   }, [messages]);
+
+  useEffect(() => {
+    getProfile()
+      .then((profile) => {
+        if (profile?.fullName?.trim()) {
+          setDisplayName(profile.fullName.trim());
+        }
+      })
+      .catch(() => {
+        // Keep fallback from auth store when profile API fails.
+      });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,43 +108,36 @@ export function ChatView() {
     language === "en" ? "How do I request time off?" : "Làm thế nào để xin nghỉ phép?",
     language === "en" ? "What are the company benefits?" : "Các quyền lợi của công ty là gì?",
   ];
+  const userInitial = (displayName.trim()[0] || "U").toUpperCase();
 
   return (
     <>
       {/* Chat History Sidebar */}
       <ChatHistorySidebarNew
         isOpen={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
+        onClose={() => {}}
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
         currentChatId={currentChatId}
       />
 
-      <div className="flex h-full">
+      <div className="flex h-full bg-zinc-100 dark:bg-zinc-900">
         {/* Main Chat Area */}
-        <div className={`relative flex flex-1 flex-col bg-white transition-all duration-300 ease-in-out dark:bg-zinc-950 ${
-          isHistoryOpen ? "ml-64" : "ml-0"
+        <div className={`relative flex flex-1 flex-col bg-zinc-100 transition-all duration-300 ease-in-out dark:bg-zinc-900 ${
+          isHistoryOpen ? "ml-72" : "ml-0"
         } ${selectedSource ? "mr-96" : "mr-0"}`}>
-        {/* Sticky Menu Button - always visible */}
-        <div className="absolute left-6 top-6 z-50">
-          <button
-            onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-            className="rounded-lg bg-white p-2 text-zinc-600 shadow-lg transition-colors hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            title={language === "en" ? "Chat history" : "Lịch sử chat"}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </div>
+        {/* Purple Hero Header (from old chatbot design) */}
+        <ChatHeader />
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-8">
-          <div className="relative mx-auto max-w-3xl">
+          <div className="relative mx-auto w-full max-w-5xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
             {messages.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center py-12">
-                <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-500/30">
+              <div className="flex min-h-[560px] h-full flex-col items-center justify-center py-12">
+                <div className="mb-8 flex h-18 w-18 items-center justify-center rounded-2xl bg-emerald-600 shadow-lg shadow-emerald-500/30">
                   <Sparkles className="h-8 w-8 text-white" />
                 </div>
-                <h2 className="mb-2 text-2xl font-semibold text-zinc-900 dark:text-white">
+                <h2 className="mb-2 text-3xl font-semibold text-zinc-900 dark:text-white">
                   {language === "en" ? "How can I help you today?" : "Tôi có thể giúp gì cho bạn?"}
                 </h2>
                 <p className="mb-8 text-center text-zinc-600 dark:text-zinc-400">
@@ -128,8 +146,35 @@ export function ChatView() {
                     : "Hỏi về chính sách, quy trình hoặc bất kỳ thông tin nào của công ty"}
                 </p>
 
+                <div className="mb-10 grid w-full gap-4 sm:grid-cols-3">
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-left dark:border-zinc-800 dark:bg-zinc-900">
+                    <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                      {language === "en" ? "Policy assistant" : "Trợ lý chính sách"}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+                      {language === "en" ? "HR, IT, workflow guidance" : "HR, IT, hướng dẫn quy trình"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-left dark:border-zinc-800 dark:bg-zinc-900">
+                    <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                      {language === "en" ? "Source-grounded" : "Có nguồn tham chiếu"}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+                      {language === "en" ? "Answers include related documents" : "Câu trả lời kèm tài liệu liên quan"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-left dark:border-zinc-800 dark:bg-zinc-900">
+                    <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                      {language === "en" ? "Fast search" : "Tìm nhanh"}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+                      {language === "en" ? "Try Search tab for direct lookup" : "Dùng tab Search để tra cứu nhanh"}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Example questions */}
-                <div className="w-full space-y-2">
+                <div className="w-full space-y-3">
                   <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                     {language === "en" ? "Try asking:" : "Thử hỏi:"}
                   </p>
@@ -137,7 +182,7 @@ export function ChatView() {
                     <button
                       key={idx}
                       onClick={() => setInput(question)}
-                      className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm text-zinc-700 transition hover:border-blue-300 hover:bg-blue-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:border-blue-700 dark:hover:bg-blue-950/30"
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-left text-sm text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/20"
                     >
                       {question}
                     </button>
@@ -145,17 +190,17 @@ export function ChatView() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {messages.map((message) => (
-                  <div key={message.id} className="flex gap-4">
+                  <div key={message.id} className="flex gap-5">
                     {/* Avatar */}
                     <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
                       message.role === "user" 
                         ? "bg-zinc-200 dark:bg-zinc-700" 
-                        : "bg-blue-600"
+                        : "bg-emerald-600"
                     }`}>
                       {message.role === "user" ? (
-                        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">U</span>
+                        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{userInitial}</span>
                       ) : (
                         <Sparkles className="h-4 w-4 text-white" />
                       )}
@@ -165,7 +210,7 @@ export function ChatView() {
                     <div className="flex-1">
                       <div className="mb-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">
                         {message.role === "user" 
-                          ? (language === "en" ? "You" : "Bạn")
+                          ? displayName
                           : (language === "en" ? "AI Assistant" : "Trợ lý AI")}
                       </div>
                       <div className="text-zinc-900 dark:text-white">
@@ -179,11 +224,11 @@ export function ChatView() {
                             <button
                               key={idx}
                               onClick={() => setSelectedSource(source)}
-                              className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700 transition hover:border-blue-300 hover:bg-blue-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-blue-700 dark:hover:bg-blue-950/30"
+                              className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/20"
                             >
                               <span>{source.documentName}</span>
                               {source.confidence && (
-                                <span className="text-blue-600 dark:text-blue-400">
+                                <span className="text-emerald-600 dark:text-emerald-400">
                                   {Math.round(source.confidence * 100)}%
                                 </span>
                               )}
@@ -198,7 +243,7 @@ export function ChatView() {
                 {/* Loading indicator */}
                 {isLoading && (
                   <div className="flex gap-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600">
                       <Sparkles className="h-4 w-4 text-white" />
                     </div>
                     <div className="flex items-center gap-1">
@@ -214,10 +259,10 @@ export function ChatView() {
         </div>
 
         {/* Input */}
-        <div className="px-6 py-4">
-          <div className="mx-auto max-w-3xl">
+        <div className="border-t border-zinc-200/90 px-6 py-5 dark:border-zinc-800">
+          <div className="mx-auto max-w-4xl">
             <form onSubmit={handleSubmit}>
-              <div className="flex items-end gap-3 rounded-xl border border-zinc-300 bg-white p-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-900">
+              <div className="flex items-end gap-3 rounded-2xl border border-zinc-300 bg-white p-3.5 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950">
                 <button
                   type="button"
                   className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
@@ -244,7 +289,7 @@ export function ChatView() {
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading}
-                  className="rounded-lg bg-blue-600 p-2 text-white transition hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-xl bg-emerald-600 p-2.5 text-white transition hover:bg-emerald-700 disabled:opacity-50"
                 >
                   <Send className="h-5 w-5" />
                 </button>
@@ -284,7 +329,7 @@ export function ChatView() {
                   {selectedSource.documentName}
                 </h4>
                 {selectedSource.confidence && (
-                  <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950/50 dark:text-blue-400">
+                  <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
                     <span>{language === "en" ? "Relevance" : "Độ liên quan"}:</span>
                     <span>{Math.round(selectedSource.confidence * 100)}%</span>
                   </div>
@@ -326,7 +371,7 @@ export function ChatView() {
 
               {/* Actions */}
               <div className="pt-4">
-                <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
                   <ExternalLink className="h-4 w-4" />
                   {language === "en" ? "Open Full Document" : "Mở tài liệu đầy đủ"}
                 </button>

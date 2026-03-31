@@ -1,31 +1,53 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Home, MessageSquare, Users, BookOpen, User, LogOut } from "lucide-react";
+import { Home, MessageSquare, Users, User, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguageStore } from "@/lib/language-store";
 import { clearAuth } from "@/lib/auth-store";
 import { logout } from "@/lib/api/auth";
 import { getAccessToken, getStoredUser } from "@/lib/auth-store";
+import { getProfile } from "@/lib/api/profile";
 
 interface NavigationSidebarProps {
-  activeView: "chat" | "search" | "knowledge" | "analytics";
-  onViewChange: (view: "chat" | "search" | "knowledge" | "analytics") => void;
+  activeView: "chat" | "search" | "analytics";
+  onViewChange: (view: "chat" | "search" | "analytics") => void;
+  historyOpen: boolean;
+  onToggleHistory: () => void;
 }
 
 export function NavigationSidebar({ 
   activeView, 
-  onViewChange
+  onViewChange,
+  historyOpen,
+  onToggleHistory
 }: NavigationSidebarProps) {
   const { language } = useLanguageStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const currentUser = getStoredUser();
-  const displayName = currentUser?.email?.split("@")[0] || "User";
+  const [displayName, setDisplayName] = useState(
+    currentUser?.fullName?.trim() ||
+      currentUser?.email?.split("@")[0] ||
+      "User"
+  );
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const userInitial = (displayName.trim()[0] || "U").toUpperCase();
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    getProfile()
+      .then((profile) => {
+        if (profile?.fullName?.trim()) {
+          setDisplayName(profile.fullName.trim());
+        }
+      })
+      .catch(() => {
+        // Keep fallback from auth store when profile API fails.
+      });
   }, []);
 
   // Glean-style navigation - simple icons only
@@ -39,11 +61,6 @@ export function NavigationSidebar({
       id: "search" as const, 
       icon: Home, 
       label: language === "en" ? "Search" : "Tìm kiếm"
-    },
-    { 
-      id: "knowledge" as const, 
-      icon: BookOpen, 
-      label: language === "en" ? "Knowledge" : "Tri thức"
     },
     { 
       id: "analytics" as const, 
@@ -64,10 +81,18 @@ export function NavigationSidebar({
   };
 
   return (
-    <aside className="z-40 flex w-14 flex-col items-center border-r border-zinc-200 bg-white py-4 dark:border-zinc-800 dark:bg-zinc-950">
+    <aside className="z-40 flex w-16 flex-col items-center border-r border-zinc-200 bg-white py-5 dark:border-zinc-800 dark:bg-zinc-950">
       {/* Logo */}
-      <div className="mb-6 flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
-        <span className="text-sm font-bold">G</span>
+      <div className="group relative mb-7">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-md shadow-emerald-500/30"
+          title={displayName}
+        >
+          {userInitial}
+        </div>
+        <span className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-zinc-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-zinc-700">
+          {displayName}
+        </span>
       </div>
 
       {/* Navigation Icons */}
@@ -80,14 +105,14 @@ export function NavigationSidebar({
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
-              className={`group relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
+              className={`group relative flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
                 isActive 
-                  ? "bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400" 
+                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400" 
                   : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
               }`}
               title={item.label}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-5.5 w-5.5" />
               
               {/* Tooltip */}
               <span className="pointer-events-none absolute left-full ml-2 whitespace-nowrap rounded-lg bg-zinc-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-zinc-700">
@@ -98,11 +123,27 @@ export function NavigationSidebar({
         })}
       </nav>
 
+      <div className="mb-3 mt-2 w-10 border-t border-zinc-200 dark:border-zinc-800" />
+      <button
+        onClick={onToggleHistory}
+        className={`group relative mb-3 flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
+          historyOpen
+            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+            : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
+        }`}
+        title={language === "en" ? "Chat history" : "Lịch sử chat"}
+      >
+        <MessageSquare className="h-5.5 w-5.5" />
+        <span className="pointer-events-none absolute left-full ml-2 whitespace-nowrap rounded-lg bg-zinc-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-zinc-700">
+          {language === "en" ? "Chat history" : "Lịch sử chat"}
+        </span>
+      </button>
+
       {/* User Avatar */}
-      <div className="relative">
+      <div className="relative mt-1">
         <button
           onClick={() => setShowUserMenu(!showUserMenu)}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-200 text-zinc-700 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-200 text-zinc-700 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
           title={mounted ? displayName : "User"}
         >
           <User className="h-5 w-5" />

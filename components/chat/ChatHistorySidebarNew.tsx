@@ -109,8 +109,8 @@ export function ChatHistorySidebarNew({
       )}
 
       {/* Sidebar with slide animation */}
-      <aside className={`fixed top-0 z-30 flex h-full w-64 flex-col bg-white transition-all duration-300 ease-in-out dark:bg-zinc-950 ${
-        isOpen ? "left-14" : "-left-64"
+      <aside className={`fixed top-0 z-30 flex h-full w-72 flex-col border-r border-zinc-200 bg-white transition-all duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-950 ${
+        isOpen ? "left-16" : "-left-72"
       }`}>
         {/* Spacer for menu button */}
         <div className="h-16"></div>
