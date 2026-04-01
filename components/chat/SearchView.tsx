@@ -5,52 +5,41 @@ import { Search, FileText, Calendar, Tag, ExternalLink } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { listDocuments } from "@/lib/api/documents";
 import type { DocumentResponse } from "@/types/knowledge";
-import { getStoredUser } from "@/lib/auth-store";
 import { getProfile } from "@/lib/api/profile";
-import { getTenantUserById } from "@/lib/api/tenant-admin";
-
-type UserVisibilityScope = {
-  roleId: number | null;
-  departmentId: number | null;
-};
 
 export function SearchView() {
   const { language } = useLanguageStore();
-  const currentUser = getStoredUser();
   const [query, setQuery] = useState("");
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+  const [documentsErrorStatus, setDocumentsErrorStatus] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedResult, setSelectedResult] = useState<DocumentResponse | null>(null);
   const [profileRoleName, setProfileRoleName] = useState<string | null>(null);
   const [profileDepartmentName, setProfileDepartmentName] = useState<string | null>(null);
-  const [currentUserVisibilityScope, setCurrentUserVisibilityScope] =
-    useState<UserVisibilityScope>({ roleId: null, departmentId: null });
 
   useEffect(() => {
     let mounted = true;
     setIsSearching(true);
 
     Promise.all([
-      listDocuments().catch(() => []),
+      listDocuments(),
       getProfile().catch(() => null),
-      currentUser?.id ? getTenantUserById(currentUser.id).catch(() => null) : Promise.resolve(null),
     ])
-      .then(([docs, profile, tenantUser]) => {
+      .then(([docs, profile]) => {
         if (!mounted) return;
         setDocuments(docs);
+        setDocumentsErrorStatus(null);
         setProfileRoleName(profile?.roleName ?? null);
         setProfileDepartmentName(profile?.departmentName ?? null);
-        setCurrentUserVisibilityScope({
-          roleId:
-            typeof tenantUser?.roleId === "number" && Number.isFinite(tenantUser.roleId)
-              ? tenantUser.roleId
-              : null,
-          departmentId:
-            typeof tenantUser?.departmentId === "number" &&
-            Number.isFinite(tenantUser.departmentId)
-              ? tenantUser.departmentId
-              : null,
-        });
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        const status =
+          typeof error === "object" && error && "status" in error
+            ? Number((error as { status?: number }).status)
+            : null;
+        setDocuments([]);
+        setDocumentsErrorStatus(Number.isFinite(status) ? status : null);
       })
       .finally(() => {
         if (!mounted) return;
@@ -60,30 +49,11 @@ export function SearchView() {
     return () => {
       mounted = false;
     };
-  }, [currentUser?.id]);
-
-  const canAccessDocument = (doc: DocumentResponse): boolean => {
-    const visibility = doc.visibility;
-    if (visibility === "COMPANY_WIDE") return true;
-
-    const depOk =
-      currentUserVisibilityScope.departmentId !== null &&
-      Array.isArray(doc.accessibleDepartments) &&
-      doc.accessibleDepartments.includes(currentUserVisibilityScope.departmentId);
-    const roleOk =
-      currentUserVisibilityScope.roleId !== null &&
-      Array.isArray(doc.accessibleRoles) &&
-      doc.accessibleRoles.includes(currentUserVisibilityScope.roleId);
-
-    if (visibility === "SPECIFIC_DEPARTMENTS") return depOk;
-    if (visibility === "SPECIFIC_ROLES") return roleOk;
-    return depOk && roleOk;
-  };
+  }, []);
 
   const filteredResults = useMemo(() => {
     const q = query.trim().toLowerCase();
     return documents
-      .filter((doc) => canAccessDocument(doc))
       .filter((doc) => {
         if (!q) return true;
         const title = (doc.documentTitle || doc.originalFileName || "").toLowerCase();
@@ -93,7 +63,7 @@ export function SearchView() {
           .join(" ");
         return title.includes(q) || desc.includes(q) || tagText.includes(q);
       });
-  }, [documents, query, currentUserVisibilityScope]);
+  }, [documents, query]);
 
   const highlightText = (text: string, q: string) => {
     if (!q.trim()) return text;
@@ -161,9 +131,13 @@ export function SearchView() {
                 <div className="text-center">
                   <Search className="mx-auto h-12 w-12 text-zinc-600" />
                   <p className="mt-4 text-sm text-zinc-500">
-                    {language === "en"
-                      ? "No documents match your query or visibility permissions"
-                      : "Không có tài liệu phù hợp từ khóa hoặc quyền truy cập"}
+                    {documentsErrorStatus === 403
+                      ? language === "en"
+                        ? "You do not have permission to view documents"
+                        : "Bạn chưa có quyền xem tài liệu"
+                      : language === "en"
+                        ? "No documents found"
+                        : "Không có tài liệu"}
                   </p>
                 </div>
               </div>

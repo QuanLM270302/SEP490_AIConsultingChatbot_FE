@@ -20,6 +20,31 @@ import { translations } from "@/lib/translations";
 
 type FilterMode = "all" | "custom" | "fixed";
 
+const PERMISSION_LABELS: Record<string, { vi: string; en: string }> = {
+  USER_READ: { vi: "Xem người dùng", en: "View users" },
+  USER_WRITE: { vi: "Tạo/Sửa người dùng", en: "Create/Edit users" },
+  USER_DELETE: { vi: "Xóa người dùng", en: "Delete users" },
+  USER_ALL: { vi: "Toan quyen nguoi dung", en: "All user permissions" },
+  DEPT_READ: { vi: "Xem phòng ban", en: "View departments" },
+  DEPT_WRITE: { vi: "Tạo/Sửa phòng ban", en: "Create/Edit departments" },
+  DEPT_DELETE: { vi: "Xóa phòng ban", en: "Delete departments" },
+  DEPT_ALL: { vi: "Toan quyen phong ban", en: "All department permissions" },
+  ROLE_READ: { vi: "Xem vai trò", en: "View roles" },
+  ROLE_WRITE: { vi: "Tạo/Sửa vai trò", en: "Create/Edit roles" },
+  ROLE_ALL: { vi: "Toan quyen vai tro", en: "All role permissions" },
+  DOCUMENT_READ: { vi: "Xem tài liệu", en: "View documents" },
+  DOCUMENT_WRITE: { vi: "Tải lên & chỉnh sửa tài liệu", en: "Upload & edit documents" },
+  DOCUMENT_DELETE: { vi: "Xóa tài liệu", en: "Delete documents" },
+  DOCUMENT_ALL: { vi: "Toan quyen tai lieu", en: "All document permissions" },
+  PROFILE_MANAGE: { vi: "Quản lý hồ sơ cá nhân", en: "Manage own profile" },
+};
+
+function getPermissionLabel(code: string, language: "vi" | "en", fallback?: string): string {
+  const translated = PERMISSION_LABELS[code]?.[language];
+  if (translated) return translated;
+  return fallback ?? code;
+}
+
 export default function TenantAdminRolesPage() {
   const { language } = useLanguageStore();
   const t = translations[language];
@@ -278,6 +303,7 @@ export default function TenantAdminRolesPage() {
 
       {createOpen && (
         <CreateRoleModal
+          language={language}
           permissions={permissions}
           onClose={() => setCreateOpen(false)}
           onSuccess={async () => {
@@ -289,6 +315,7 @@ export default function TenantAdminRolesPage() {
 
       {editRole && (
         <EditRoleModal
+          language={language}
           role={editRole}
           permissions={permissions}
           onClose={() => setEditRole(null)}
@@ -431,7 +458,7 @@ export default function TenantAdminRolesPage() {
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        {perm}
+                        {getPermissionLabel(perm, language)}
                       </span>
                     ))}
                   </div>
@@ -457,10 +484,12 @@ export default function TenantAdminRolesPage() {
 }
 
 function PermissionSelector({
+  language,
   selected,
   allPermissions,
   onChange,
 }: {
+  language: "vi" | "en";
   selected: string[];
   allPermissions: { code: string; name?: string }[];
   onChange: (next: string[]) => void;
@@ -483,7 +512,7 @@ function PermissionSelector({
                 : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
             }`}
           >
-            {p.name ?? p.code}
+            {getPermissionLabel(p.code, language, p.name)}
           </button>
         );
       })}
@@ -492,10 +521,12 @@ function PermissionSelector({
 }
 
 function CreateRoleModal({
+  language,
   permissions,
   onClose,
   onSuccess,
 }: {
+  language: "vi" | "en";
   permissions: { code: string; name?: string }[];
   onClose: () => void;
   onSuccess: () => void;
@@ -545,7 +576,7 @@ function CreateRoleModal({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">Permissions</label>
-            <PermissionSelector selected={form.permissions} allPermissions={permissions} onChange={(next) => setForm((p) => ({ ...p, permissions: next }))} />
+            <PermissionSelector language={language} selected={form.permissions} allPermissions={permissions} onChange={(next) => setForm((p) => ({ ...p, permissions: next }))} />
           </div>
           <div className="mt-6 flex gap-2">
             <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? "Đang tạo..." : "Tạo role"}</button>
@@ -558,11 +589,13 @@ function CreateRoleModal({
 }
 
 function EditRoleModal({
+  language,
   role,
   permissions,
   onClose,
   onSuccess,
 }: {
+  language: "vi" | "en";
   role: RoleResponse;
   permissions: { code: string; name?: string }[];
   onClose: () => void;
@@ -609,7 +642,7 @@ function EditRoleModal({
             <label className="mb-1 block text-xs font-medium text-zinc-500">
               Permissions mới (để trống nếu không đổi)
             </label>
-            <PermissionSelector selected={selectedPermissions} allPermissions={permissions} onChange={setSelectedPermissions} />
+            <PermissionSelector language={language} selected={selectedPermissions} allPermissions={permissions} onChange={setSelectedPermissions} />
           </div>
           <div className="mt-6 flex gap-2">
             <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? "Đang lưu..." : "Lưu thay đổi"}</button>

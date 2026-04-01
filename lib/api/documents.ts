@@ -9,7 +9,13 @@ import type {
 
 export async function listDocuments(): Promise<DocumentResponse[]> {
   const res = await fetchWithAuth(DOCUMENTS_BASE);
-  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to list documents"));
+  if (!res.ok) {
+    const err = new Error(await res.text().catch(() => "Failed to list documents")) as Error & {
+      status?: number;
+    };
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
