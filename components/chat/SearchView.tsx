@@ -166,14 +166,14 @@ export function SearchView() {
                     : `Tìm thấy ${filteredResults.length} kết quả`}
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {filteredResults.map((doc) => (
                     <button
                       key={doc.id}
                       onClick={() => setSelectedResult(doc)}
-                      className="group rounded-xl border border-white/10 bg-white/5 p-5 text-left transition-all hover:border-emerald-500/50 hover:bg-white/10"
+                      className="group flex h-full flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.04] p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/50 hover:shadow-emerald-500/10"
                     >
-                      <h3 className="line-clamp-2 text-base font-semibold text-white group-hover:text-emerald-400">
+                      <h3 className="min-h-[3rem] line-clamp-2 text-base font-semibold text-white group-hover:text-emerald-400">
                         {highlightText(doc.documentTitle || doc.originalFileName, query)}
                       </h3>
 
@@ -193,7 +193,7 @@ export function SearchView() {
                         </span>
                       </div>
 
-                      <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-zinc-400">
+                      <p className="mt-3 line-clamp-4 min-h-[5rem] text-sm leading-relaxed text-zinc-400">
                         {highlightText(
                           doc.description ||
                             (language === "en"
@@ -204,11 +204,11 @@ export function SearchView() {
                       </p>
 
                       {doc.tags?.length ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="mt-auto pt-3 flex flex-wrap gap-2">
                           {doc.tags.slice(0, 3).map((tag) => (
                             <span
                               key={tag.id}
-                              className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1 text-xs text-zinc-400"
+                              className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-zinc-400"
                             >
                               <Tag className="h-3 w-3" />
                               {tag.name}
