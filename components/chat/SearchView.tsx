@@ -1,19 +1,38 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, FileText, Calendar, Tag, ExternalLink } from "lucide-react";
+import { Search, FileText, Calendar, Tag, ExternalLink, X } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
-import { listDocuments } from "@/lib/api/documents";
-import type { DocumentResponse } from "@/types/knowledge";
+import {
+  downloadDocument,
+  getActiveRagVersion,
+  getDocumentContent,
+  getVersionHistory,
+  listDocuments,
+  setActiveRagVersion,
+} from "@/lib/api/documents";
+import type { DocumentResponse, DocumentVersionResponse } from "@/types/knowledge";
 import { getProfile } from "@/lib/api/profile";
 
-export function SearchView() {
+interface SearchViewProps {
+  initialQuery?: string;
+}
+
+export function SearchView({ initialQuery }: SearchViewProps) {
   const { language } = useLanguageStore();
   const [query, setQuery] = useState("");
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [documentsErrorStatus, setDocumentsErrorStatus] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedResult, setSelectedResult] = useState<DocumentResponse | null>(null);
+  const [previewContent, setPreviewContent] = useState<string>("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [versions, setVersions] = useState<DocumentVersionResponse[]>([]);
+  const [activeRagVersionId, setActiveRagVersionId] = useState<string | null>(null);
+  const [versionLoading, setVersionLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
   const [profileRoleName, setProfileRoleName] = useState<string | null>(null);
   const [profileDepartmentName, setProfileDepartmentName] = useState<string | null>(null);
 
@@ -51,6 +70,11 @@ export function SearchView() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!initialQuery) return;
+    setQuery(initialQuery);
+  }, [initialQuery]);
+
   const filteredResults = useMemo(() => {
     const q = query.trim().toLowerCase();
     return documents
@@ -64,6 +88,77 @@ export function SearchView() {
         return title.includes(q) || desc.includes(q) || tagText.includes(q);
       });
   }, [documents, query]);
+
+  useEffect(() => {
+    if (!query.trim()) return;
+    if (filteredResults.length === 0) return;
+      setSelectedResult((prev) => prev ?? filteredResults[0]);
+  }, [filteredResults, query]);
+
+  useEffect(() => {
+    if (!selectedResult) return;
+    setPreviewLoading(true);
+    setPreviewError(null);
+    getDocumentContent(selectedResult.id)
+      .then((content) => setPreviewContent(content || ""))
+      .catch((error) => {
+        const reason = error instanceof Error ? error.message : "";
+        setPreviewContent("");
+        setPreviewError(
+          language === "en"
+            ? `Cannot preview content directly. ${reason || "This file type may require download or backend extraction support."}`
+            : `Không thể xem trực tiếp nội dung. ${reason || "Tệp này có thể cần tải xuống hoặc backend chưa hỗ trợ trích xuất nội dung."}`
+        );
+      })
+      .finally(() => setPreviewLoading(false));
+  }, [selectedResult, language]);
+
+  useEffect(() => {
+    if (!selectedResult) return;
+    setVersionLoading(true);
+    Promise.all([
+      getVersionHistory(selectedResult.id).catch(() => []),
+      getActiveRagVersion(selectedResult.id).catch(() => null),
+    ])
+      .then(([history, active]) => {
+        setVersions(history);
+        setActiveRagVersionId(active?.versionId ?? null);
+      })
+      .finally(() => setVersionLoading(false));
+  }, [selectedResult]);
+
+  const handleDownload = async () => {
+    if (!selectedResult) return;
+    setActionLoading(true);
+    try {
+      const blob = await downloadDocument(selectedResult.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = selectedResult.originalFileName || "document";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : language === "en" ? "Download failed" : "Tải xuống thất bại");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSetActiveRag = async (versionId: string) => {
+    if (!selectedResult) return;
+    setActionLoading(true);
+    try {
+      await setActiveRagVersion(selectedResult.id, versionId);
+      setActiveRagVersionId(versionId);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : language === "en" ? "Update failed" : "Cập nhật thất bại");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const highlightText = (text: string, q: string) => {
     if (!q.trim()) return text;
@@ -123,8 +218,7 @@ export function SearchView() {
 
       {/* Results */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Results List */}
-        <div className={`flex-1 overflow-y-auto p-6 ${selectedResult ? "lg:w-1/2" : ""}`}>
+        <div className="flex-1 overflow-y-auto p-6">
           <div className="mx-auto max-w-4xl">
             {!isSearching && filteredResults.length === 0 && (
               <div className="flex h-64 items-center justify-center">
@@ -224,52 +318,143 @@ export function SearchView() {
           </div>
         </div>
 
-        {/* Document Preview Panel */}
-        {selectedResult && (
-          <div className="hidden w-1/2 border-l border-white/10 bg-[#0b0b0c] p-6 lg:block">
-            <div className="mb-4 flex items-center justify-between">
+      </div>
+
+      {selectedResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedResult(null)} />
+          <div className="relative z-10 max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-white/10 bg-[#0b0b0c]">
+            <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
               <h2 className="text-lg font-semibold text-white">
-                {language === "en" ? "Document Preview" : "Xem trước tài liệu"}
+                {language === "en" ? "Document details & preview" : "Chi tiết và xem tài liệu"}
               </h2>
               <button
                 onClick={() => setSelectedResult(null)}
                 className="rounded-lg p-2 text-zinc-400 transition hover:bg-white/5 hover:text-white"
               >
-                <ExternalLink className="h-5 w-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/5 p-6">
-              <h3 className="text-xl font-bold text-white">
-                {selectedResult.documentTitle || selectedResult.originalFileName}
-              </h3>
-              <div className="mt-4 space-y-4 text-sm text-zinc-300">
-                <p>
+            <div className="grid max-h-[calc(90vh-68px)] gap-0 overflow-hidden lg:grid-cols-2">
+              <div className="overflow-y-auto border-b border-white/10 p-6 lg:border-b-0 lg:border-r">
+                <h3 className="text-xl font-bold text-white">
+                  {selectedResult.documentTitle || selectedResult.originalFileName}
+                </h3>
+                <p className="mt-3 text-sm text-zinc-300">
                   {selectedResult.description ||
                     (language === "en"
                       ? "No description available."
                       : "Chưa có mô tả cho tài liệu này.")}
                 </p>
-                <p className="text-zinc-400">
-                  {language === "en"
-                    ? "Full document preview would be displayed here..."
-                    : "Nội dung đầy đủ của tài liệu sẽ hiển thị ở đây..."}
-                </p>
-                <div className="rounded-lg bg-white/5 p-3 text-xs text-zinc-400">
+                <div className="mt-4 space-y-2 text-xs text-zinc-400">
                   <p>
-                    {language === "en" ? "Applied access context:" : "Ngữ cảnh quyền đang áp dụng:"}
-                  </p>
-                  <p className="mt-1">
                     {language === "en"
                       ? `Role: ${profileRoleName ?? "N/A"} | Department: ${profileDepartmentName ?? "N/A"}`
                       : `Vai trò: ${profileRoleName ?? "N/A"} | Phòng ban: ${profileDepartmentName ?? "N/A"}`}
                   </p>
+                  <p>
+                    {language === "en" ? "Uploaded:" : "Ngày tải lên:"}{" "}
+                    {new Date(selectedResult.uploadedAt).toLocaleDateString(language === "vi" ? "vi-VN" : "en-US")}
+                  </p>
                 </div>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    disabled={actionLoading}
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {language === "en" ? "Download" : "Tải xuống"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowVersions((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-white/5"
+                  >
+                    {showVersions
+                      ? language === "en"
+                        ? "Hide versions"
+                        : "Ẩn phiên bản"
+                      : language === "en"
+                        ? "View versions"
+                        : "Xem phiên bản"}
+                  </button>
+                </div>
+
+                {showVersions && (
+                <div className="mt-4 rounded-lg border border-white/10 bg-white/5 p-3">
+                  <p className="mb-2 text-xs font-semibold text-zinc-300">
+                    {language === "en" ? "Version list / RAG active" : "Danh sách phiên bản / RAG active"}
+                  </p>
+                  {versionLoading ? (
+                    <p className="text-xs text-zinc-400">{language === "en" ? "Loading versions..." : "Đang tải phiên bản..."}</p>
+                  ) : versions.length === 0 ? (
+                    <p className="text-xs text-zinc-400">{language === "en" ? "No versions found." : "Không có phiên bản."}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {versions.slice(0, 5).map((v) => {
+                        const active = activeRagVersionId === v.versionId;
+                        return (
+                          <div key={v.versionId} className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5">
+                            <span className="text-xs text-zinc-200">v{v.versionNumber}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSetActiveRag(v.versionId)}
+                              disabled={actionLoading || active}
+                              className={`rounded px-2 py-1 text-[11px] ${
+                                active
+                                  ? "bg-emerald-500/25 text-emerald-300"
+                                  : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                              }`}
+                            >
+                              {active
+                                ? language === "en"
+                                  ? "RAG active"
+                                  : "Đang active"
+                                : language === "en"
+                                  ? "Set RAG active"
+                                  : "Đặt RAG active"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                )}
+              </div>
+
+              <div className="overflow-y-auto p-6">
+                <h4 className="mb-3 text-sm font-semibold text-zinc-200">
+                  {language === "en" ? "Direct content preview" : "Xem nội dung trực tiếp"}
+                </h4>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  {previewLoading ? (
+                    <p className="text-sm text-zinc-400">{language === "en" ? "Loading..." : "Đang tải..."}</p>
+                  ) : (
+                    <pre className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
+                      {previewContent ||
+                        previewError ||
+                        (language === "en"
+                          ? "No readable content."
+                          : "Không có nội dung đọc trực tiếp.")}
+                    </pre>
+                  )}
+                </div>
+                {previewError ? (
+                  <p className="mt-3 text-xs text-amber-300">
+                    {language === "en"
+                      ? "Reason: direct preview depends on `/content` API and backend extraction. Binary files (PDF/DOCX/scans) may fail if extraction is unavailable."
+                      : "Lý do: xem trực tiếp phụ thuộc API `/content` và khả năng trích xuất nội dung từ backend. Các file nhị phân (PDF/DOCX/scan) có thể không xem được nếu backend chưa hỗ trợ trích xuất."}
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

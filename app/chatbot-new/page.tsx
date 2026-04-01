@@ -8,6 +8,7 @@ import { SearchView } from "@/components/chat/SearchView";
 export default function ChatbotNewPage() {
   const [activeView, setActiveView] = useState<"chat" | "search" | "analytics">("chat");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-100 dark:bg-zinc-900">
@@ -25,9 +26,13 @@ export default function ChatbotNewPage() {
           <ChatView
             isHistoryOpen={isHistoryOpen}
             onToggleHistory={() => setIsHistoryOpen((prev) => !prev)}
+            onNavigateToSearch={(query) => {
+              if (query) setSearchQuery(query);
+              setActiveView("search");
+            }}
           />
         )}
-        {activeView === "search" && <SearchView />}
+        {activeView === "search" && <SearchView initialQuery={searchQuery} />}
         {activeView === "analytics" && (
           <div className="flex h-full items-center justify-center bg-zinc-100 px-6 dark:bg-zinc-900">
             <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-8 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-950">

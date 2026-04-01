@@ -22,9 +22,10 @@ interface Message {
 interface ChatViewProps {
   isHistoryOpen: boolean;
   onToggleHistory: () => void;
+  onNavigateToSearch: (query?: string) => void;
 }
 
-export function ChatView({ isHistoryOpen, onToggleHistory }: ChatViewProps) {
+export function ChatView({ isHistoryOpen, onToggleHistory, onNavigateToSearch }: ChatViewProps) {
   const { language } = useLanguageStore();
   const currentUser = getStoredUser();
   const [displayName, setDisplayName] = useState(
@@ -285,7 +286,11 @@ export function ChatView({ isHistoryOpen, onToggleHistory }: ChatViewProps) {
                             : "Nguồn tham chiếu trong câu trả lời gần nhất"}
                       </p>
                     </div>
-                    <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToSearch(previewSource.documentName)}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                    >
                       <ExternalLink className="h-4 w-4" />
                       {language === "en" ? "Open document" : "Mở tài liệu"}
                     </button>
@@ -323,10 +328,11 @@ export function ChatView({ isHistoryOpen, onToggleHistory }: ChatViewProps) {
                   </button>
                   <button
                     type="button"
+                    onClick={() => onNavigateToSearch()}
                     className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-zinc-600 transition hover:border-emerald-400 hover:text-emerald-600 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-emerald-600 dark:hover:text-emerald-400"
                   >
                     <Search className="h-3.5 w-3.5" />
-                    {language === "en" ? "Open Search tab for deep lookup" : "Mở tab Search để tra cứu sâu"}
+                    {language === "en" ? "Open Search tab for deep lookup" : "Mở mục Tìm kiếm để tra cứu sâu"}
                   </button>
                 </div>
               </div>

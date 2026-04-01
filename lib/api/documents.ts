@@ -37,6 +37,55 @@ export async function getVersionHistory(id: string): Promise<DocumentVersionResp
   return res.json();
 }
 
+export async function getDocumentContent(id: string): Promise<string> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/content`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to get document content"));
+  return res.text();
+}
+
+export async function downloadDocument(id: string): Promise<Blob> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/download`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to download document"));
+  return res.blob();
+}
+
+export async function getDocumentVersionContent(
+  documentId: string,
+  versionId: string
+): Promise<string> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${documentId}/versions/${versionId}/content`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to get version content"));
+  return res.text();
+}
+
+export async function downloadDocumentVersion(
+  documentId: string,
+  versionId: string
+): Promise<Blob> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${documentId}/versions/${versionId}/download`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to download version"));
+  return res.blob();
+}
+
+export interface ActiveRagVersionResponse {
+  versionId: string;
+  versionNumber?: number;
+  documentId?: string;
+}
+
+export async function getActiveRagVersion(documentId: string): Promise<ActiveRagVersionResponse> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${documentId}/rag-version`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to get active RAG version"));
+  return res.json();
+}
+
+export async function setActiveRagVersion(documentId: string, versionId: string): Promise<void> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${documentId}/rag-version/${versionId}`, {
+    method: "PUT",
+  });
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to set active RAG version"));
+}
+
 export async function updateDocumentAccess(
   id: string,
   body: UpdateDocumentAccessRequest
