@@ -57,7 +57,7 @@ export function AppHeader() {
   const user = mounted ? getStoredUser() : null;
   const roles = user?.roles ?? [];
   const allowedLinks = mounted
-    ? navLinks.filter((link) => hasAllowedRole(roles, link.roles))
+    ? navLinks.filter((link) => hasAllowedRole(roles, link.roles, link.href))
     : navLinksMatchingPath(pathname);
   const homeHref =
     mounted && roles.length > 0 ? roleToPath(roles) : homeHrefFromPathname(pathname);

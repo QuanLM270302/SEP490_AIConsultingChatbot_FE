@@ -7,16 +7,22 @@ import { translations } from "@/lib/translations";
 
 interface AuthHomePlainLinkProps {
   href?: string;
-  /** Thêm vào wrapper (vd. đăng ký: `mb-8 pt-0`) */
+  /** Thêm vào wrapper (vd. `mb-8`) */
   className?: string;
   /**
-   * `plain` — link chữ (đăng ký).
+   * `plain` — link chữ + mũi tên, căn trái (đăng ký, quên mật khẩu).
    * `bar` — dòng «hoặc» + nút ngang full width giống kích thước nút Login (đăng nhập).
    */
   variant?: "plain" | "bar";
 }
 
-/** Liên kết về trang chủ: dạng chữ hoặc thanh nút full width. */
+const BackArrowIcon = () => (
+  <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+  </svg>
+);
+
+/** Liên kết về trang chủ: dạng chữ + mũi tên hoặc thanh nút full width. */
 export function AuthHomePlainLink({
   href = "/",
   className = "",
@@ -56,11 +62,12 @@ export function AuthHomePlainLink({
   }
 
   return (
-    <div className={twMerge("pt-4 text-center", className)}>
+    <div className={twMerge("w-full text-left", className)}>
       <Link
         href={href}
-        className="text-sm font-medium text-zinc-500 underline-offset-4 transition hover:text-emerald-600 hover:underline dark:text-zinc-400 dark:hover:text-emerald-400"
+        className="inline-flex items-center gap-2 text-sm text-zinc-600 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
       >
+        <BackArrowIcon />
         {t.backToHome}
       </Link>
     </div>

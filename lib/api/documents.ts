@@ -7,12 +7,26 @@ import type {
   UpdateDocumentAccessRequest,
 } from "@/types/knowledge";
 
-export async function listDocuments(): Promise<DocumentResponse[]> {
-  const res = await fetchWithAuth(DOCUMENTS_BASE);
-  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to list documents"));
-  return res.json();
+function apiError(res: Response, message: string): Error & { status?: number } {
+  const err = new Error(message) as Error & { status?: number };
+  err.status = res.status;
+  return err;
 }
 
+export async function listDocuments(): Promise<DocumentResponse[]> {
+  const res = await fetchWithAuth(DOCUMENTS_BASE);
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to list documents"));
+  const data: unknown = await res.json();
+  if (Array.isArray(data)) return data as DocumentResponse[];
+  if (data && typeof data === "object") {
+    const o = data as Record<string, unknown>;
+    if (Array.isArray(o.content)) return o.content as DocumentResponse[];
+    if (Array.isArray(o.data)) return o.data as DocumentResponse[];
+  }
+  return [];
+}
+
+/** GET /api/v1/knowledge/documents/detail/{id} — full detail after visibility checks */
 export async function getDocument(id: string): Promise<DocumentResponse> {
   const res = await fetchWithAuth(`${DOCUMENTS_BASE}/detail/${id}`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Document not found"));
@@ -103,6 +117,87 @@ export async function uploadNewVersion(
     method: "POST",
     body: form,
   });
-  if (!res.ok) throw new Error(await res.text().catch(() => "Upload version failed"));
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Upload version failed"));
   return res.json();
+}
+
+export type ActiveRagVersionResponse = {
+  document_id: string;
+  active_version_id: string | null;
+  version_number?: number;
+  version_note?: string | null;
+  created_at?: string;
+};
+
+/** Inline file from GET .../content — text or PDF blob URL (caller must revoke PDF url). */
+export async function getDocumentPreview(id: string): Promise<
+  | { kind: "text"; text: string }
+  | { kind: "pdf"; url: string }
+  | { kind: "binary"; mime: string }
+> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/content`);
+  if (!res.ok) {
+    throw apiError(res, await res.text().catch(() => "Failed to load document"));
+  }
+  const mime = res.headers.get("content-type") ?? "application/octet-stream";
+  const blob = await res.blob();
+  if (mime.includes("pdf")) {
+    return { kind: "pdf", url: URL.createObjectURL(blob) };
+  }
+  if (mime.startsWith("text/") || mime.includes("json") || mime.includes("xml")) {
+    return { kind: "text", text: await blob.text() };
+  }
+  return { kind: "binary", mime };
+}
+
+export async function downloadDocument(id: string): Promise<Blob> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/download`);
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Download failed"));
+  return res.blob();
+}
+
+export async function getDocumentVersionPreview(
+  documentId: string,
+  versionId: string
+): Promise<
+  | { kind: "text"; text: string }
+  | { kind: "pdf"; url: string }
+  | { kind: "binary"; mime: string }
+> {
+  const res = await fetchWithAuth(
+    `${DOCUMENTS_BASE}/${documentId}/versions/${versionId}/content`
+  );
+  if (!res.ok) {
+    throw apiError(res, await res.text().catch(() => "Failed to load version"));
+  }
+  const mime = res.headers.get("content-type") ?? "application/octet-stream";
+  const blob = await res.blob();
+  if (mime.includes("pdf")) {
+    return { kind: "pdf", url: URL.createObjectURL(blob) };
+  }
+  if (mime.startsWith("text/") || mime.includes("json")) {
+    return { kind: "text", text: await blob.text() };
+  }
+  return { kind: "binary", mime };
+}
+
+export async function downloadDocumentVersion(documentId: string, versionId: string): Promise<Blob> {
+  const res = await fetchWithAuth(
+    `${DOCUMENTS_BASE}/${documentId}/versions/${versionId}/download`
+  );
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Download failed"));
+  return res.blob();
+}
+
+export async function getActiveRagVersion(documentId: string): Promise<ActiveRagVersionResponse> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${documentId}/rag-version`);
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to load RAG version"));
+  return res.json();
+}
+
+export async function setActiveRagVersion(documentId: string, versionId: string): Promise<void> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${documentId}/rag-version/${versionId}`, {
+    method: "PUT",
+  });
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to set RAG version"));
 }

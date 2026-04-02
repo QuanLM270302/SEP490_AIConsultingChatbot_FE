@@ -3,6 +3,7 @@
  * Empty array = any authenticated role.
  */
 const ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
+const ROLE_CONTENT_MANAGER = "ROLE_CONTENT_MANAGER";
 const ROLE_TENANT_ADMIN = "ROLE_TENANT_ADMIN";
 const ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
 const ROLE_STAFF = "ROLE_STAFF";
@@ -15,8 +16,9 @@ export const PATH_ALLOWED_ROLES: Record<string, string[]> = {
   "/": [],
   "/profile": [],
   "/chatbot": [],
+  "/chatbot-new": [],
   "/subscription": [ROLE_TENANT_ADMIN],
-  "/employee": [ROLE_EMPLOYEE],
+  "/employee": [ROLE_EMPLOYEE, ROLE_CONTENT_MANAGER],
   "/tenant-admin": [ROLE_TENANT_ADMIN],
   "/super-admin": [ROLE_SUPER_ADMIN],
   "/staff": [ROLE_STAFF],
@@ -28,18 +30,37 @@ export function getPathSegment(pathname: string): string {
   return segment ? `/${segment}` : "/";
 }
 
+/** Prefer Spring-style ROLE_* authority (JWT lists permissions after the primary role). */
+function primaryRoleString(roles: string[]): string {
+  const withPrefix = roles.find((r) => r.startsWith("ROLE_"));
+  return withPrefix ?? roles[0] ?? "";
+}
+
 /** Map backend roles to default app path for that role */
 export function roleToPath(roles: string[]): string {
-  const role = roles[0] ?? "";
+  const role = primaryRoleString(roles);
   if (role.includes("SUPER_ADMIN")) return "/super-admin";
   if (role.includes("TENANT_ADMIN")) return "/tenant-admin";
   if (role.includes("STAFF")) return "/staff";
   if (role.includes("EMPLOYEE")) return "/employee";
+  if (role.includes("CONTENT_MANAGER")) return "/employee";
   return "/employee";
 }
 
-/** Check if user has at least one of the allowed roles */
-export function hasAllowedRole(userRoles: string[], allowedRoles: string[]): boolean {
+/**
+ * @param pathSegment - e.g. `/employee` from `getPathSegment`. When the route is the employee
+ * portal but the user has a tenant custom role (only `ROLE_*` matches `roleToPath` → `/employee`),
+ * they must still be allowed — otherwise `router.replace` is a no-op and AuthGuard hangs.
+ */
+export function hasAllowedRole(
+  userRoles: string[],
+  allowedRoles: string[],
+  pathSegment?: string
+): boolean {
   if (allowedRoles.length === 0) return true;
-  return userRoles.some((r) => allowedRoles.some((a) => r === a));
+  if (userRoles.some((r) => allowedRoles.includes(r))) return true;
+  if (pathSegment === "/employee" && roleToPath(userRoles) === "/employee") {
+    return true;
+  }
+  return false;
 }

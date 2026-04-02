@@ -32,12 +32,12 @@ export async function getConversations(): Promise<ConversationSummary[]> {
   const data = await res.json();
   const items: Record<string, unknown>[] = Array.isArray(data) ? data : (data.content ?? []);
   return items.map((c) => ({
-    id: c.conversationId,
-    title: c.title,
-    status: c.status,
-    startedAt: c.startedAt,
-    lastMessageAt: c.lastMessageAt,
-    totalMessages: c.totalMessages,
+    id: String(c.conversationId ?? ""),
+    title: String(c.title ?? ""),
+    status: String(c.status ?? ""),
+    startedAt: String(c.startedAt ?? ""),
+    lastMessageAt: String(c.lastMessageAt ?? ""),
+    totalMessages: Number(c.totalMessages ?? 0),
   }));
 }
 

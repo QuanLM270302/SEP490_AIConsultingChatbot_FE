@@ -198,7 +198,7 @@ export function KnowledgeBaseView() {
             </div>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
             >
               <Upload className="h-4 w-4" />
               {language === "en" ? "Upload Document" : "Tải lên tài liệu"}
@@ -214,7 +214,7 @@ export function KnowledgeBaseView() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={language === "en" ? "Search documents..." : "Tìm kiếm tài liệu..."}
-                className="w-full rounded-lg border border-zinc-300 bg-white py-2 pl-10 pr-4 text-sm text-zinc-900 placeholder-zinc-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-400"
+                className="w-full rounded-lg border border-zinc-300 bg-white py-2 pl-10 pr-4 text-sm text-zinc-900 placeholder-zinc-500 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-400"
               />
             </div>
           </div>
@@ -222,7 +222,7 @@ export function KnowledgeBaseView() {
       </div>
 
       {/* Documents Grid */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
+      <div className="scrollbar-chat-hidden flex-1 overflow-y-auto scroll-smooth px-8 py-6">
         <div className="mx-auto max-w-6xl">
           {loading ? (
             <div className="flex h-64 items-center justify-center">
@@ -242,12 +242,12 @@ export function KnowledgeBaseView() {
                 {filteredDocuments.map((doc) => (
                   <div
                     key={doc.id}
-                    className="group rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-blue-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-blue-700"
+                    className="group rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-emerald-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-emerald-700"
                   >
                     {/* Document Icon */}
                     <div className="mb-3 flex items-start justify-between">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/50">
-                        <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50">
+                        <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                         {doc.fileType}
@@ -275,7 +275,7 @@ export function KnowledgeBaseView() {
                     <div className="flex gap-2 opacity-0 transition group-hover:opacity-100">
                       <button
                         onClick={() => handleDownload(doc)}
-                        className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-400 dark:hover:bg-blue-950"
+                        className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-950"
                         title={language === "en" ? "Download" : "Tải xuống"}
                       >
                         <Download className="h-3 w-3" />
@@ -401,7 +401,7 @@ export function KnowledgeBaseView() {
                           }}
                           className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                             active
-                              ? "bg-blue-600 text-white shadow-sm"
+                              ? "bg-emerald-600 text-white shadow-sm"
                               : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
                           }`}
                           title={`${tag.name} (${tag.code})`}
@@ -473,7 +473,7 @@ export function KnowledgeBaseView() {
                             }}
                             className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                               active
-                                ? "bg-blue-600 text-white shadow-sm"
+                                ? "bg-emerald-600 text-white shadow-sm"
                                 : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
                             }`}
                             title={d.name ?? String(d.id)}
@@ -515,7 +515,7 @@ export function KnowledgeBaseView() {
                             }}
                             className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                               active
-                                ? "bg-blue-600 text-white shadow-sm"
+                                ? "bg-emerald-600 text-white shadow-sm"
                                 : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
                             }`}
                             title={r.name ?? r.code ?? String(r.id)}
@@ -545,7 +545,7 @@ export function KnowledgeBaseView() {
               <button
                 onClick={handleUpload}
                 disabled={!uploadFile || uploading}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
               >
                 {uploading 
                   ? (language === "en" ? "Uploading..." : "Đang tải lên...") 
@@ -577,7 +577,7 @@ export function KnowledgeBaseView() {
               <h4 className="font-medium text-zinc-900 dark:text-white">{selectedDocument.documentTitle || selectedDocument.originalFileName}</h4>
             </div>
 
-            <div className="max-h-96 space-y-3 overflow-y-auto">
+            <div className="scrollbar-chat-hidden max-h-96 space-y-3 overflow-y-auto">
               {versionHistory.length > 0 ? versionHistory.map((version) => (
                 <div key={version.versionId} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
                   <div className="flex items-start justify-between">

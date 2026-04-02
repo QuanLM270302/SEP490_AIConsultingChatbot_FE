@@ -73,3 +73,21 @@ export async function refreshAuth(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Same as refreshAuth on success, but does **not** clear the session on failure.
+ * Use for background polling so a temporary network error does not log the user out.
+ */
+export async function tryRefreshAuth(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const refresh = getRefreshToken();
+  if (!refresh) return false;
+  try {
+    const { refreshAccessToken } = await import("@/lib/api/auth");
+    const data = await refreshAccessToken(refresh);
+    setAuth(data);
+    return true;
+  } catch {
+    return false;
+  }
+}

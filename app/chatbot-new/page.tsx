@@ -1,38 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { NavigationSidebar } from "@/components/chat/NavigationSidebar";
 import { ChatView } from "@/components/chat/ChatView";
 import { SearchView } from "@/components/chat/SearchView";
-import { KnowledgeBaseView } from "@/components/chat/KnowledgeBaseView";
+import { ChatbotAnalyticsView } from "@/components/chat/ChatbotAnalyticsView";
+import { ChatbotNewHeader } from "@/components/chat/ChatbotNewHeader";
 
 export default function ChatbotNewPage() {
-  const [activeView, setActiveView] = useState<"chat" | "search" | "knowledge" | "analytics">("chat");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeView, setActiveView] = useState<"chat" | "search" | "analytics">("chat");
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  /** Bumps when navigating from chat so SearchView picks up a new initialQuery reliably */
+  const [searchNavKey, setSearchNavKey] = useState(0);
+
+  const goToSearch = useCallback((query?: string) => {
+    if (query) setSearchQuery(query);
+    setSearchNavKey((k) => k + 1);
+    setActiveView("search");
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-950">
-      {/* Navigation Sidebar */}
       <NavigationSidebar
         activeView={activeView}
         onViewChange={setActiveView}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        historyOpen={isHistoryOpen}
+        onToggleHistory={() => setIsHistoryOpen((v) => !v)}
       />
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
-        {activeView === "chat" && <ChatView />}
-        {activeView === "search" && <SearchView />}
-        {activeView === "knowledge" && <KnowledgeBaseView />}
-        {activeView === "analytics" && (
-          <div className="flex h-full items-center justify-center bg-zinc-950">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold text-white">Analytics</h2>
-              <p className="mt-2 text-zinc-400">Coming soon...</p>
-            </div>
-          </div>
-        )}
+      <main
+        className={`relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-[padding] duration-300 ease-out ${
+          isHistoryOpen ? "pl-64" : "pl-0"
+        }`}
+      >
+        <ChatbotNewHeader onSmartSearch={() => goToSearch()} />
+
+        <div className="relative z-0 min-h-0 flex-1 overflow-hidden">
+          {activeView === "chat" && (
+            <ChatView
+              isHistoryOpen={isHistoryOpen}
+              onToggleHistory={() => setIsHistoryOpen((v) => !v)}
+              onNavigateToSearch={(query) => goToSearch(query)}
+            />
+          )}
+          {activeView === "search" && (
+            <SearchView key={`${searchNavKey}-${searchQuery}`} initialQuery={searchQuery} />
+          )}
+          {activeView === "analytics" && <ChatbotAnalyticsView />}
+        </div>
       </main>
     </div>
   );
