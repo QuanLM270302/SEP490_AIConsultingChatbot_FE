@@ -6,7 +6,6 @@ import {
   FileText,
   Calendar,
   Tag,
-  X,
   Loader2,
   Download,
   History,
@@ -656,15 +655,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
             <div className="flex min-h-0 w-full min-w-0 flex-col border-b border-zinc-800/90 lg:w-[min(100%,26rem)] lg:max-w-md lg:shrink-0 lg:border-b-0 lg:border-r lg:border-zinc-800/90">
               <div className="relative shrink-0 bg-gradient-to-br from-emerald-950/55 via-zinc-900/95 to-zinc-950 px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_0%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
-                <button
-                  type="button"
-                  onClick={() => setSelected(null)}
-                  className="absolute right-2 top-2 rounded-xl p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white sm:right-3 sm:top-3"
-                  aria-label={t.close}
-                >
-                  <X className="h-5 w-5" />
-                </button>
-                <div className="relative flex gap-3.5 pr-10 sm:gap-4 sm:pr-12">
+                <div className="relative flex gap-3.5 pr-4 sm:gap-4 sm:pr-6">
                   <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/[0.12] ring-1 ring-emerald-500/25 shadow-inner shadow-emerald-950/40 sm:size-14">
                     <FileText className="h-6 w-6 text-emerald-400 sm:h-7 sm:w-7" />
                   </div>
@@ -694,7 +685,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     displayDoc.originalFileName &&
                     displayDoc.documentTitle !== displayDoc.originalFileName ? (
                       <p className="mt-1.5 truncate text-xs text-zinc-500" title={displayDoc.originalFileName}>
-                        <span className="text-zinc-600">{t.originalFile}: </span>
+                        <span className="text-zinc-600">{t.originalFile}</span>{" "}
                         {displayDoc.originalFileName}
                       </p>
                     ) : null}

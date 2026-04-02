@@ -89,7 +89,7 @@ export function NavigationSidebar({
   return (
     <aside className="relative z-50 flex h-full min-h-0 w-16 shrink-0 flex-col items-stretch border-r border-zinc-200 bg-white py-3 dark:border-zinc-800 dark:bg-zinc-950">
       <div
-        className="group relative mx-auto mb-2 flex shrink-0 cursor-default flex-col items-center gap-1"
+        className="group relative mx-auto mb-4 flex shrink-0 cursor-default flex-col items-center gap-1"
         title={displayName}
         aria-label={displayName}
       >
@@ -102,7 +102,7 @@ export function NavigationSidebar({
       </div>
 
       <nav
-        className="flex min-h-0 flex-1 flex-col items-center justify-start gap-2.5 px-1 pt-0.5"
+        className="flex min-h-0 flex-1 flex-col items-center justify-start gap-2.5 px-1 pt-2"
         aria-label={isEn ? "Main navigation" : "Điều hướng chính"}
       >
         {navigation.map((item) => {
