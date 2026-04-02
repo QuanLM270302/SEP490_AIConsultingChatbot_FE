@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { getPermissionLabel } from "@/lib/permission-labels";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import {
   createTenantRole,
@@ -17,6 +18,12 @@ import {
 import { Eye, Loader2, MoreVertical, Pencil, Plus, Shield, Trash2 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { getStoredUser } from "@/lib/auth-store";
+import {
+  mergeRolesWithCache,
+  readTenantRolesCache,
+  writeTenantRolesCache,
+} from "@/lib/tenant-roles-cache";
 
 type FilterMode = "all" | "custom" | "fixed";
 
@@ -37,9 +44,25 @@ export default function TenantAdminRolesPage() {
 
   const fixedCodes = useMemo(() => new Set(["TENANT_ADMIN", "CONTENT_MANAGER", "EMPLOYEE"]), []);
 
-  const load = async () => {
+  /** Lưu snapshot đầy đủ (tab “Tất cả”) để sau đăng xuất vẫn khôi phục hiển thị. */
+  const persistFullCatalog = useCallback(async () => {
+    const tenantId = getStoredUser()?.tenantId;
+    if (!tenantId) return;
+    try {
+      const full = await getTenantRoles();
+      const cached = readTenantRolesCache(tenantId);
+      const merged = mergeRolesWithCache(full, cached, "all");
+      writeTenantRolesCache(tenantId, merged);
+    } catch {
+      /* bỏ qua — chỉ là bản sao phụ */
+    }
+  }, []);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const tenantId = getStoredUser()?.tenantId ?? null;
+    const cached = readTenantRolesCache(tenantId);
     try {
       const [list, perms] = await Promise.all([
         filter === "custom"
@@ -49,18 +72,37 @@ export default function TenantAdminRolesPage() {
             : getTenantRoles(),
         getTenantAvailablePermissions().catch(() => []),
       ]);
-      setRoles(list);
+      const merged = mergeRolesWithCache(list, cached, filter);
+      setRoles(merged);
+      if (tenantId && filter === "all") {
+        writeTenantRolesCache(tenantId, merged);
+      }
       setPermissions(perms);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Lỗi tải roles");
+      if (cached?.length) {
+        const fallback =
+          filter === "all"
+            ? cached
+            : filter === "custom"
+              ? cached.filter((r) => !fixedCodes.has((r.code ?? "").toUpperCase()))
+              : cached.filter((r) => fixedCodes.has((r.code ?? "").toUpperCase()));
+        setRoles(fallback);
+        setError(
+          language === "en"
+            ? `Cannot reach server — showing roles saved on this device. ${e instanceof Error ? `(${e.message})` : ""}`
+            : `Không kết nối được máy chủ — hiển thị vai trò đã lưu trên thiết bị. ${e instanceof Error ? `(${e.message})` : ""}`
+        );
+      } else {
+        setError(e instanceof Error ? e.message : "Lỗi tải roles");
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, language, fixedCodes]);
 
   useEffect(() => {
     void load();
-  }, [filter]);
+  }, [load]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -115,6 +157,7 @@ export default function TenantAdminRolesPage() {
     try {
       await deleteTenantRole(role.id);
       await load();
+      await persistFullCatalog();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Xóa role thất bại");
     } finally {
@@ -283,18 +326,21 @@ export default function TenantAdminRolesPage() {
           onSuccess={async () => {
             setCreateOpen(false);
             await load();
+            await persistFullCatalog();
           }}
         />
       )}
 
       {editRole && (
         <EditRoleModal
+          key={editRole.id}
           role={editRole}
           permissions={permissions}
           onClose={() => setEditRole(null)}
           onSuccess={async () => {
             setEditRole(null);
             await load();
+            await persistFullCatalog();
           }}
         />
       )}
@@ -427,11 +473,12 @@ export default function TenantAdminRolesPage() {
                       <span
                         key={idx}
                         className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                        title={perm}
                       >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        {perm}
+                        {getPermissionLabel(perm, undefined, language === "en" ? "en" : "vi")}
                       </span>
                     ))}
                   </div>
@@ -460,30 +507,38 @@ function PermissionSelector({
   selected,
   allPermissions,
   onChange,
+  disabled,
 }: {
   selected: string[];
   allPermissions: { code: string; name?: string }[];
   onChange: (next: string[]) => void;
+  disabled?: boolean;
 }) {
+  const { language } = useLanguageStore();
+  const lang = language === "en" ? "en" : "vi";
   const toggle = (code: string) => {
+    if (disabled) return;
     onChange(selected.includes(code) ? selected.filter((p) => p !== code) : [...selected, code]);
   };
   return (
-    <div className="flex max-h-40 flex-wrap gap-2 overflow-auto rounded-xl border border-zinc-200 p-2 dark:border-zinc-700">
+    <div className="flex max-h-56 flex-wrap gap-2 overflow-auto rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
       {allPermissions.map((p) => {
         const active = selected.includes(p.code);
+        const label = getPermissionLabel(p.code, p.name, lang);
         return (
           <button
             key={p.code}
             type="button"
+            disabled={disabled}
             onClick={() => toggle(p.code)}
-            className={`rounded-full px-2.5 py-1 text-xs transition ${
+            title={p.code}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
               active
-                ? "bg-green-500 text-white"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-            }`}
+                ? "bg-emerald-500 text-white shadow-md shadow-emerald-600/35 ring-2 ring-emerald-300/60 dark:ring-emerald-400/40"
+                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+            } disabled:cursor-not-allowed disabled:opacity-50`}
           >
-            {p.name ?? p.code}
+            {label}
           </button>
         );
       })}
@@ -500,13 +555,15 @@ function CreateRoleModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [form, setForm] = useState<CreateRoleRequest>({ code: "", name: "", description: "", permissions: [] });
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.code.trim() || !form.name.trim()) {
-      alert("Code và tên role là bắt buộc.");
+      alert(language === "en" ? "Code and role name are required." : "Code và tên role là bắt buộc.");
       return;
     }
     setLoading(true);
@@ -519,7 +576,7 @@ function CreateRoleModal({
       });
       onSuccess();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Tạo role thất bại");
+      alert(e instanceof Error ? e.message : language === "en" ? "Failed to create role." : "Tạo role thất bại");
     } finally {
       setLoading(false);
     }
@@ -529,27 +586,39 @@ function CreateRoleModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo custom role</h3>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{t.addCustomRole}</h3>
         <form onSubmit={submit} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Code *</label>
+            <label className="block text-xs font-medium text-zinc-500">
+              {language === "en" ? "Code *" : "Mã *"}
+            </label>
             <input value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm uppercase dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" placeholder="HR_MANAGER" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Tên role *</label>
+            <label className="block text-xs font-medium text-zinc-500">{t.roleLabel} *</label>
             <input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" placeholder="HR Manager" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Mô tả</label>
+            <label className="block text-xs font-medium text-zinc-500">{t.description}</label>
             <textarea value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="mt-1 h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500">Permissions</label>
-            <PermissionSelector selected={form.permissions} allPermissions={permissions} onChange={(next) => setForm((p) => ({ ...p, permissions: next }))} />
+            <label className="mb-1 block text-xs font-medium text-zinc-500">
+              {language === "en" ? "Permissions" : "Quyền"}
+            </label>
+            <PermissionSelector
+              selected={form.permissions}
+              allPermissions={permissions}
+              onChange={(next) => setForm((p) => ({ ...p, permissions: next }))}
+            />
           </div>
           <div className="mt-6 flex gap-2">
-            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? "Đang tạo..." : "Tạo role"}</button>
-            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
+            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">
+              {loading ? (language === "en" ? "Creating…" : "Đang tạo…") : language === "en" ? "Create role" : "Tạo role"}
+            </button>
+            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
+              {t.cancel}
+            </button>
           </div>
         </form>
       </div>
@@ -568,23 +637,66 @@ function EditRoleModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [name, setName] = useState(role.name ?? "");
   const [description, setDescription] = useState(role.description ?? "");
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(role.permissions ?? []);
+  const [permsLoading, setPermsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  const permissionsForUi = useMemo(() => {
+    const codes = new Set(permissions.map((p) => p.code));
+    const extra = selectedPermissions
+      .filter((c) => !codes.has(c))
+      .map((code) => ({ code }));
+    return [...permissions, ...extra];
+  }, [permissions, selectedPermissions]);
+
+  useEffect(() => {
+    setName(role.name ?? "");
+    setDescription(role.description ?? "");
+  }, [role]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPermsLoading(true);
+    void getTenantRoleById(role.id)
+      .then((full) => {
+        if (cancelled) return;
+        setSelectedPermissions(Array.isArray(full.permissions) ? full.permissions : []);
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedPermissions(role.permissions ?? []);
+      })
+      .finally(() => {
+        if (!cancelled) setPermsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [role.id]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedPermissions.length === 0) {
+      alert(
+        language === "en"
+          ? "Choose at least one permission (server requires a non-empty list)."
+          : "Chọn ít nhất một quyền (máy chủ yêu cầu danh sách không rỗng)."
+      );
+      return;
+    }
     setLoading(true);
     try {
       await updateTenantRole(role.id, {
         name: name.trim(),
         description: description.trim() || undefined,
-        permissions: selectedPermissions.length ? selectedPermissions : undefined,
+        permissions: selectedPermissions,
       });
       onSuccess();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Cập nhật role thất bại");
+      alert(e instanceof Error ? e.message : language === "en" ? "Failed to update role." : "Cập nhật role thất bại");
     } finally {
       setLoading(false);
     }
@@ -594,26 +706,48 @@ function EditRoleModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Cập nhật custom role</h3>
-        <p className="mt-1 text-xs text-zinc-500">Code: {role.code ?? "—"} (không thể đổi)</p>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+          {language === "en" ? "Edit custom role" : "Sửa vai trò tùy chỉnh"}
+        </h3>
+        <p className="mt-1 text-xs text-zinc-500">
+          {language === "en" ? "Code" : "Mã"}: {role.code ?? "—"} (
+          {language === "en" ? "cannot change" : "không đổi được"})
+        </p>
         <form onSubmit={submit} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Tên role</label>
+            <label className="block text-xs font-medium text-zinc-500">{t.roleLabel}</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Mô tả</label>
+            <label className="block text-xs font-medium text-zinc-500">{language === "en" ? "Description" : "Mô tả"}</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">
-              Permissions mới (để trống nếu không đổi)
+              {language === "en"
+                ? "Permissions — currently granted are highlighted; tap to turn on or off"
+                : "Quyền — quyền đang gán được tô sáng; bấm để bật/tắt"}
             </label>
-            <PermissionSelector selected={selectedPermissions} allPermissions={permissions} onChange={setSelectedPermissions} />
+            {permsLoading ? (
+              <div className="flex items-center gap-2 rounded-xl border border-zinc-200 px-3 py-8 text-sm text-zinc-500 dark:border-zinc-700">
+                <Loader2 className="h-5 w-5 animate-spin text-green-500" />
+                {language === "en" ? "Loading current permissions…" : "Đang tải quyền hiện tại…"}
+              </div>
+            ) : (
+              <PermissionSelector
+                selected={selectedPermissions}
+                allPermissions={permissionsForUi}
+                onChange={setSelectedPermissions}
+              />
+            )}
           </div>
           <div className="mt-6 flex gap-2">
-            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? "Đang lưu..." : "Lưu thay đổi"}</button>
-            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
+            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">
+              {loading ? (language === "en" ? "Saving…" : "Đang lưu…") : t.save}
+            </button>
+            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
+              {t.cancel}
+            </button>
           </div>
         </form>
       </div>

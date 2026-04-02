@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  clearAuth,
   getAccessToken,
   getRefreshToken,
   getStoredUser,
@@ -15,6 +16,17 @@ import {
   roleToPath,
   hasAllowedRole,
 } from "@/lib/auth-routes";
+
+const REFRESH_TIMEOUT_MS = 12_000;
+
+function refreshAuthWithTimeout(): Promise<boolean> {
+  return Promise.race([
+    refreshAuth(),
+    new Promise<boolean>((resolve) => {
+      window.setTimeout(() => resolve(false), REFRESH_TIMEOUT_MS);
+    }),
+  ]);
+}
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -33,32 +45,42 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         router.replace(home);
         return;
       }
-      setChecked(true);
       return;
     }
 
+    setChecked(false);
+
     function finishCheck() {
-      const user = getStoredUser();
-      if (!user?.roles?.length) {
+      try {
+        const user = getStoredUser();
+        if (!user?.roles?.length) {
+          clearAuth();
+          router.replace("/login");
+          return;
+        }
+        const segment = getPathSegment(pathname);
+        const allowedRoles = PATH_ALLOWED_ROLES[segment] ?? [];
+        if (!hasAllowedRole(user.roles, allowedRoles, segment)) {
+          router.replace(roleToPath(user.roles));
+          return;
+        }
+        setChecked(true);
+      } catch {
+        clearAuth();
         router.replace("/login");
-        return;
       }
-      const segment = getPathSegment(pathname);
-      const allowedRoles = PATH_ALLOWED_ROLES[segment] ?? [];
-      if (!hasAllowedRole(user.roles, allowedRoles)) {
-        router.replace(roleToPath(user.roles));
-        return;
-      }
-      setChecked(true);
     }
 
-    let token = getAccessToken();
+    const token = getAccessToken();
     if (!token) {
       const refresh = getRefreshToken();
       if (refresh) {
-        refreshAuth().then((ok) => {
+        void refreshAuthWithTimeout().then((ok) => {
           if (ok) finishCheck();
-          else router.replace("/login");
+          else {
+            clearAuth();
+            router.replace("/login");
+          }
         });
         return;
       }

@@ -281,6 +281,10 @@ export const translations = {
     queries: 'truy vấn',
     confidence: 'độ tin cậy',
     analyticsDataNote: 'Số liệu lấy từ máy chủ (đoạn chat và tài liệu trong tổ chức).',
+    analyticsAccessDeniedHint:
+      'Bạn chưa có quyền xem số liệu phân tích tổ chức, hoặc phiên đăng nhập chưa kịp cập nhật. Hãy thử làm mới — hệ thống cũng tự thử lại nếu quyền vừa được cấp.',
+    analyticsRetryLoad: 'Thử tải lại',
+    analyticsSyncing: 'Đang đồng bộ quyền…',
     requestsThisMonthLabel: 'Truy vấn AI (tháng này)',
     tokensThisMonthLabel: 'Mã hóa (tháng này)',
     avgTokensPerRequestLabel: 'Trung bình mã hóa / một truy vấn',
@@ -723,6 +727,10 @@ export const translations = {
     queries: 'queries',
     confidence: 'confidence',
     analyticsDataNote: 'Figures are loaded from the server (chat & documents in your tenant).',
+    analyticsAccessDeniedHint:
+      'You may not have permission to view tenant analytics, or your session is still catching up. Try reload — we also retry in the background if access was just granted.',
+    analyticsRetryLoad: 'Reload data',
+    analyticsSyncing: 'Syncing permissions…',
     requestsThisMonthLabel: 'AI requests (this month)',
     tokensThisMonthLabel: 'Tokens (this month)',
     avgTokensPerRequestLabel: 'Avg tokens / request',

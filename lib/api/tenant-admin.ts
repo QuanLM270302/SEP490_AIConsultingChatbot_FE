@@ -83,6 +83,21 @@ export interface RoleResponse {
   permissions?: string[];
 }
 
+/** Parse `permissions` from GET role / list (string[] or legacy { code }[]). */
+function parsePermissionsField(raw: unknown): string[] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!Array.isArray(raw)) return undefined;
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item === "string" && item.length > 0) out.push(item);
+    else if (item && typeof item === "object" && "code" in item) {
+      const c = (item as { code?: unknown }).code;
+      if (typeof c === "string" && c.length > 0) out.push(c);
+    }
+  }
+  return out;
+}
+
 function firstNonNegativeInt(...values: unknown[]): number {
   for (const v of values) {
     const n = Number(v);
@@ -97,7 +112,10 @@ export function normalizeTenantRole(raw: unknown): RoleResponse {
     return { id: 0 };
   }
   const o = raw as Record<string, unknown>;
-  const id = Number(o.id);
+  const idRaw = o.id ?? o.role_id ?? o.roleId;
+  const id = Number(idRaw);
+  const permissions = parsePermissionsField(o.permissions);
+
   return {
     id: Number.isFinite(id) ? id : 0,
     name: typeof o.name === "string" ? o.name : undefined,
@@ -114,11 +132,19 @@ export function normalizeTenantRole(raw: unknown): RoleResponse {
       o.membersCount,
       o.numberOfUsers,
     ),
+    ...(permissions !== undefined ? { permissions } : {}),
   };
 }
 
 function normalizeRoleList(list: unknown): RoleResponse[] {
-  if (!Array.isArray(list)) return [];
+  if (!Array.isArray(list)) {
+    if (list && typeof list === "object") {
+      const o = list as Record<string, unknown>;
+      const inner = o.content ?? o.data ?? o.roles;
+      if (Array.isArray(inner)) return normalizeRoleList(inner);
+    }
+    return [];
+  }
   return list.map((item) => normalizeTenantRole(item)).filter((r) => r.id > 0);
 }
 
