@@ -13,6 +13,34 @@ function apiError(res: Response, message: string): Error & { status?: number } {
   return err;
 }
 
+function parseFilenameFromDisposition(contentDisposition: string | null): string | null {
+  if (!contentDisposition) return null;
+
+  const utf8Match = contentDisposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim()).replace(/[\\/]/g, "_");
+    } catch {
+      // Fall through to plain filename if decode fails.
+    }
+  }
+
+  const quotedMatch = contentDisposition.match(/filename\s*=\s*"([^"]+)"/i);
+  if (quotedMatch?.[1]) return quotedMatch[1].trim().replace(/[\\/]/g, "_");
+
+  const plainMatch = contentDisposition.match(/filename\s*=\s*([^;]+)/i);
+  if (plainMatch?.[1]) return plainMatch[1].trim().replace(/[\\/]/g, "_");
+
+  return null;
+}
+
+export interface DownloadFileResponse {
+  blob: Blob;
+  filename: string | null;
+  contentType: string;
+  contentDisposition: string | null;
+}
+
 export async function listDocuments(): Promise<DocumentResponse[]> {
   const res = await fetchWithAuth(DOCUMENTS_BASE);
   if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to list documents"));
@@ -150,10 +178,17 @@ export async function getDocumentPreview(id: string): Promise<
   return { kind: "binary", mime };
 }
 
-export async function downloadDocument(id: string): Promise<Blob> {
+export async function downloadDocument(id: string): Promise<DownloadFileResponse> {
   const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/download`);
   if (!res.ok) throw apiError(res, await res.text().catch(() => "Download failed"));
-  return res.blob();
+  const contentDisposition = res.headers.get("content-disposition");
+  const blob = await res.blob();
+  return {
+    blob,
+    filename: parseFilenameFromDisposition(contentDisposition),
+    contentType: res.headers.get("content-type") ?? "application/octet-stream",
+    contentDisposition,
+  };
 }
 
 export async function getDocumentVersionPreview(
@@ -175,18 +210,28 @@ export async function getDocumentVersionPreview(
   if (mime.includes("pdf")) {
     return { kind: "pdf", url: URL.createObjectURL(blob) };
   }
-  if (mime.startsWith("text/") || mime.includes("json")) {
+  if (mime.startsWith("text/") || mime.includes("json") || mime.includes("xml")) {
     return { kind: "text", text: await blob.text() };
   }
   return { kind: "binary", mime };
 }
 
-export async function downloadDocumentVersion(documentId: string, versionId: string): Promise<Blob> {
+export async function downloadDocumentVersion(
+  documentId: string,
+  versionId: string
+): Promise<DownloadFileResponse> {
   const res = await fetchWithAuth(
     `${DOCUMENTS_BASE}/${documentId}/versions/${versionId}/download`
   );
   if (!res.ok) throw apiError(res, await res.text().catch(() => "Download failed"));
-  return res.blob();
+  const contentDisposition = res.headers.get("content-disposition");
+  const blob = await res.blob();
+  return {
+    blob,
+    filename: parseFilenameFromDisposition(contentDisposition),
+    contentType: res.headers.get("content-type") ?? "application/octet-stream",
+    contentDisposition,
+  };
 }
 
 export async function getActiveRagVersion(documentId: string): Promise<ActiveRagVersionResponse> {

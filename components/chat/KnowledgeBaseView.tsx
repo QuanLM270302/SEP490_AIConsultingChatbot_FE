@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Upload, FileText, Search, Download, Trash2, Calendar, History, RefreshCw, X } from "lucide-react";
+import { Upload, FileText, Search, Download, Trash2, Calendar, History, RefreshCw, X, Loader2 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { 
   listDocuments, 
+  downloadDocument,
   uploadDocument, 
   softDeleteDocument,
   getVersionHistory,
@@ -53,6 +54,7 @@ export function KnowledgeBaseView() {
   const [updateFile, setUpdateFile] = useState<File | null>(null);
   const [versionNote, setVersionNote] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadDocuments();
@@ -175,9 +177,24 @@ export function KnowledgeBaseView() {
     return matchesSearch;
   });
 
-  const handleDownload = (doc: DocumentResponse) => {
-    // TODO: Implement download - backend needs to provide download URL
-    console.log("Download document:", doc.id);
+  const handleDownload = async (doc: DocumentResponse) => {
+    setDownloadingId(doc.id);
+    try {
+      const file = await downloadDocument(doc.id);
+      const url = URL.createObjectURL(file.blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.filename ?? doc.originalFileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert(language === "en" ? "Download failed" : "Tải xuống thất bại");
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   return (
@@ -275,10 +292,15 @@ export function KnowledgeBaseView() {
                     <div className="flex gap-2 opacity-0 transition group-hover:opacity-100">
                       <button
                         onClick={() => handleDownload(doc)}
+                        disabled={downloadingId === doc.id}
                         className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-950"
                         title={language === "en" ? "Download" : "Tải xuống"}
                       >
-                        <Download className="h-3 w-3" />
+                        {downloadingId === doc.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Download className="h-3 w-3" />
+                        )}
                       </button>
                       <button
                         onClick={() => handleViewHistory(doc)}
