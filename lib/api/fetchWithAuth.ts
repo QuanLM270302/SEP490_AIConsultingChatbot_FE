@@ -37,12 +37,14 @@ function summarizeRequestHeaders(headers: Headers): {
   authorization?: string;
   accept?: string;
   contentType?: string;
+  ifNoneMatch?: string;
 } {
   const authorization = headers.get("Authorization");
   return {
     authorization: authorization ? "Bearer ***" : undefined,
     accept: headers.get("Accept") ?? undefined,
     contentType: headers.get("Content-Type") ?? undefined,
+    ifNoneMatch: headers.get("If-None-Match") ?? undefined,
   };
 }
 
@@ -70,6 +72,10 @@ function logApiResponse(url: string, method: string, res: Response, attempt: Req
     status: res.status,
     contentType: res.headers.get("content-type") ?? undefined,
     contentDisposition: res.headers.get("content-disposition") ?? undefined,
+    etag: res.headers.get("etag") ?? undefined,
+    previewMode: res.headers.get("x-preview-mode") ?? undefined,
+    sourceContentType: res.headers.get("x-source-content-type") ?? undefined,
+    traceId: res.headers.get("x-trace-id") ?? undefined,
   });
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import {
   listDocuments,
@@ -62,6 +62,7 @@ function mapEmbeddingStatusLabel(
     case "COMPLETED":
       return t.statusCompleted;
     case "PENDING":
+    case "DOCUMENTS AWAITING PROCESSING":
       return t.statusPending;
     case "PROCESSING":
       return t.statusProcessing;
@@ -70,6 +71,47 @@ function mapEmbeddingStatusLabel(
     default:
       return raw?.trim() || "—";
   }
+}
+
+type EmbeddingState = "completed" | "in-progress" | "failed" | "unknown";
+
+function getEmbeddingState(raw: string | undefined): EmbeddingState {
+  const key = (raw ?? "").trim().toUpperCase();
+  if (!key) return "unknown";
+  if (key === "COMPLETED" || key.includes("SUCCESS") || key.includes("READY")) {
+    return "completed";
+  }
+  if (key === "FAILED" || key.includes("ERROR") || key.includes("FAIL")) {
+    return "failed";
+  }
+  if (
+    key === "PENDING" ||
+    key === "PROCESSING" ||
+    key.includes("PEND") ||
+    key.includes("PROCESS") ||
+    key.includes("QUEUE") ||
+    key.includes("AWAIT")
+  ) {
+    return "in-progress";
+  }
+  return "unknown";
+}
+
+function extractCompletionTimestamp(doc: DocumentResponse): string | null {
+  const raw = doc as unknown as Record<string, unknown>;
+  const candidates = [
+    raw.embeddingCompletedAt,
+    raw.embeddingUpdatedAt,
+    raw.completedAt,
+    raw.lastEmbeddedAt,
+    raw.updatedAt,
+  ];
+  for (const c of candidates) {
+    if (typeof c !== "string" || c.trim().length === 0) continue;
+    const d = new Date(c);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  return null;
 }
 
 export function DocumentsTab() {
@@ -92,10 +134,48 @@ export function DocumentsTab() {
   const [versions, setVersions] = useState<DocumentVersionResponse[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [newVersionDocId, setNewVersionDocId] = useState<string | null>(null);
+  const [embeddingCompletedAtByDocId, setEmbeddingCompletedAtByDocId] = useState<Record<string, string>>({});
+  const previousEmbeddingStateRef = useRef<Record<string, EmbeddingState>>({});
   const { language } = useLanguageStore();
   const t = translations[language];
 
-  const load = async () => {
+  const updateEmbeddingCompletionTimestamps = useCallback((nextDocs: DocumentResponse[]) => {
+    setEmbeddingCompletedAtByDocId((prev) => {
+      const next = { ...prev };
+      const seen = new Set<string>();
+
+      for (const doc of nextDocs) {
+        seen.add(doc.id);
+        const state = getEmbeddingState(doc.embeddingStatus);
+        const prevState = previousEmbeddingStateRef.current[doc.id];
+        const serverTimestamp = extractCompletionTimestamp(doc);
+
+        if (state === "completed") {
+          if (serverTimestamp) {
+            next[doc.id] = serverTimestamp;
+          } else if (prevState && prevState !== "completed") {
+            next[doc.id] = new Date().toISOString();
+          } else if (!next[doc.id]) {
+            next[doc.id] = doc.uploadedAt;
+          }
+        }
+
+        if (state !== "completed" && prevState === "completed") {
+          delete next[doc.id];
+        }
+
+        previousEmbeddingStateRef.current[doc.id] = state;
+      }
+
+      for (const id of Object.keys(next)) {
+        if (!seen.has(id)) delete next[id];
+      }
+
+      return next;
+    });
+  }, []);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -107,6 +187,7 @@ export function DocumentsTab() {
         getTenantRoles().catch(() => []),
       ]);
       setDocuments(docs);
+      updateEmbeddingCompletionTimestamps(docs);
       setCategories(cats);
       setTags(activeTags);
       setDepartments(depts);
@@ -118,11 +199,44 @@ export function DocumentsTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [updateEmbeddingCompletionTimestamps]);
+
+  const refreshDocumentsRealtime = useCallback(async () => {
+    try {
+      const docs = await listDocuments();
+      setDocuments(docs);
+      updateEmbeddingCompletionTimestamps(docs);
+    } catch {
+      // Ignore transient polling errors and keep current UI state.
+    }
+  }, [updateEmbeddingCompletionTimestamps]);
+
+  const hasInProgressEmbedding = useMemo(
+    () => documents.some((d) => getEmbeddingState(d.embeddingStatus) === "in-progress"),
+    [documents]
+  );
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!hasInProgressEmbedding) return;
+    const id = window.setInterval(() => {
+      void refreshDocumentsRealtime();
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [hasInProgressEmbedding, refreshDocumentsRealtime]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      if (hasInProgressEmbedding) {
+        void refreshDocumentsRealtime();
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [hasInProgressEmbedding, refreshDocumentsRealtime]);
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -527,7 +641,15 @@ export function DocumentsTab() {
                     {VISIBILITY_LABELS[doc.visibility]}
                   </td>
                   <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
-                    {mapEmbeddingStatusLabel(doc.embeddingStatus, t)}
+                    <div className="flex flex-col gap-0.5">
+                      <span>{mapEmbeddingStatusLabel(doc.embeddingStatus, t)}</span>
+                      {getEmbeddingState(doc.embeddingStatus) === "completed" &&
+                      embeddingCompletedAtByDocId[doc.id] ? (
+                        <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                          {language === "en" ? "Updated" : "Cập nhật"}: {new Date(embeddingCompletedAtByDocId[doc.id]).toLocaleString(language === "en" ? "en-US" : "vi-VN")}
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
