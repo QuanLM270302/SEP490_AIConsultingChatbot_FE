@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
+  ArrowLeft,
   Search,
   FileText,
   Calendar,
@@ -26,12 +28,15 @@ import {
   listDocuments,
   getDocument,
   getDocumentPreview,
+  getDocumentVersionPreview,
   downloadDocument,
+  downloadDocumentVersion,
   getVersionHistory,
   getActiveRagVersion,
   setActiveRagVersion,
 } from "@/lib/api/documents";
-import { refreshAuth, tryRefreshAuth } from "@/lib/auth-store";
+import type { DocumentPreviewResponse } from "@/lib/api/documents";
+import { clearAuth, refreshAuth, tryRefreshAuth } from "@/lib/auth-store";
 import type { DocumentVersionResponse } from "@/types/knowledge";
 import { getProfile } from "@/lib/api/profile";
 
@@ -110,7 +115,20 @@ function embeddingLabel(status: string | undefined, en: boolean): string {
   return status ?? "—";
 }
 
+function getErrorStatus(error: unknown): number | null {
+  if (typeof error !== "object" || error == null) return null;
+  const status = (error as { status?: unknown }).status;
+  return typeof status === "number" ? status : null;
+}
+
+function getErrorTraceId(error: unknown): string | null {
+  if (typeof error !== "object" || error == null) return null;
+  const traceId = (error as { traceId?: unknown }).traceId;
+  return typeof traceId === "string" && traceId.trim().length > 0 ? traceId.trim() : null;
+}
+
 export function SearchView({ initialQuery }: SearchViewProps) {
+  const router = useRouter();
   const { language } = useLanguageStore();
   const [query, setQuery] = useState("");
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
@@ -119,18 +137,16 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   const [selected, setSelected] = useState<DocumentResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const pdfObjectUrlRef = useRef<string | null>(null);
+  const previewKeyRef = useRef<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<
-    | { kind: "text"; text: string }
-    | { kind: "pdf"; url: string }
-    | { kind: "binary"; mime: string }
-    | null
-  >(null);
+  const [preview, setPreview] = useState<DocumentPreviewResponse | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [versions, setVersions] = useState<DocumentVersionResponse[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
+  const [previewVersionId, setPreviewVersionId] = useState<string | null>(null);
   const [activeRagId, setActiveRagId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [profileRoleName, setProfileRoleName] = useState<string | null>(null);
   const [detailDoc, setDetailDoc] = useState<DocumentResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -175,10 +191,51 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         language === "en"
           ? "You do not have permission to preview this document inline."
           : "Bạn chưa có quyền xem trực tiếp nội dung tài liệu.",
+      preview401:
+        language === "en"
+          ? "Session expired or missing token. Please login again."
+          : "Phiên đăng nhập đã hết hạn hoặc thiếu token. Vui lòng đăng nhập lại.",
+      preview404:
+        language === "en"
+          ? "Document does not exist or you do not have permission."
+          : "Tài liệu không tồn tại hoặc bạn không có quyền truy cập.",
+      preview415:
+        language === "en"
+          ? "This format is not supported for preview. Please use Download."
+          : "Định dạng này chưa hỗ trợ preview. Vui lòng tải file gốc.",
+      preview500:
+        language === "en"
+          ? "Server or storage error while loading preview. Please retry later."
+          : "Lỗi máy chủ hoặc object storage khi tải xem trước. Vui lòng thử lại sau.",
       previewHint:
         language === "en"
-          ? "Direct preview depends on file type and server extraction. PDF/DOCX may not show as text here — use Download."
-          : "Xem trực tiếp phụ thuộc loại file và máy chủ. PDF/DOCX có thể không hiển thị dạng chữ — hãy Tải xuống.",
+          ? "Direct preview depends on backend render support. TXT/PDF are native; DOC/DOCX/XLS/XLSX require server-side render mode."
+          : "Xem trực tiếp phụ thuộc khả năng render của backend. TXT/PDF xem trực tiếp được; DOC/DOCX/XLS/XLSX cần backend render.",
+      download401:
+        language === "en"
+          ? "Download failed: missing/invalid token. Please login again."
+          : "Tải xuống thất bại: thiếu hoặc sai token. Vui lòng đăng nhập lại.",
+      download404:
+        language === "en"
+          ? "Download failed: document/version not found."
+          : "Tải xuống thất bại: không tìm thấy tài liệu/phiên bản.",
+      download500:
+        language === "en"
+          ? "Download failed due to server/object storage error."
+          : "Tải xuống thất bại do lỗi máy chủ/object storage.",
+      downloadUnknown:
+        language === "en"
+          ? "Download failed. Please try again."
+          : "Tải xuống thất bại. Vui lòng thử lại.",
+      previewVersionBadge:
+        language === "en" ? "Version preview" : "Xem trước phiên bản",
+      previewCurrent:
+        language === "en" ? "Preview current" : "Xem bản hiện tại",
+      previewVersionAction:
+        language === "en" ? "Preview" : "Xem trước",
+      downloadVersionAction:
+        language === "en" ? "Download" : "Tải xuống",
+      backToList: language === "en" ? "Back to list" : "Quay lại danh sách",
       loading: language === "en" ? "Loading…" : "Đang tải…",
       sortLabel: language === "en" ? "Sort" : "Sắp xếp",
       sortNewest: language === "en" ? "Newest first" : "Mới nhất",
@@ -224,6 +281,11 @@ export function SearchView({ initialQuery }: SearchViewProps) {
       })
       .catch((e: Error & { status?: number }) => {
         const status = typeof e.status === "number" ? e.status : null;
+        if (status === 401) {
+          clearAuth();
+          router.push("/login");
+          return;
+        }
         if (silent) {
           // Đồng bộ nền: không xóa list đang có — tránh cảm giác “mất hết” khi token chưa kịp refresh / lỗi mạng tạm
           return;
@@ -235,7 +297,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         if (silent) setListSyncing(false);
         else setListLoading(false);
       });
-  }, []);
+  }, [router]);
 
   /** Làm mới JWT từ DB rồi tải lại list — dùng khi admin vừa đổi quyền (mọi máy qua polling + khi quay lại tab). */
   const syncPermissionsAndList = useCallback(async () => {
@@ -357,41 +419,98 @@ export function SearchView({ initialQuery }: SearchViewProps) {
     return r.includes("ADMIN") || r.includes("MANAGER");
   }, [profileRoleName]);
 
+  const getPreviewErrorMessage = useCallback(
+    (status: number | null): string => {
+      if (status === 403) return t.permPreview;
+      if (status === 401) return t.preview401;
+      if (status === 404) return t.preview404;
+      if (status === 415) return t.preview415;
+      if (status === 500) return t.preview500;
+      return t.previewHint;
+    },
+    [t.permPreview, t.preview401, t.preview404, t.preview415, t.preview500, t.previewHint]
+  );
+
+  const getDownloadErrorMessage = useCallback(
+    (status: number | null): string => {
+      if (status === 401) return t.download401;
+      if (status === 404) return t.download404;
+      if (status === 500) return t.download500;
+      return t.downloadUnknown;
+    },
+    [t.download401, t.download404, t.download500, t.downloadUnknown]
+  );
+
+  const loadPreview = useCallback(
+    async (documentId: string, versionId?: string | null) => {
+      const previewKey = `${documentId}::${versionId ?? "current"}`;
+      const samePreview = previewKeyRef.current === previewKey;
+
+      if (!samePreview && pdfObjectUrlRef.current) {
+        URL.revokeObjectURL(pdfObjectUrlRef.current);
+        pdfObjectUrlRef.current = null;
+      }
+
+      setPreviewLoading(true);
+      setPreviewError(null);
+      if (!samePreview) setPreview(null);
+
+      try {
+        const data = versionId
+          ? await getDocumentVersionPreview(documentId, versionId)
+          : await getDocumentPreview(documentId);
+
+        if (data.kind === "pdf") {
+          if (pdfObjectUrlRef.current && pdfObjectUrlRef.current !== data.url) {
+            URL.revokeObjectURL(pdfObjectUrlRef.current);
+          }
+          pdfObjectUrlRef.current = data.url;
+        } else if (pdfObjectUrlRef.current) {
+          URL.revokeObjectURL(pdfObjectUrlRef.current);
+          pdfObjectUrlRef.current = null;
+        }
+
+        setPreview(data);
+        previewKeyRef.current = previewKey;
+        setPreviewVersionId(versionId ?? null);
+        console.debug("[preview] metadata", data.meta);
+      } catch (error) {
+        const status = getErrorStatus(error);
+        const traceId = getErrorTraceId(error);
+        setPreviewError(getPreviewErrorMessage(status));
+        if (traceId) console.debug("[preview] traceId", traceId);
+        if (status === 401) {
+          clearAuth();
+          router.push("/login");
+          return;
+        }
+      } finally {
+        setPreviewLoading(false);
+      }
+    },
+    [getPreviewErrorMessage, router]
+  );
+
   useEffect(() => {
     if (!selected) return;
+    void loadPreview(selected.id, null);
+  }, [selected?.id, loadPreview]);
 
-    if (pdfObjectUrlRef.current) {
-      URL.revokeObjectURL(pdfObjectUrlRef.current);
-      pdfObjectUrlRef.current = null;
-    }
-
-    setPreviewLoading(true);
-    setPreviewError(null);
-    setPreview(null);
-
-    void getDocumentPreview(selected.id)
-      .then((p) => {
-        if (p.kind === "pdf") pdfObjectUrlRef.current = p.url;
-        setPreview(p);
-      })
-      .catch((e) => {
-        const err = e as Error & { status?: number };
-        if (err.status === 403) setPreviewError(t.permPreview);
-        else setPreviewError(t.previewHint);
-      })
-      .finally(() => setPreviewLoading(false));
-
+  useEffect(() => {
     return () => {
       if (pdfObjectUrlRef.current) {
         URL.revokeObjectURL(pdfObjectUrlRef.current);
         pdfObjectUrlRef.current = null;
       }
     };
-  }, [selected?.id, t.permPreview, t.previewHint]);
+  }, []);
 
   useEffect(() => {
     setVersionsOpen(false);
     setVersions([]);
+    setPreviewVersionId(null);
+    setActionError(null);
+    setActiveRagId(null);
   }, [selected?.id]);
 
   const toggleVersions = async () => {
@@ -432,16 +551,33 @@ export function SearchView({ initialQuery }: SearchViewProps) {
     })();
   };
 
-  const handleDownload = async (doc: DocumentResponse) => {
+  const handleVersionPreview = async (documentId: string, versionId: string) => {
+    await loadPreview(documentId, versionId);
+  };
+
+  const handleDownload = async (doc: DocumentResponse, versionId?: string) => {
     setActionLoading(true);
+    setActionError(null);
     try {
-      const blob = await downloadDocument(doc.id);
-      const url = URL.createObjectURL(blob);
+      const file = versionId
+        ? await downloadDocumentVersion(doc.id, versionId)
+        : await downloadDocument(doc.id);
+
+      const url = URL.createObjectURL(file.blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = doc.originalFileName;
+      a.download = file.filename ?? doc.originalFileName;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
       URL.revokeObjectURL(url);
+    } catch (error) {
+      const status = getErrorStatus(error);
+      setActionError(getDownloadErrorMessage(status));
+      if (status === 401) {
+        clearAuth();
+        router.push("/login");
+      }
     } finally {
       setActionLoading(false);
     }
@@ -655,6 +791,14 @@ export function SearchView({ initialQuery }: SearchViewProps) {
             <div className="flex min-h-0 w-full min-w-0 flex-col border-b border-zinc-800/90 lg:w-[min(100%,26rem)] lg:max-w-md lg:shrink-0 lg:border-b-0 lg:border-r lg:border-zinc-800/90">
               <div className="relative shrink-0 bg-gradient-to-br from-emerald-950/55 via-zinc-900/95 to-zinc-950 px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_0%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="relative mb-3 inline-flex items-center gap-1 rounded-lg border border-zinc-700/80 bg-zinc-900/65 px-2.5 py-1 text-xs font-medium text-zinc-200 hover:border-zinc-500 hover:bg-zinc-800/80"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  {t.backToList}
+                </button>
                 <div className="relative flex gap-3.5 pr-4 sm:gap-4 sm:pr-6">
                   <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/[0.12] ring-1 ring-emerald-500/25 shadow-inner shadow-emerald-950/40 sm:size-14">
                     <FileText className="h-6 w-6 text-emerald-400 sm:h-7 sm:w-7" />
@@ -803,11 +947,26 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                   </button>
                 </div>
 
+                {actionError ? (
+                  <p className="text-xs leading-relaxed text-amber-300">{actionError}</p>
+                ) : null}
+
                 {versionsOpen ? (
                   <div className="rounded-2xl border border-zinc-800/90 bg-zinc-950/60 p-3">
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-                      {t.versions}
-                    </p>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                        {t.versions}
+                      </p>
+                      {previewVersionId ? (
+                        <button
+                          type="button"
+                          onClick={() => void loadPreview(selected.id, null)}
+                          className="rounded-md border border-zinc-700 px-2 py-1 text-[11px] font-medium text-zinc-300 hover:bg-zinc-800"
+                        >
+                          {t.previewCurrent}
+                        </button>
+                      ) : null}
+                    </div>
                     <div className="scrollbar-chat-hidden max-h-44 overflow-y-auto">
                       {versionsLoading ? (
                         <div className="flex justify-center py-4">
@@ -817,10 +976,15 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                         <ul className="space-y-1.5">
                           {versions.map((v) => {
                             const active = activeRagId === v.versionId;
+                            const previewing = previewVersionId === v.versionId;
                             return (
                               <li
                                 key={v.versionId}
-                                className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.04] bg-zinc-900/80 px-3 py-2"
+                                className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 ${
+                                  previewing
+                                    ? "border-emerald-500/45 bg-emerald-950/20"
+                                    : "border-white/[0.04] bg-zinc-900/80"
+                                }`}
                               >
                                 <span className="text-xs font-medium text-zinc-200">
                                   v{v.versionNumber}
@@ -831,14 +995,32 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                                     />
                                   ) : null}
                                 </span>
-                                <button
-                                  type="button"
-                                  disabled={actionLoading || active || !canSetRagActive}
-                                  onClick={() => void handleSetRag(selected.id, v.versionId)}
-                                  className="shrink-0 rounded-lg bg-emerald-600/20 px-2.5 py-1 text-[11px] font-medium text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-600/30 disabled:pointer-events-none disabled:opacity-40"
-                                >
-                                  {t.setRag}
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    disabled={previewLoading}
+                                    onClick={() => void handleVersionPreview(selected.id, v.versionId)}
+                                    className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-40"
+                                  >
+                                    {t.previewVersionAction}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={actionLoading}
+                                    onClick={() => void handleDownload(selected, v.versionId)}
+                                    className="shrink-0 rounded-lg border border-emerald-500/30 bg-emerald-600/15 px-2.5 py-1 text-[11px] font-medium text-emerald-300 hover:bg-emerald-600/25 disabled:pointer-events-none disabled:opacity-40"
+                                  >
+                                    {t.downloadVersionAction}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={actionLoading || active || !canSetRagActive}
+                                    onClick={() => void handleSetRag(selected.id, v.versionId)}
+                                    className="shrink-0 rounded-lg bg-emerald-600/20 px-2.5 py-1 text-[11px] font-medium text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-600/30 disabled:pointer-events-none disabled:opacity-40"
+                                  >
+                                    {t.setRag}
+                                  </button>
+                                </div>
                               </li>
                             );
                           })}
@@ -864,6 +1046,11 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     <Eye className="h-4 w-4" aria-hidden />
                   </span>
                   {t.preview}
+                  {previewVersionId ? (
+                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                      {t.previewVersionBadge}
+                    </span>
+                  ) : null}
                 </h3>
                 <span className="shrink-0 rounded-full bg-zinc-800/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
                   {previewLoading
@@ -888,6 +1075,15 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                 ) : previewError ? (
                   <div className="rounded-2xl border border-amber-500/25 bg-amber-950/25 px-4 py-5 text-center">
                     <p className="text-sm leading-relaxed text-amber-100/90">{previewError}</p>
+                    <button
+                      type="button"
+                      disabled={actionLoading}
+                      onClick={() => void handleDownload(displayDoc ?? selected)}
+                      className="mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                      {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                      {t.download}
+                    </button>
                   </div>
                 ) : preview?.kind === "text" ? (
                   <pre className="scrollbar-chat-hidden max-h-[min(58vh,32rem)] flex-1 overflow-auto whitespace-pre-wrap rounded-2xl border border-zinc-800/80 bg-zinc-950 p-4 text-xs leading-relaxed text-zinc-300 shadow-inner sm:max-h-none sm:p-5">

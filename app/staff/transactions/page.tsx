@@ -282,29 +282,29 @@ export default function StaffTransactionsPage() {
             ) : (
               <div className="space-y-4 p-6">
                 {/* Transaction Info Card */}
-                <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-white p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:to-zinc-950">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
                   <div className="mb-3 flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                      <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
+                      <Info className="h-4 w-4 text-zinc-400" />
                     </div>
-                    <h4 className="font-semibold text-zinc-900 dark:text-white">Transaction Information</h4>
+                    <h4 className="font-semibold text-white">Transaction Information</h4>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                        <FileText className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.transactionId}</p>
-                        <p className="mt-0.5 truncate font-mono text-xs text-zinc-900 dark:text-white">{selectedTransaction.id}</p>
+                        <p className="text-xs font-medium text-zinc-400">{t.transactionId}</p>
+                        <p className="mt-0.5 truncate font-mono text-xs text-white">{selectedTransaction.id}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                        <Info className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.status}</p>
+                        <p className="text-xs font-medium text-zinc-400">{t.status}</p>
                         <p className="mt-0.5">
                           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(selectedTransaction.status)}`}>
                             {getStatusLabel(selectedTransaction.status)}
@@ -313,74 +313,74 @@ export default function StaffTransactionsPage() {
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                        <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                        <Building2 className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.tenant}</p>
-                        <p className="mt-0.5 truncate text-sm font-medium text-zinc-900 dark:text-white">{selectedTransaction.tenantName}</p>
+                        <p className="text-xs font-medium text-zinc-400">{t.tenant}</p>
+                        <p className="mt-0.5 truncate text-sm font-medium text-white">{selectedTransaction.tenantName}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                        <FileText className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.tenantId}</p>
-                        <p className="mt-0.5 truncate font-mono text-xs text-zinc-900 dark:text-white">{selectedTransaction.tenantId}</p>
+                        <p className="text-xs font-medium text-zinc-400">{t.tenantId}</p>
+                        <p className="mt-0.5 truncate font-mono text-xs text-white">{selectedTransaction.tenantId}</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Payment Details Card */}
-                <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-white p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:to-zinc-950">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
                   <div className="mb-3 flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                      <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
+                      <DollarSign className="h-4 w-4 text-zinc-400" />
                     </div>
-                    <h4 className="font-semibold text-zinc-900 dark:text-white">Payment Details</h4>
+                    <h4 className="font-semibold text-white">Payment Details</h4>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                        <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                        <DollarSign className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.amount}</p>
-                        <p className="mt-0.5 text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                        <p className="text-xs font-medium text-zinc-400">{t.amount}</p>
+                        <p className="mt-0.5 text-lg font-bold text-emerald-400">
                           {formatMoney(selectedTransaction.amount)}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                        <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                        <DollarSign className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.currency}</p>
-                        <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">{selectedTransaction.currency || "VND"}</p>
+                        <p className="text-xs font-medium text-zinc-400">{t.currency}</p>
+                        <p className="mt-0.5 text-sm font-medium text-white">{selectedTransaction.currency || "VND"}</p>
                       </div>
                     </div>
                     {selectedTransaction.paymentMethod && (
                       <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                          <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                          <CreditCard className="h-4 w-4 text-zinc-400" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.paymentMethod}</p>
-                          <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">{selectedTransaction.paymentMethod}</p>
+                          <p className="text-xs font-medium text-zinc-400">{t.paymentMethod}</p>
+                          <p className="mt-0.5 text-sm font-medium text-white">{selectedTransaction.paymentMethod}</p>
                         </div>
                       </div>
                     )}
                     {selectedTransaction.transactionType && (
                       <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                          <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                          <FileText className="h-4 w-4 text-zinc-400" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.transactionType}</p>
-                          <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">{selectedTransaction.transactionType}</p>
+                          <p className="text-xs font-medium text-zinc-400">{t.transactionType}</p>
+                          <p className="mt-0.5 text-sm font-medium text-white">{selectedTransaction.transactionType}</p>
                         </div>
                       </div>
                     )}
@@ -388,33 +388,33 @@ export default function StaffTransactionsPage() {
                 </div>
 
                 {/* Dates Card */}
-                <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-white p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:to-zinc-950">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
                   <div className="mb-3 flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                      <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
+                      <Calendar className="h-4 w-4 text-zinc-400" />
                     </div>
-                    <h4 className="font-semibold text-zinc-900 dark:text-white">Dates</h4>
+                    <h4 className="font-semibold text-white">Dates</h4>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                        <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                        <Calendar className="h-4 w-4 text-zinc-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.createdDate}</p>
-                        <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">
+                        <p className="text-xs font-medium text-zinc-400">{t.createdDate}</p>
+                        <p className="mt-0.5 text-sm font-medium text-white">
                           {new Date(selectedTransaction.createdAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                         </p>
                       </div>
                     </div>
                     {selectedTransaction.updatedAt && (
                       <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                          <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                          <Calendar className="h-4 w-4 text-zinc-400" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.updatedDate}</p>
-                          <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">
+                          <p className="text-xs font-medium text-zinc-400">{t.updatedDate}</p>
+                          <p className="mt-0.5 text-sm font-medium text-white">
                             {new Date(selectedTransaction.updatedAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                           </p>
                         </div>
@@ -425,21 +425,21 @@ export default function StaffTransactionsPage() {
 
                 {/* Description Card */}
                 {selectedTransaction.description && (
-                  <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-white p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:to-zinc-950">
+                  <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
                     <div className="mb-3 flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
+                        <FileText className="h-4 w-4 text-zinc-400" />
                       </div>
-                      <h4 className="font-semibold text-zinc-900 dark:text-white">{t.description}</h4>
+                      <h4 className="font-semibold text-white">{t.description}</h4>
                     </div>
-                    <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{selectedTransaction.description}</p>
+                    <p className="text-sm text-zinc-300 whitespace-pre-wrap">{selectedTransaction.description}</p>
                   </div>
                 )}
               </div>
             )}
 
             {/* Footer */}
-            <div className="border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
+            <div className="border-t border-zinc-800 px-6 py-4">
               <button
                 type="button"
                 onClick={() => {

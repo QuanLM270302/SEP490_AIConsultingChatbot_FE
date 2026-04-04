@@ -7,10 +7,340 @@ import type {
   UpdateDocumentAccessRequest,
 } from "@/types/knowledge";
 
-function apiError(res: Response, message: string): Error & { status?: number } {
-  const err = new Error(message) as Error & { status?: number };
-  err.status = res.status;
+type ApiRequestError = Error & {
+  status?: number;
+  traceId?: string | null;
+  code?: string | null;
+};
+
+function extractTraceIdFromHeaders(headers: Headers): string | null {
+  return (
+    headers.get("x-trace-id") ??
+    headers.get("trace-id") ??
+    headers.get("x-request-id") ??
+    null
+  );
+}
+
+function createApiError(
+  status: number,
+  message: string,
+  extras?: { traceId?: string | null; code?: string | null }
+): ApiRequestError {
+  const err = new Error(message) as ApiRequestError;
+  err.status = status;
+  if (extras?.traceId != null) err.traceId = extras.traceId;
+  if (extras?.code != null) err.code = extras.code;
   return err;
+}
+
+function apiError(res: Response, message: string): ApiRequestError {
+  return createApiError(res.status, message, {
+    traceId: extractTraceIdFromHeaders(res.headers),
+  });
+}
+
+async function parseApiError(res: Response, fallbackMessage: string): Promise<ApiRequestError> {
+  const traceIdHeader = extractTraceIdFromHeaders(res.headers);
+  const raw = await res.text().catch(() => "");
+  if (!raw.trim()) {
+    return createApiError(res.status, fallbackMessage, { traceId: traceIdHeader });
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const message =
+      typeof parsed.message === "string" && parsed.message.trim().length > 0
+        ? parsed.message.trim()
+        : fallbackMessage;
+    const code =
+      typeof parsed.code === "string" && parsed.code.trim().length > 0
+        ? parsed.code.trim()
+        : null;
+    const traceIdBody =
+      typeof parsed.traceId === "string" && parsed.traceId.trim().length > 0
+        ? parsed.traceId.trim()
+        : null;
+    return createApiError(res.status, message, {
+      traceId: traceIdHeader ?? traceIdBody,
+      code,
+    });
+  } catch {
+    return createApiError(res.status, raw.trim() || fallbackMessage, {
+      traceId: traceIdHeader,
+    });
+  }
+}
+
+function parseFilenameFromDisposition(contentDisposition: string | null): string | null {
+  if (!contentDisposition) return null;
+
+  const utf8Match = contentDisposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim()).replace(/[\\/]/g, "_");
+    } catch {
+      // Fall through to plain filename if decode fails.
+    }
+  }
+
+  const quotedMatch = contentDisposition.match(/filename\s*=\s*"([^"]+)"/i);
+  if (quotedMatch?.[1]) return quotedMatch[1].trim().replace(/[\\/]/g, "_");
+
+  const plainMatch = contentDisposition.match(/filename\s*=\s*([^;]+)/i);
+  if (plainMatch?.[1]) return plainMatch[1].trim().replace(/[\\/]/g, "_");
+
+  return null;
+}
+
+const TEXT_MIME_TYPES = new Set([
+  "application/json",
+  "application/xml",
+  "text/xml",
+  "application/yaml",
+  "text/yaml",
+  "application/x-yaml",
+  "application/javascript",
+  "application/x-javascript",
+  "application/csv",
+  "text/csv",
+]);
+
+const TEXT_FILE_EXTENSIONS = new Set([
+  "txt",
+  "md",
+  "csv",
+  "json",
+  "xml",
+  "yaml",
+  "yml",
+  "log",
+  "html",
+  "htm",
+]);
+
+const FORCE_BINARY_EXTENSIONS = new Set([
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "zip",
+  "rar",
+  "7z",
+]);
+
+const PREVIEW_QUERY = "mode=preview";
+const PREVIEW_ACCEPT = "application/pdf, text/plain, text/html, application/json;q=0.9, */*;q=0.8";
+
+function withPreviewMode(url: string): string {
+  return `${url}${url.includes("?") ? "&" : "?"}${PREVIEW_QUERY}`;
+}
+
+function normalizeMime(contentType: string | null): string {
+  return (contentType ?? "application/octet-stream").split(";")[0].trim().toLowerCase();
+}
+
+function extractFileExtension(filename: string | null): string | null {
+  if (!filename) return null;
+  const cleanName = filename.split("?")[0];
+  const lastDot = cleanName.lastIndexOf(".");
+  if (lastDot < 0 || lastDot === cleanName.length - 1) return null;
+  return cleanName.slice(lastDot + 1).toLowerCase();
+}
+
+function canPreviewAsPdf(mime: string, extension: string | null): boolean {
+  return mime === "application/pdf" || extension === "pdf";
+}
+
+function canPreviewAsText(mime: string, extension: string | null): boolean {
+  if (extension && FORCE_BINARY_EXTENSIONS.has(extension)) return false;
+  if (mime.startsWith("text/")) return true;
+  if (TEXT_MIME_TYPES.has(mime)) return true;
+  if (extension && TEXT_FILE_EXTENSIONS.has(extension)) return true;
+  return false;
+}
+
+export interface PreviewResponseMeta {
+  etag: string | null;
+  previewMode: string | null;
+  sourceContentType: string | null;
+  traceId: string | null;
+  fromCache: boolean;
+  status: number;
+}
+
+export type DocumentPreviewResponse =
+  | { kind: "text"; text: string; meta: PreviewResponseMeta }
+  | { kind: "pdf"; url: string; meta: PreviewResponseMeta }
+  | { kind: "binary"; mime: string; meta: PreviewResponseMeta };
+
+type CachedPreviewPayload =
+  | { kind: "text"; text: string; mime: string }
+  | { kind: "pdf"; blob: Blob; mime: string }
+  | { kind: "binary"; blob: Blob; mime: string };
+
+interface CachedPreviewEntry {
+  etag: string | null;
+  previewMode: string | null;
+  sourceContentType: string | null;
+  traceId: string | null;
+  payload: CachedPreviewPayload;
+}
+
+const previewCache = new Map<string, CachedPreviewEntry>();
+
+function buildPreviewResponse(
+  payload: CachedPreviewPayload,
+  meta: PreviewResponseMeta
+): DocumentPreviewResponse {
+  if (payload.kind === "text") {
+    return { kind: "text", text: payload.text, meta };
+  }
+  if (payload.kind === "pdf") {
+    return { kind: "pdf", url: URL.createObjectURL(payload.blob), meta };
+  }
+  return { kind: "binary", mime: payload.mime, meta };
+}
+
+function readPreviewHeaderMeta(headers: Headers): {
+  etag: string | null;
+  previewMode: string | null;
+  sourceContentType: string | null;
+  traceId: string | null;
+} {
+  return {
+    etag: headers.get("etag"),
+    previewMode: headers.get("x-preview-mode"),
+    sourceContentType: headers.get("x-source-content-type"),
+    traceId: extractTraceIdFromHeaders(headers),
+  };
+}
+
+function toCachedPreviewMeta(entry: CachedPreviewEntry): PreviewResponseMeta {
+  return {
+    etag: entry.etag,
+    previewMode: entry.previewMode,
+    sourceContentType: entry.sourceContentType,
+    traceId: entry.traceId,
+    fromCache: true,
+    status: 200,
+  };
+}
+
+async function parsePreviewPayload(res: Response): Promise<CachedPreviewPayload> {
+  const contentDisposition = res.headers.get("content-disposition");
+  const filename = parseFilenameFromDisposition(contentDisposition);
+  const extension = extractFileExtension(filename);
+  const mime = normalizeMime(res.headers.get("content-type"));
+  const blob = await res.blob();
+
+  if (canPreviewAsPdf(mime, extension)) {
+    return { kind: "pdf", blob, mime };
+  }
+  if (canPreviewAsText(mime, extension)) {
+    return { kind: "text", text: await blob.text(), mime };
+  }
+  return { kind: "binary", blob, mime };
+}
+
+async function revalidatePreviewInBackground(url: string, etag: string): Promise<void> {
+  try {
+    const res = await fetchWithAuth(url, {
+      headers: {
+        Accept: PREVIEW_ACCEPT,
+        "If-None-Match": etag,
+      },
+    });
+
+    if (res.status === 304 || !res.ok) return;
+
+    const prev = previewCache.get(url);
+    const hdr = readPreviewHeaderMeta(res.headers);
+    const payload = await parsePreviewPayload(res);
+
+    previewCache.set(url, {
+      etag: hdr.etag ?? prev?.etag ?? null,
+      previewMode: hdr.previewMode ?? prev?.previewMode ?? null,
+      sourceContentType: hdr.sourceContentType ?? payload.mime,
+      traceId: hdr.traceId ?? prev?.traceId ?? null,
+      payload,
+    });
+  } catch {
+    // Best-effort refresh only; keep existing cached payload on background failure.
+  }
+}
+
+async function fetchPreview(
+  rawUrl: string,
+  fallbackMessage: string
+): Promise<DocumentPreviewResponse> {
+  const url = withPreviewMode(rawUrl);
+  const cached = previewCache.get(url);
+
+  if (cached) {
+    if (cached.etag) {
+      void revalidatePreviewInBackground(url, cached.etag);
+    }
+    return buildPreviewResponse(cached.payload, toCachedPreviewMeta(cached));
+  }
+
+  const headers: Record<string, string> = { Accept: PREVIEW_ACCEPT };
+
+  const res = await fetchWithAuth(url, { headers });
+
+  if (res.status === 304) {
+    if (!cached) {
+      throw createApiError(500, "Preview cache missing for 304 response", {
+        traceId: extractTraceIdFromHeaders(res.headers),
+      });
+    }
+    const hdr = readPreviewHeaderMeta(res.headers);
+    const meta: PreviewResponseMeta = {
+      etag: hdr.etag ?? cached.etag,
+      previewMode: hdr.previewMode ?? cached.previewMode,
+      sourceContentType: hdr.sourceContentType ?? cached.sourceContentType,
+      traceId: hdr.traceId ?? cached.traceId,
+      fromCache: true,
+      status: 304,
+    };
+    return buildPreviewResponse(cached.payload, meta);
+  }
+
+  if (!res.ok) {
+    throw await parseApiError(res, fallbackMessage);
+  }
+
+  const hdr = readPreviewHeaderMeta(res.headers);
+  const payload = await parsePreviewPayload(res);
+  const meta: PreviewResponseMeta = {
+    etag: hdr.etag,
+    previewMode: hdr.previewMode,
+    sourceContentType: hdr.sourceContentType ?? payload.mime,
+    traceId: hdr.traceId,
+    fromCache: false,
+    status: res.status,
+  };
+
+  if (hdr.etag) {
+    previewCache.set(url, {
+      etag: hdr.etag,
+      previewMode: hdr.previewMode,
+      sourceContentType: hdr.sourceContentType ?? payload.mime,
+      traceId: hdr.traceId,
+      payload,
+    });
+  }
+
+  return buildPreviewResponse(payload, meta);
+}
+
+export interface DownloadFileResponse {
+  blob: Blob;
+  filename: string | null;
+  contentType: string;
+  contentDisposition: string | null;
 }
 
 export async function listDocuments(): Promise<DocumentResponse[]> {
@@ -130,63 +460,49 @@ export type ActiveRagVersionResponse = {
 };
 
 /** Inline file from GET .../content — text or PDF blob URL (caller must revoke PDF url). */
-export async function getDocumentPreview(id: string): Promise<
-  | { kind: "text"; text: string }
-  | { kind: "pdf"; url: string }
-  | { kind: "binary"; mime: string }
-> {
-  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/content`);
-  if (!res.ok) {
-    throw apiError(res, await res.text().catch(() => "Failed to load document"));
-  }
-  const mime = res.headers.get("content-type") ?? "application/octet-stream";
-  const blob = await res.blob();
-  if (mime.includes("pdf")) {
-    return { kind: "pdf", url: URL.createObjectURL(blob) };
-  }
-  if (mime.startsWith("text/") || mime.includes("json") || mime.includes("xml")) {
-    return { kind: "text", text: await blob.text() };
-  }
-  return { kind: "binary", mime };
+export async function getDocumentPreview(id: string): Promise<DocumentPreviewResponse> {
+  return fetchPreview(`${DOCUMENTS_BASE}/${id}/content`, "Failed to load document preview");
 }
 
-export async function downloadDocument(id: string): Promise<Blob> {
+export async function downloadDocument(id: string): Promise<DownloadFileResponse> {
   const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/download`);
   if (!res.ok) throw apiError(res, await res.text().catch(() => "Download failed"));
-  return res.blob();
+  const contentDisposition = res.headers.get("content-disposition");
+  const blob = await res.blob();
+  return {
+    blob,
+    filename: parseFilenameFromDisposition(contentDisposition),
+    contentType: res.headers.get("content-type") ?? "application/octet-stream",
+    contentDisposition,
+  };
 }
 
 export async function getDocumentVersionPreview(
   documentId: string,
   versionId: string
-): Promise<
-  | { kind: "text"; text: string }
-  | { kind: "pdf"; url: string }
-  | { kind: "binary"; mime: string }
-> {
-  const res = await fetchWithAuth(
-    `${DOCUMENTS_BASE}/${documentId}/versions/${versionId}/content`
+): Promise<DocumentPreviewResponse> {
+  return fetchPreview(
+    `${DOCUMENTS_BASE}/${documentId}/versions/${versionId}/content`,
+    "Failed to load version preview"
   );
-  if (!res.ok) {
-    throw apiError(res, await res.text().catch(() => "Failed to load version"));
-  }
-  const mime = res.headers.get("content-type") ?? "application/octet-stream";
-  const blob = await res.blob();
-  if (mime.includes("pdf")) {
-    return { kind: "pdf", url: URL.createObjectURL(blob) };
-  }
-  if (mime.startsWith("text/") || mime.includes("json")) {
-    return { kind: "text", text: await blob.text() };
-  }
-  return { kind: "binary", mime };
 }
 
-export async function downloadDocumentVersion(documentId: string, versionId: string): Promise<Blob> {
+export async function downloadDocumentVersion(
+  documentId: string,
+  versionId: string
+): Promise<DownloadFileResponse> {
   const res = await fetchWithAuth(
     `${DOCUMENTS_BASE}/${documentId}/versions/${versionId}/download`
   );
   if (!res.ok) throw apiError(res, await res.text().catch(() => "Download failed"));
-  return res.blob();
+  const contentDisposition = res.headers.get("content-disposition");
+  const blob = await res.blob();
+  return {
+    blob,
+    filename: parseFilenameFromDisposition(contentDisposition),
+    contentType: res.headers.get("content-type") ?? "application/octet-stream",
+    contentDisposition,
+  };
 }
 
 export async function getActiveRagVersion(documentId: string): Promise<ActiveRagVersionResponse> {
