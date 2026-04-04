@@ -52,7 +52,9 @@ function extractErrorMessage(data: Record<string, unknown>): string {
 async function handleResponse<T>(res: Response): Promise<T> {
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
-    throw new Error(extractErrorMessage(data));
+    const err = new Error(extractErrorMessage(data)) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   return data as T;
 }

@@ -1090,11 +1090,36 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     {preview.text}
                   </pre>
                 ) : preview?.kind === "pdf" ? (
-                  <iframe
-                    title="pdf-preview"
-                    src={preview.url}
-                    className="min-h-[min(52vh,28rem)] w-full flex-1 rounded-2xl border border-zinc-800 bg-zinc-950 shadow-inner sm:min-h-[56vh]"
-                  />
+                  <div className="flex min-h-0 flex-1 flex-col gap-3">
+                    <iframe
+                      title="pdf-preview"
+                      src={preview.url}
+                      className="min-h-[min(52vh,28rem)] w-full flex-1 rounded-2xl border border-zinc-800 bg-zinc-950 shadow-inner sm:min-h-[56vh]"
+                    />
+                    {(displayDoc?.description?.trim() ||
+                      displayDoc?.documentTitle?.trim() ||
+                      displayDoc?.originalFileName) && (
+                      <div className="shrink-0 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 text-xs leading-relaxed text-zinc-300">
+                        <p className="mb-2 font-semibold text-zinc-400">
+                          {language === "en" ? "Catalog summary (if PDF looks empty)" : "Tóm tắt danh mục (khi PDF trắng hoặc scan)"}
+                        </p>
+                        <p className="whitespace-pre-wrap">
+                          {displayDoc?.description?.trim() ||
+                            [displayDoc?.documentTitle, displayDoc?.originalFileName]
+                              .filter(Boolean)
+                              .join(" — ")}
+                        </p>
+                        <a
+                          href={preview.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 inline-block text-[11px] font-medium text-emerald-400/90 underline-offset-2 hover:text-emerald-300 hover:underline"
+                        >
+                          {language === "en" ? "Open PDF in new tab" : "Mở PDF trong tab mới"}
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 ) : preview?.kind === "binary" ? (
                   <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/40 px-6 py-12 text-center">
                     <FileText className="h-10 w-10 text-zinc-600" />

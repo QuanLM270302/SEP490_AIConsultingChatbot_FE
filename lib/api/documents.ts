@@ -291,21 +291,10 @@ async function fetchPreview(
   const res = await fetchWithAuth(url, { headers });
 
   if (res.status === 304) {
-    if (!cached) {
-      throw createApiError(500, "Preview cache missing for 304 response", {
-        traceId: extractTraceIdFromHeaders(res.headers),
-      });
-    }
-    const hdr = readPreviewHeaderMeta(res.headers);
-    const meta: PreviewResponseMeta = {
-      etag: hdr.etag ?? cached.etag,
-      previewMode: hdr.previewMode ?? cached.previewMode,
-      sourceContentType: hdr.sourceContentType ?? cached.sourceContentType,
-      traceId: hdr.traceId ?? cached.traceId,
-      fromCache: true,
-      status: 304,
-    };
-    return buildPreviewResponse(cached.payload, meta);
+    // First fetch for this URL cannot be 304 (no If-None-Match); if cache existed we returned above.
+    throw createApiError(500, "Unexpected 304 for preview without cache entry", {
+      traceId: extractTraceIdFromHeaders(res.headers),
+    });
   }
 
   if (!res.ok) {

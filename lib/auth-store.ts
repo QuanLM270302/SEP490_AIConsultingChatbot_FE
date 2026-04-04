@@ -6,12 +6,16 @@ const USER_KEY = "auth_user";
 
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  const raw = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const t = raw?.trim();
+  return t && t.length > 0 ? t : null;
 }
 
 export function getRefreshToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  const raw = localStorage.getItem(REFRESH_TOKEN_KEY);
+  const t = raw?.trim();
+  return t && t.length > 0 ? t : null;
 }
 
 export function getStoredUser(): Pick<
@@ -33,8 +37,11 @@ export function getStoredUser(): Pick<
 
 export function setAuth(data: JwtResponse): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+  const access = data.accessToken?.trim() ?? "";
+  const refresh = data.refreshToken?.trim() ?? "";
+  if (!access || !refresh) return;
+  localStorage.setItem(ACCESS_TOKEN_KEY, access);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
   localStorage.setItem(
     USER_KEY,
     JSON.stringify({
@@ -78,6 +85,8 @@ export async function refreshAuth(): Promise<boolean> {
  * Same as refreshAuth on success, but does **not** clear the session on failure.
  * Use for background polling so a temporary network error does not log the user out.
  */
+const REFRESH_FATAL_STATUSES = new Set([400, 401, 403, 404, 422, 500]);
+
 export async function tryRefreshAuth(): Promise<boolean> {
   if (typeof window === "undefined") return false;
   const refresh = getRefreshToken();
@@ -87,7 +96,11 @@ export async function tryRefreshAuth(): Promise<boolean> {
     const data = await refreshAccessToken(refresh);
     setAuth(data);
     return true;
-  } catch {
+  } catch (e) {
+    const status = typeof e === "object" && e !== null ? (e as { status?: number }).status : undefined;
+    if (typeof status === "number" && REFRESH_FATAL_STATUSES.has(status)) {
+      clearAuth();
+    }
     return false;
   }
 }
