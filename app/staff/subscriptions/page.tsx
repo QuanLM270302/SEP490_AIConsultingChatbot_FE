@@ -6,6 +6,10 @@ import {
   Eye,
   X,
   Filter,
+  CreditCard,
+  Building2,
+  FileText,
+  Info,
 } from "lucide-react";
 import {
   getStaffSubscriptions,
@@ -237,43 +241,117 @@ export default function StaffSubscriptionsPage() {
       </div>
 
       {detailOpen && selectedSubscription && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                {t.subscriptionPlan} - {selectedSubscription.tenantName}
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="absolute inset-0 bg-zinc-900/60" onClick={() => {
+            setDetailOpen(false);
+            setSelectedSubscription(null);
+          }} />
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl dark:bg-zinc-950">
+            {/* Header with gradient */}
+            <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-emerald-500 to-teal-600 px-6 py-8">
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 shadow-lg backdrop-blur-sm">
+                    <CreditCard className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">{t.subscriptionPlan}</h3>
+                    <p className="mt-1 text-sm text-emerald-100">{language === 'vi' ? 'Thông tin gói đăng ký' : 'Subscription Information'}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetailOpen(false);
+                    setSelectedSubscription(null);
+                  }}
+                  className="rounded-xl bg-white/10 p-2 text-white backdrop-blur-sm transition hover:bg-white/20"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-4 p-6">
+              {/* Subscription Info Card */}
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
+                    <Info className="h-4 w-4 text-zinc-400" />
+                  </div>
+                  <h4 className="font-semibold text-white">{language === 'vi' ? 'Thông tin đăng ký' : 'Subscription Information'}</h4>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                      <Building2 className="h-4 w-4 text-zinc-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-zinc-400">Tenant</p>
+                      <p className="mt-0.5 truncate text-sm font-medium text-white">{selectedSubscription.tenantName}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                      <Info className="h-4 w-4 text-zinc-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-zinc-400">Status</p>
+                      <p className="mt-0.5">
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[normalizeSubStatus(selectedSubscription.status)]}`}>
+                          {statusLabel[normalizeSubStatus(selectedSubscription.status)][language]}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan Details Card */}
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
+                    <CreditCard className="h-4 w-4 text-zinc-400" />
+                  </div>
+                  <h4 className="font-semibold text-white">{language === 'vi' ? 'Chi tiết gói' : 'Plan Details'}</h4>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                      <CreditCard className="h-4 w-4 text-zinc-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-zinc-400">Tier</p>
+                      <p className="mt-0.5 text-sm font-medium text-white">{extractTier(selectedSubscription) || "—"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                      <FileText className="h-4 w-4 text-zinc-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-zinc-400">Subscription</p>
+                      <p className="mt-0.5 truncate font-mono text-xs text-white">{extractSubscriptionDisplay(selectedSubscription)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-zinc-800 px-6 py-4">
               <button
                 type="button"
                 onClick={() => {
                   setDetailOpen(false);
                   setSelectedSubscription(null);
                 }}
-                className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                className="w-full rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600"
               >
-                <X className="h-5 w-5" />
+                {t.close}
               </button>
-            </div>
-
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800">
-                <span className="text-zinc-500 dark:text-zinc-400">Tenant</span>
-                <span className="font-medium text-zinc-900 dark:text-zinc-50">{selectedSubscription.tenantName}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800">
-                <span className="text-zinc-500 dark:text-zinc-400">Status</span>
-                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[normalizeSubStatus(selectedSubscription.status)]}`}>
-                  {statusLabel[normalizeSubStatus(selectedSubscription.status)][language]}
-                </span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800">
-                <span className="text-zinc-500 dark:text-zinc-400">Tier</span>
-                <span className="font-medium text-zinc-900 dark:text-zinc-50">{extractTier(selectedSubscription) || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800">
-                <span className="text-zinc-500 dark:text-zinc-400">Subscription</span>
-                <span className="font-mono text-xs text-zinc-900 dark:text-zinc-50">{extractSubscriptionDisplay(selectedSubscription)}</span>
-              </div>
             </div>
           </div>
         </div>

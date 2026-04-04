@@ -124,7 +124,7 @@ export function DepartmentsTable({
                   <td className="whitespace-nowrap px-6 py-4">
                     <span
                       className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
-                        (dept.isActive ?? (filter === "active")) ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"
+                        (dept.isActive ?? (filter === "active")) ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-500/20 text-red-600 dark:text-red-400"
                       }`}
                     >
                       {(dept.isActive ?? (filter === "active")) ? t.active : t.inactive}

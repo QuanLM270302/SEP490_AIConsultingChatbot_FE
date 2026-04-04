@@ -116,7 +116,7 @@ export function TagsTab() {
                 <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">{t.code}</td>
                 <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">{t.description || "—"}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${t.isActive ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${t.isActive ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-500/20 text-red-600 dark:text-red-400"}`}>
                     {t.isActive ? "Active" : "Đã vô hiệu"}
                   </span>
                 </td>

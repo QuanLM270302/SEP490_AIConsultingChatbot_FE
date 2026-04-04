@@ -184,7 +184,7 @@ export function EmployeesTable() {
             onClick={() => setStatusFilter(s)}
             className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
               statusFilter === s
-                ? "bg-purple-500 text-white"
+                ? "bg-emerald-500 text-white"
                 : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
             }`}
           >
@@ -228,7 +228,7 @@ export function EmployeesTable() {
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">{user.departmentName ?? "—"}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">{user.roleName ?? "—"}</td>
                     <td className="whitespace-nowrap px-6 py-4">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${isActive(user) ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"}`}>
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${isActive(user) ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-500/20 text-red-600 dark:text-red-400"}`}>
                         {isActive(user) ? t.active : t.inactive}
                       </span>
                     </td>
@@ -298,7 +298,7 @@ export function EmployeesTable() {
                 type="button"
                 onClick={() => handleActivate(openMenuId)}
                 disabled={!!actionLoading}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-purple-700 hover:bg-purple-50 disabled:opacity-60 dark:text-purple-400 dark:hover:bg-purple-950/30"
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
               >
                 <UserCheck className="h-4 w-4" /> {t.activate}
               </button>
@@ -369,31 +369,31 @@ function DetailModal({ user, onClose }: { user: UserResponse; onClose: () => voi
         </div>
 
         <div className="space-y-4 p-6">
-          <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50/50 to-white p-5 dark:border-purple-900/30 dark:from-purple-950/20 dark:to-zinc-950">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
-                <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
+                <User className="h-4 w-4 text-zinc-400" />
               </div>
-              <h4 className="font-semibold text-zinc-900 dark:text-white">{language === "en" ? "User Information" : "Thông tin người dùng"}</h4>
+              <h4 className="font-semibold text-white">{language === "en" ? "User Information" : "Thông tin người dùng"}</h4>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                  <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                  <User className="h-4 w-4 text-zinc-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.fullName}</p>
-                  <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">{user.fullName ?? "—"}</p>
+                  <p className="text-xs font-medium text-zinc-400">{t.fullName}</p>
+                  <p className="mt-0.5 text-sm font-medium text-white">{user.fullName ?? "—"}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                  <Info className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                  <Info className="h-4 w-4 text-zinc-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.status}</p>
+                  <p className="text-xs font-medium text-zinc-400">{t.status}</p>
                   <p className="mt-0.5">
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${(user.isActive || (user.status ?? "").toUpperCase() !== "INACTIVE") ? "bg-purple-500/10 text-purple-600 dark:text-purple-400" : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"}`}>
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${(user.isActive || (user.status ?? "").toUpperCase() !== "INACTIVE") ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
                       {(user.isActive || (user.status ?? "").toUpperCase() !== "INACTIVE") ? t.active : t.inactive}
                     </span>
                   </p>
@@ -402,82 +402,82 @@ function DetailModal({ user, onClose }: { user: UserResponse; onClose: () => voi
             </div>
           </div>
 
-          <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50/50 to-white p-5 dark:border-purple-900/30 dark:from-purple-950/20 dark:to-zinc-950">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
-                <Mail className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
+                <Mail className="h-4 w-4 text-zinc-400" />
               </div>
-              <h4 className="font-semibold text-zinc-900 dark:text-white">{language === "en" ? "Contact Information" : "Thông tin liên hệ"}</h4>
+              <h4 className="font-semibold text-white">{language === "en" ? "Contact Information" : "Thông tin liên hệ"}</h4>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                  <Mail className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                  <Mail className="h-4 w-4 text-zinc-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.email}</p>
-                  <p className="mt-0.5 truncate text-sm font-medium text-zinc-900 dark:text-white">{user.email ?? "—"}</p>
+                  <p className="text-xs font-medium text-zinc-400">{t.email}</p>
+                  <p className="mt-0.5 truncate text-sm font-medium text-white">{user.email ?? "—"}</p>
                 </div>
               </div>
               {user.contactEmail && (
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                    <Mail className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                    <Mail className="h-4 w-4 text-zinc-400" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.contactEmail}</p>
-                    <p className="mt-0.5 truncate text-sm font-medium text-zinc-900 dark:text-white">{user.contactEmail}</p>
+                    <p className="text-xs font-medium text-zinc-400">{t.contactEmail}</p>
+                    <p className="mt-0.5 truncate text-sm font-medium text-white">{user.contactEmail}</p>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50/50 to-white p-5 dark:border-purple-900/30 dark:from-purple-950/20 dark:to-zinc-950">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
-                <Building className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
+                <Building className="h-4 w-4 text-zinc-400" />
               </div>
-              <h4 className="font-semibold text-zinc-900 dark:text-white">{language === "en" ? "Organization Information" : "Thông tin tổ chức"}</h4>
+              <h4 className="font-semibold text-white">{language === "en" ? "Organization Information" : "Thông tin tổ chức"}</h4>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                  <Building className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                  <Building className="h-4 w-4 text-zinc-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.department}</p>
-                  <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">{user.departmentName ?? "—"}</p>
+                  <p className="text-xs font-medium text-zinc-400">{t.department}</p>
+                  <p className="mt-0.5 text-sm font-medium text-white">{user.departmentName ?? "—"}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                  <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                  <User className="h-4 w-4 text-zinc-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.role}</p>
-                  <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">{user.roleName ?? "—"}</p>
+                  <p className="text-xs font-medium text-zinc-400">{t.role}</p>
+                  <p className="mt-0.5 text-sm font-medium text-white">{user.roleName ?? "—"}</p>
                 </div>
               </div>
             </div>
           </div>
 
           {user.createdAt && (
-            <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50/50 to-white p-5 dark:border-purple-900/30 dark:from-purple-950/20 dark:to-zinc-950">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
               <div className="mb-3 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
-                  <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
+                  <Calendar className="h-4 w-4 text-zinc-400" />
                 </div>
-                <h4 className="font-semibold text-zinc-900 dark:text-white">{language === "en" ? "System Information" : "Thông tin hệ thống"}</h4>
+                <h4 className="font-semibold text-white">{language === "en" ? "System Information" : "Thông tin hệ thống"}</h4>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                    <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+                    <Calendar className="h-4 w-4 text-zinc-400" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{language === "en" ? "Created Date" : "Ngày tạo"}</p>
-                    <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-white">
+                    <p className="text-xs font-medium text-zinc-400">{language === "en" ? "Created Date" : "Ngày tạo"}</p>
+                    <p className="mt-0.5 text-sm font-medium text-white">
                       {new Date(user.createdAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                     </p>
                   </div>
@@ -487,7 +487,7 @@ function DetailModal({ user, onClose }: { user: UserResponse; onClose: () => voi
           )}
         </div>
 
-        <div className="border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
+        <div className="border-t border-zinc-800 px-6 py-4">
           <button type="button" onClick={onClose} className="w-full rounded-xl bg-purple-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/30 transition hover:bg-purple-600">
             {t.close}
           </button>
