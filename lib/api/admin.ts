@@ -277,6 +277,20 @@ export async function deleteSubscriptionPlan(id: string): Promise<{ message: str
   return data;
 }
 
+export async function activateSubscriptionPlan(id: string): Promise<{ message: string }> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/subscription-plans/${id}/activate`, { method: "PUT" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || "Failed to activate plan");
+  return data;
+}
+
+export async function deactivateSubscriptionPlan(id: string): Promise<{ message: string }> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/subscription-plans/${id}/deactivate`, { method: "PUT" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || "Failed to deactivate plan");
+  return data;
+}
+
 // ---------- Admin Tenants (SUPER_ADMIN – dropdown / lọc) ----------
 export interface AdminTenantSummary {
   id: string;

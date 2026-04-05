@@ -6,13 +6,15 @@ import {
   getActiveSubscriptionPlans,
   getSubscriptionPlanTypes,
   createSubscriptionPlan,
+  activateSubscriptionPlan,
+  deactivateSubscriptionPlan,
   deleteSubscriptionPlan,
   updateSubscriptionPlan,
   type CreateSubscriptionPlanRequest,
   type SubscriptionPlanTypeOption,
   type SubscriptionPlanResponse,
 } from "@/lib/api/admin";
-import { MoreVertical, Pencil, Trash2, Loader2, Eye, Plus } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Loader2, Eye, Plus, Power, PowerOff } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 
 type Filter = "all" | "active";
@@ -93,16 +95,39 @@ export function SubscriptionPlansTable() {
     setOpenMenuId(planId);
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm(isEn ? "Are you sure you want to deactivate this plan?" : "Bạn có chắc muốn ngừng kích hoạt gói này?")) return;
+  const closeMenu = () => {
     setOpenMenuId(null);
     setMenuPos(null);
-    setActionLoading(id);
-    deleteSubscriptionPlan(id)
-      .then(load)
-      .catch((e) => alert(e instanceof Error ? e.message : isEn ? "Error" : "Lỗi"))
-      .finally(() => setActionLoading(null));
   };
+
+  const runPlanAction = async (id: string, action: () => Promise<unknown>) => {
+    closeMenu();
+    setActionLoading(id);
+    try {
+      await action();
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : isEn ? "Error" : "Lỗi");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDelete = (plan: SubscriptionPlanResponse) => {
+    if (!confirm(isEn ? "Delete this plan permanently? This action cannot be undone." : "Xóa vĩnh viễn gói này? Hành động này không thể hoàn tác.")) return;
+    void runPlanAction(plan.id, () => deleteSubscriptionPlan(plan.id));
+  };
+
+  const handleDeactivate = (plan: SubscriptionPlanResponse) => {
+    if (!confirm(isEn ? "Are you sure you want to deactivate this plan?" : "Bạn có chắc muốn ngừng kích hoạt gói này?")) return;
+    void runPlanAction(plan.id, () => deactivateSubscriptionPlan(plan.id));
+  };
+
+  const handleActivate = (plan: SubscriptionPlanResponse) => {
+    void runPlanAction(plan.id, () => activateSubscriptionPlan(plan.id));
+  };
+
+  const selectedMenuPlan = openMenuId ? plans.find((x) => x.id === openMenuId) ?? null : null;
 
   return (
     <div className="space-y-4">
@@ -380,17 +405,14 @@ export function SubscriptionPlansTable() {
 
       {editPlan && <EditPlanModal plan={editPlan} onClose={() => setEditPlan(null)} onSuccess={() => { setEditPlan(null); load(); }} />}
 
-      {openMenuId && menuPos && (
+      {openMenuId && menuPos && selectedMenuPlan && (
         <>
           <div
             className="fixed inset-0 z-40"
-            onClick={() => {
-              setOpenMenuId(null);
-              setMenuPos(null);
-            }}
+            onClick={closeMenu}
           />
           <div
-            className="fixed z-50 w-40 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            className="fixed z-50 w-48 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
             style={{ top: menuPos.top, left: menuPos.left }}
           >
             <button
@@ -398,8 +420,7 @@ export function SubscriptionPlansTable() {
               onClick={() => {
                 const selected = plans.find((x) => x.id === openMenuId) ?? null;
                 if (selected) setDetailPlan(selected);
-                setOpenMenuId(null);
-                setMenuPos(null);
+                closeMenu();
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
@@ -410,20 +431,38 @@ export function SubscriptionPlansTable() {
               onClick={() => {
                 const selected = plans.find((x) => x.id === openMenuId) ?? null;
                 if (selected) setEditPlan(selected);
-                setOpenMenuId(null);
-                setMenuPos(null);
+                closeMenu();
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               <Pencil className="h-4 w-4" /> Cập nhật
             </button>
+            {selectedMenuPlan.isActive ? (
+              <button
+                type="button"
+                onClick={() => handleDeactivate(selectedMenuPlan)}
+                disabled={!!actionLoading}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-60 dark:text-amber-400 dark:hover:bg-amber-950/30"
+              >
+                <PowerOff className="h-4 w-4" /> {isEn ? "Deactivate" : "Ngừng kích hoạt"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleActivate(selectedMenuPlan)}
+                disabled={!!actionLoading}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+              >
+                <Power className="h-4 w-4" /> {isEn ? "Activate" : "Kích hoạt"}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => handleDelete(openMenuId)}
+              onClick={() => handleDelete(selectedMenuPlan)}
               disabled={!!actionLoading}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
             >
-              <Trash2 className="h-4 w-4" /> Xóa (deactivate)
+              <Trash2 className="h-4 w-4" /> {isEn ? "Delete permanently" : "Xóa vĩnh viễn"}
             </button>
           </div>
         </>
