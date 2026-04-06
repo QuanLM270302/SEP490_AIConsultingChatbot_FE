@@ -10,6 +10,7 @@ import {
   X,
   UserCog,
   Package,
+  GraduationCap,
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
@@ -28,6 +29,7 @@ export function StaffSidebar({ open, setOpen }: StaffSidebarProps) {
   const navigation = [
     { name: t.dashboard, href: "/staff", icon: LayoutDashboard },
     { name: t.organizations, href: "/staff/organizations", icon: Building2 },
+    { name: "Onboarding", href: "/staff/onboarding", icon: GraduationCap },
     { name: "Subscriptions", href: "/staff/subscriptions", icon: Package },
     { name: "Transactions", href: "/staff/transactions", icon: CreditCard },
   ];

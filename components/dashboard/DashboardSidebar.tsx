@@ -25,7 +25,7 @@ export function DashboardSidebar() {
               <span className="h-8 w-1.5 shrink-0 rounded-full bg-white/70" />
             </button>
 
-            {["Conversations", "Knowledge Base", "Analytics"].map((item) => (
+            {["Conversations", "Document Dashboard", "Analytics"].map((item) => (
               <button
                 key={item}
                 className="flex w-full min-w-0 items-center justify-between rounded-2xl px-3.5 py-2.5 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"

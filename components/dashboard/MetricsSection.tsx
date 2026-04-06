@@ -69,7 +69,7 @@ export function MetricsSection() {
                 <div className="h-12 w-full rounded-full bg-green-400" />
               </div>
               <p className="text-xs text-zinc-500">
-                New internal files ingested into the knowledge base this month.
+                New internal files ingested into the Document Dashboard this month.
               </p>
             </div>
           </div>

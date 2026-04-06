@@ -42,7 +42,7 @@ export default function TenantAdminRolesPage() {
   const [detail, setDetail] = useState<RoleResponse | null>(null);
   const [editRole, setEditRole] = useState<RoleResponse | null>(null);
 
-  const fixedCodes = useMemo(() => new Set(["TENANT_ADMIN", "CONTENT_MANAGER", "EMPLOYEE"]), []);
+  const fixedCodes = useMemo(() => new Set(["TENANT_ADMIN", "EMPLOYEE"]), []);
 
   /** Lưu snapshot đầy đủ (tab “Tất cả”) để sau đăng xuất vẫn khôi phục hiển thị. */
   const persistFullCatalog = useCallback(async () => {

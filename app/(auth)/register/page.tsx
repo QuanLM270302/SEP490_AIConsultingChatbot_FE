@@ -61,7 +61,7 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen">
+      <div className="flex min-h-dvh">
         {/* Left: Success message */}
         <div className="flex w-full flex-col border-zinc-200 bg-white px-6 py-10 dark:border-zinc-800 dark:bg-zinc-900 sm:px-8 lg:w-1/2 lg:border-r lg:px-12 lg:py-14">
           <div className="mx-auto w-full max-w-md space-y-6 text-center">
@@ -110,7 +110,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       {/* Left: Register form */}
       <div className="flex w-full flex-col border-zinc-200 bg-white px-6 py-10 dark:border-zinc-800 dark:bg-zinc-900 sm:px-8 lg:w-1/2 lg:border-r lg:px-12 lg:py-14">
         <div className="mx-auto flex w-full max-w-md flex-col">

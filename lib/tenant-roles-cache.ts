@@ -35,7 +35,7 @@ export function writeTenantRolesCache(tenantId: string | null | undefined, roles
   }
 }
 
-const FIXED_ROLE_CODES = new Set(["TENANT_ADMIN", "CONTENT_MANAGER", "EMPLOYEE"]);
+const FIXED_ROLE_CODES = new Set(["TENANT_ADMIN", "EMPLOYEE"]);
 
 export type RolesFilterMode = "all" | "custom" | "fixed";
 

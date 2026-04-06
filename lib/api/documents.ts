@@ -131,7 +131,8 @@ const FORCE_BINARY_EXTENSIONS = new Set([
   "7z",
 ]);
 
-const PREVIEW_QUERY = "mode=preview";
+/** Trích text thuần (text/plain) — không chuyển Office → PDF như preview mặc định */
+const PREVIEW_QUERY = "mode=preview&format=text";
 const PREVIEW_ACCEPT = "application/pdf, text/plain, text/html, application/json;q=0.9, */*;q=0.8";
 
 function withPreviewMode(url: string): string {
@@ -233,16 +234,30 @@ async function parsePreviewPayload(res: Response): Promise<CachedPreviewPayload>
   const contentDisposition = res.headers.get("content-disposition");
   const filename = parseFilenameFromDisposition(contentDisposition);
   const extension = extractFileExtension(filename);
-  const mime = normalizeMime(res.headers.get("content-type"));
+  const responseMime = normalizeMime(res.headers.get("content-type"));
+  const sourceMime = normalizeMime(res.headers.get("x-source-content-type"));
   const blob = await res.blob();
 
-  if (canPreviewAsPdf(mime, extension)) {
-    return { kind: "pdf", blob, mime };
+  /**
+   * Full text preview: ưu tiên phân loại text trước PDF.
+   * Dùng cả Content-Type phản hồi và X-Source-Content-Type (Swagger preview) để không bỏ sót text/plain, json, v.v.
+   */
+  const treatAsText =
+    canPreviewAsText(responseMime, extension) ||
+    (sourceMime ? canPreviewAsText(sourceMime, extension) : false) ||
+    (responseMime === "application/octet-stream" &&
+      sourceMime.length > 0 &&
+      (sourceMime.startsWith("text/") || canPreviewAsText(sourceMime, extension)));
+
+  if (treatAsText) {
+    return { kind: "text", text: await blob.text(), mime: responseMime };
   }
-  if (canPreviewAsText(mime, extension)) {
-    return { kind: "text", text: await blob.text(), mime };
+
+  if (canPreviewAsPdf(responseMime, extension) || sourceMime === "application/pdf") {
+    return { kind: "pdf", blob, mime: responseMime };
   }
-  return { kind: "binary", blob, mime };
+
+  return { kind: "binary", blob, mime: responseMime };
 }
 
 async function revalidatePreviewInBackground(url: string, etag: string): Promise<void> {
@@ -345,7 +360,7 @@ export async function listDocuments(): Promise<DocumentResponse[]> {
   return [];
 }
 
-/** GET /api/v1/knowledge/documents/detail/{id} — full detail after visibility checks */
+/** GET /api/v1/knowledge/documents/detail/{id} — metadata + visibility (Swagger: xem chi tiết tài liệu). */
 export async function getDocument(id: string): Promise<DocumentResponse> {
   const res = await fetchWithAuth(`${DOCUMENTS_BASE}/detail/${id}`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Document not found"));
@@ -448,7 +463,10 @@ export type ActiveRagVersionResponse = {
   created_at?: string;
 };
 
-/** Inline file from GET .../content — text or PDF blob URL (caller must revoke PDF url). */
+/**
+ * GET /api/v1/knowledge/documents/{id}/content?mode=preview — toàn bộ nội dung để hiển thị (text/PDF; Swagger: xem trực tiếp).
+ * Caller must revoke PDF object URLs from the response.
+ */
 export async function getDocumentPreview(id: string): Promise<DocumentPreviewResponse> {
   return fetchPreview(`${DOCUMENTS_BASE}/${id}/content`, "Failed to load document preview");
 }

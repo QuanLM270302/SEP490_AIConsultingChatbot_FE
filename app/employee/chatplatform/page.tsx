@@ -106,10 +106,10 @@ export default function ChatPlatformPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-zinc-50 via-white to-emerald-50/30 dark:from-zinc-950 dark:via-black dark:to-emerald-950/20">
+    <div className="flex h-dvh min-h-0 bg-gradient-to-br from-zinc-50 via-white to-emerald-50/30 dark:from-zinc-950 dark:via-black dark:to-emerald-950/20">
       <AIBoxSidebar />
 
-      <div className="flex flex-1 flex-col h-screen overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* FIXED HEADER with Subtle Health Status */}
         <div className="shrink-0 border-b border-zinc-200/50 bg-white/80 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/80">
           <div className="flex items-center justify-between px-6 py-4">

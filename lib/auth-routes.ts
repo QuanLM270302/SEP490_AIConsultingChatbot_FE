@@ -3,7 +3,6 @@
  * Empty array = any authenticated role.
  */
 const ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
-const ROLE_CONTENT_MANAGER = "ROLE_CONTENT_MANAGER";
 const ROLE_TENANT_ADMIN = "ROLE_TENANT_ADMIN";
 const ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
 const ROLE_STAFF = "ROLE_STAFF";
@@ -18,7 +17,7 @@ export const PATH_ALLOWED_ROLES: Record<string, string[]> = {
   "/chatbot": [],
   "/chatbot-new": [],
   "/subscription": [ROLE_TENANT_ADMIN],
-  "/employee": [ROLE_EMPLOYEE, ROLE_CONTENT_MANAGER],
+  "/employee": [ROLE_EMPLOYEE, ROLE_TENANT_ADMIN],
   "/tenant-admin": [ROLE_TENANT_ADMIN],
   "/super-admin": [ROLE_SUPER_ADMIN],
   "/staff": [ROLE_STAFF],
@@ -42,9 +41,8 @@ export function roleToPath(roles: string[]): string {
   if (role.includes("SUPER_ADMIN")) return "/super-admin";
   if (role.includes("TENANT_ADMIN")) return "/tenant-admin";
   if (role.includes("STAFF")) return "/staff";
-  if (role.includes("EMPLOYEE")) return "/employee";
-  if (role.includes("CONTENT_MANAGER")) return "/employee";
-  return "/employee";
+  if (role.includes("EMPLOYEE")) return "/chatbot-new";
+  return "/chatbot-new";
 }
 
 /**

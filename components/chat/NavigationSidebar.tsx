@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MessageSquare, Users, User, LogOut, Plus } from "lucide-react";
+import { Search, MessageSquare, Users, User, LogOut, Plus, ClipboardCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguageStore } from "@/lib/language-store";
 import { clearAuth } from "@/lib/auth-store";
@@ -16,6 +16,12 @@ interface NavigationSidebarProps {
   onViewChange: (view: ChatbotNavView) => void;
   historyOpen: boolean;
   onToggleHistory: () => void;
+  showOnboardingShortcut?: boolean;
+  onboardingLoading?: boolean;
+  onboardingTotal?: number;
+  onboardingCompleted?: number;
+  onboardingHasIncomplete?: boolean;
+  onOpenOnboarding?: () => void;
 }
 
 export function NavigationSidebar({
@@ -23,6 +29,12 @@ export function NavigationSidebar({
   onViewChange,
   historyOpen,
   onToggleHistory,
+  showOnboardingShortcut = false,
+  onboardingLoading = false,
+  onboardingTotal = 0,
+  onboardingCompleted = 0,
+  onboardingHasIncomplete = false,
+  onOpenOnboarding,
 }: NavigationSidebarProps) {
   const { language } = useLanguageStore();
   const router = useRouter();
@@ -139,6 +151,42 @@ export function NavigationSidebar({
       </nav>
 
       <div className="mt-auto flex flex-col items-center gap-3 border-t border-zinc-200/90 pt-3 dark:border-zinc-800">
+        {showOnboardingShortcut ? (
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={onOpenOnboarding}
+              disabled={onboardingLoading || onboardingTotal === 0}
+              className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                onboardingHasIncomplete
+                  ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
+                  : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
+              } disabled:cursor-not-allowed disabled:opacity-50`}
+              title={
+                onboardingLoading
+                  ? isEn
+                    ? "Loading onboarding..."
+                    : "Đang tải onboarding..."
+                  : onboardingTotal > 0
+                    ? isEn
+                      ? `Onboarding ${onboardingCompleted}/${onboardingTotal}`
+                      : `Onboarding ${onboardingCompleted}/${onboardingTotal}`
+                    : isEn
+                      ? "Onboarding not configured"
+                      : "Onboarding chưa cấu hình"
+              }
+            >
+              <ClipboardCheck className="h-5 w-5" />
+              {!onboardingLoading && onboardingHasIncomplete ? (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-500" />
+              ) : null}
+            </button>
+            <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
+              {isEn ? "Checklist" : "Checklist"}
+            </span>
+          </div>
+        ) : null}
+
         <div className="flex flex-col items-center gap-1">
           <button
             type="button"

@@ -298,7 +298,7 @@ export const translations = {
     chartToday: 'Hôm nay',
     chartThisMonth: 'Tháng này',
     chartAllTime: 'Tổng cộng',
-    knowledgeBaseEmbeddingTitle: 'Cơ sở tri thức & nhúng',
+    knowledgeBaseEmbeddingTitle: 'Document Dashboard & nhúng',
     knowledgeBaseEmbeddingHint: 'Thống kê tài liệu và trạng thái nhúng trong tổ chức.',
     docsLabel: 'Tài liệu',
     chunksLabel: 'Mảnh nội dung',
@@ -317,8 +317,8 @@ export const translations = {
     aiMetricTokenUsage: 'Mức dùng mã hóa',
     
     // Documents Page
-    documentsKnowledgeBase: 'Quản lý tài liệu & cơ sở tri thức',
-    documentsKBDescription: 'Chỉ quản trị viên tổ chức mới quản lý tài liệu, danh mục và thẻ. Tài liệu phục vụ chatbot tra cứu nội bộ.',
+    documentsKnowledgeBase: 'Document Dashboard',
+    documentsKBDescription: 'Chỉ Tenant Admin mới quản lý tài liệu, danh mục và thẻ trong Document Dashboard. Dữ liệu này phục vụ chatbot nội bộ.',
     backToDashboard: 'Về bảng điều khiển',
     categories: 'Danh mục',
     tags: 'Thẻ',
@@ -744,7 +744,7 @@ export const translations = {
     chartToday: 'Today',
     chartThisMonth: 'This month',
     chartAllTime: 'All time',
-    knowledgeBaseEmbeddingTitle: 'Knowledge base & embedding',
+    knowledgeBaseEmbeddingTitle: 'Document Dashboard & embedding',
     knowledgeBaseEmbeddingHint: 'Document and embedding status statistics for your organization.',
     docsLabel: 'Documents',
     chunksLabel: 'Chunks',
@@ -763,8 +763,8 @@ export const translations = {
     aiMetricTokenUsage: 'Context unit usage',
     
     // Documents Page
-    documentsKnowledgeBase: 'Manage Documents & Knowledge Base',
-    documentsKBDescription: 'Only Tenant Admin can manage documents, categories and tags. Documents are used for RAG chatbot.',
+    documentsKnowledgeBase: 'Document Dashboard',
+    documentsKBDescription: 'Only Tenant Admin can manage documents, categories and tags in the Document Dashboard. These documents power RAG chatbot answers.',
     backToDashboard: 'Back to Dashboard',
     categories: 'Categories',
     tags: 'Tags',

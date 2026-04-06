@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -38,7 +38,7 @@ export default function StaffDashboardPage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadDashboard = () => {
+  const loadDashboard = useCallback(() => {
     setStatsLoading(true);
     setError(null);
     void fetchPlatformDashboard(true)
@@ -56,22 +56,48 @@ export default function StaffDashboardPage() {
         setParsed(null);
       })
       .finally(() => setStatsLoading(false));
-  };
+  }, [language, t.error, t.errorLoadingData]);
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        loadDashboard();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadDashboard]);
 
   useEffect(() => {
-    setSubsLoading(true);
-    setSubsError(null);
-    void getStaffSubscriptions()
-      .then(setSubs)
-      .catch((e) => {
-        setSubsError(e instanceof Error ? e.message : language === "en" ? "Failed to load subscriptions" : "Không tải được subscriptions");
-        setSubs([]);
-      })
-      .finally(() => setSubsLoading(false));
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      setSubsLoading(true);
+      setSubsError(null);
+      void getStaffSubscriptions()
+        .then((data) => {
+          if (!cancelled) {
+            setSubs(data);
+          }
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            setSubsError(e instanceof Error ? e.message : language === "en" ? "Failed to load subscriptions" : "Không tải được subscriptions");
+            setSubs([]);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setSubsLoading(false);
+          }
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [language]);
 
   const llmRows = parsed
@@ -113,6 +139,7 @@ export default function StaffDashboardPage() {
     : [];
   const tenantSum = tenantRows.reduce((s, x) => s + x.count, 0);
   const planCodeOrder = ["TRIAL", "STARTER", "STANDARD", "ENTERPRISE"] as const;
+  type PlanCode = (typeof planCodeOrder)[number];
   const viPlanMap: Record<string, string> = {
     TRIAL: "Dùng thử",
     STARTER: "Khởi đầu",
@@ -130,10 +157,12 @@ export default function StaffDashboardPage() {
     return x === "ACTIVE" || x === "TRIAL";
   };
   const byPlan = new Map<string, number>();
+  const isPlanCode = (value: string): value is PlanCode =>
+    (planCodeOrder as readonly string[]).includes(value);
   planCodeOrder.forEach((code) => byPlan.set(code, 0));
   subs.forEach((s) => {
     const code = (s.tier || "").toUpperCase();
-    if (!planCodeOrder.includes(code as any)) return;
+    if (!isPlanCode(code)) return;
     if (isActiveSub(s.status)) byPlan.set(code, (byPlan.get(code) || 0) + 1);
   });
   const subChartRows = planCodeOrder.map((code) => ({
@@ -325,7 +354,7 @@ export default function StaffDashboardPage() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-500/20">
                       <Database className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
                     </div>
-                    <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{language === "en" ? "Knowledge base" : "Tri thức (KB)"}</h3>
+                    <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{language === "en" ? "Document Dashboard" : "Document Dashboard"}</h3>
                   </div>
                   <p className="text-sm text-zinc-700 dark:text-zinc-400">
                     {language === "en" ? "Document files and indexed chunks" : "Tệp tài liệu và chunk index"}

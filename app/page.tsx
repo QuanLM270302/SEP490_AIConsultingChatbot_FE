@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Search, Shield, Database, Sparkles, ArrowRight, CheckCircle2, Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Search, Shield, Database, ArrowRight, CheckCircle2, Moon, Sun } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAppTheme } from "@/lib/use-app-theme";
@@ -16,7 +16,7 @@ export default function Home() {
   const { theme, toggleTheme: toggleAppTheme } = useAppTheme();
   const [themeReady, setThemeReady] = useState(false);
 
-  const qaData = [
+  const qaData = useMemo(() => [
     {
       question: "What is the leave policy?",
       answer: "Employees are entitled to 12 days of annual leave per year. Additional leave may be granted based on tenure and company policy.",
@@ -57,7 +57,7 @@ export default function Home() {
       answer: "Book meeting rooms through the Office Portal or Outlook calendar. Rooms available 8 AM - 7 PM. Cancel if unused to free up space.",
       sources: ["Office Management Guide", "Booking System Manual"],
     },
-  ];
+  ], []);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -79,7 +79,7 @@ export default function Home() {
       if (i > currentQA.question.length) clearInterval(interval);
     }, 50);
     return () => clearInterval(interval);
-  }, [qaIndex]);
+  }, [qaData, qaIndex]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -232,7 +232,7 @@ export default function Home() {
           </h1>
           <p className="mx-auto mb-10 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
             AI-powered search across internal documents with secure, permission-aware answers.
-            Get instant insights from your company knowledge base.
+            Get instant insights from your company Document Dashboard.
           </p>
 
           {/* SEARCH BAR DEMO */}
@@ -299,7 +299,7 @@ export default function Home() {
             {
               icon: <Search className="h-6 w-6" />,
               title: "AI-powered search",
-              desc: "Find answers instantly from internal knowledge base with natural language queries",
+              desc: "Find answers instantly from your Document Dashboard with natural language queries",
               color: "emerald",
             },
             {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -39,6 +40,50 @@ import type { DocumentPreviewResponse } from "@/lib/api/documents";
 import { clearAuth, refreshAuth, tryRefreshAuth } from "@/lib/auth-store";
 import type { DocumentVersionResponse } from "@/types/knowledge";
 import { getProfile } from "@/lib/api/profile";
+import { cn } from "@/lib/utils/cn";
+
+/** Một dòng / một đoạn theo ký tự xuống dòng từ API (giữ đúng cấu trúc file gốc). */
+function PreviewPlainText({ text }: { text: string }) {
+  const lines = text.split("\n");
+  return (
+    <div className="flex flex-col gap-0">
+      {lines.map((line, i) => (
+        <div key={i} className="min-h-[1.5em] whitespace-pre-wrap break-words">
+          {line.length === 0 ? "\u00a0" : line}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Nội dung đọc được: GET .../content?mode=preview (full text) hoặc khối tóm tắt từ GET .../detail/{id} */
+function DocumentReadablePanel({
+  label,
+  children,
+  className,
+}: {
+  label?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-800/90 bg-gradient-to-b from-zinc-900/95 to-zinc-950 shadow-inner ring-1 ring-white/[0.06]",
+        className
+      )}
+    >
+      {label ? (
+        <div className="shrink-0 border-b border-zinc-800/80 px-5 pb-3 pt-4 sm:px-6 sm:pt-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400/95">{label}</p>
+        </div>
+      ) : null}
+      <div className="scrollbar-chat-hidden min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
+        <div className="select-text text-[15px] leading-[1.75] text-zinc-100 antialiased">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -203,6 +248,10 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         language === "en"
           ? "This format is not supported for preview. Please use Download."
           : "Định dạng này chưa hỗ trợ preview. Vui lòng tải file gốc.",
+      preview422:
+        language === "en"
+          ? "No extractable text for preview (e.g. scanned PDF). Please download the file."
+          : "Không trích được văn bản để xem trước (ví dụ PDF scan). Vui lòng tải file gốc.",
       preview500:
         language === "en"
           ? "Server or storage error while loading preview. Please retry later."
@@ -247,7 +296,17 @@ export function SearchView({ initialQuery }: SearchViewProps) {
       metaEmbedding: language === "en" ? "Search index" : "Chỉ mục tìm kiếm",
       metaChunks: language === "en" ? "Text chunks" : "Đoạn văn (chunk)",
       aboutDoc: language === "en" ? "Summary" : "Tóm tắt",
+      /** Toàn bộ nội dung từ GET .../content?mode=preview */
+      previewContentTitle:
+        language === "en" ? "Document content (preview)" : "Nội dung tài liệu (xem trước)",
+      /** Tóm tắt / mô tả từ GET .../detail/{id} — không thay cho nội dung file */
+      summaryFromDetailApi:
+        language === "en"
+          ? "Catalog summary (document detail)"
+          : "Tóm tắt / mô tả (chi tiết tài liệu)",
       originalFile: language === "en" ? "Original file" : "Tệp gốc",
+      pdfOpenNewTab:
+        language === "en" ? "Open PDF in new tab" : "Mở PDF trong tab mới",
       previewBadgeText: language === "en" ? "Text" : "Văn bản",
       previewBadgePdf: language === "en" ? "PDF" : "PDF",
       previewBadgeOther: language === "en" ? "Preview" : "Xem trước",
@@ -269,34 +328,64 @@ export function SearchView({ initialQuery }: SearchViewProps) {
 
   const loadList = useCallback((options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
-    if (silent) setListSyncing(true);
-    else {
-      setListLoading(true);
-      setDocumentsErrorStatus(null);
-    }
-    listDocuments()
-      .then((rows) => {
-        setDocuments(rows);
+
+    void (async () => {
+      if (silent) setListSyncing(true);
+      else {
+        setListLoading(true);
         setDocumentsErrorStatus(null);
-      })
-      .catch((e: Error & { status?: number }) => {
-        const status = typeof e.status === "number" ? e.status : null;
-        if (status === 401) {
-          clearAuth();
-          router.push("/login");
-          return;
+      }
+      try {
+        try {
+          const rows = await listDocuments();
+          setDocuments(rows);
+          setDocumentsErrorStatus(null);
+        } catch (e: unknown) {
+          const err = e as Error & { status?: number };
+          const status = typeof err.status === "number" ? err.status : null;
+          if (status === 401) {
+            clearAuth();
+            router.push("/login");
+            return;
+          }
+          if (silent) {
+            // Đồng bộ nền: không xóa list đang có — tránh cảm giác “mất hết” khi token chưa kịp refresh / lỗi mạng tạm
+            return;
+          }
+          /**
+           * 403: JWT hiện tại có thể được cấp *trước* khi admin thêm DOCUMENT_READ.
+           * tryRefreshAuth() đôi khi không đổi token; refreshAuth() gọi /auth/refresh và ghi đè JWT từ DB.
+           */
+          if (status === 403) {
+            const ok = await refreshAuth();
+            if (ok) {
+              try {
+                const rows2 = await listDocuments();
+                setDocuments(rows2);
+                setDocumentsErrorStatus(null);
+                return;
+              } catch (e2: unknown) {
+                const err2 = e2 as Error & { status?: number };
+                const st2 = typeof err2.status === "number" ? err2.status : null;
+                if (st2 === 401) {
+                  clearAuth();
+                  router.push("/login");
+                  return;
+                }
+                setDocuments([]);
+                setDocumentsErrorStatus(st2);
+                return;
+              }
+            }
+          }
+          setDocuments([]);
+          setDocumentsErrorStatus(status);
         }
-        if (silent) {
-          // Đồng bộ nền: không xóa list đang có — tránh cảm giác “mất hết” khi token chưa kịp refresh / lỗi mạng tạm
-          return;
-        }
-        setDocuments([]);
-        setDocumentsErrorStatus(status);
-      })
-      .finally(() => {
+      } finally {
         if (silent) setListSyncing(false);
         else setListLoading(false);
-      });
+      }
+    })();
   }, [router]);
 
   /** Làm mới JWT từ DB rồi tải lại list — dùng khi admin vừa đổi quyền (mọi máy qua polling + khi quay lại tab). */
@@ -425,10 +514,11 @@ export function SearchView({ initialQuery }: SearchViewProps) {
       if (status === 401) return t.preview401;
       if (status === 404) return t.preview404;
       if (status === 415) return t.preview415;
+      if (status === 422) return t.preview422;
       if (status === 500) return t.preview500;
       return t.previewHint;
     },
-    [t.permPreview, t.preview401, t.preview404, t.preview415, t.preview500, t.previewHint]
+    [t.permPreview, t.preview401, t.preview404, t.preview415, t.preview422, t.preview500, t.previewHint]
   );
 
   const getDownloadErrorMessage = useCallback(
@@ -776,18 +866,21 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         )}
       </div>
 
-      {selected ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 backdrop-blur-[2px] sm:p-4"
-          role="dialog"
-          aria-modal
-          onClick={() => setSelected(null)}
-        >
-          <div
-            className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-700/80 bg-zinc-900 shadow-2xl shadow-black/50 ring-1 ring-white/[0.06] lg:max-h-[88vh] lg:flex-row"
-            onClick={(e) => e.stopPropagation()}
-            aria-labelledby="document-detail-title"
-          >
+      {selected && typeof document !== "undefined"
+        ? createPortal(
+            (
+              <div
+                className="fixed inset-0 z-[110] overflow-y-auto overflow-x-hidden bg-black/65 backdrop-blur-[2px]"
+                role="dialog"
+                aria-modal
+                onClick={() => setSelected(null)}
+              >
+          <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
+            <div
+              className="my-4 flex max-h-[min(92dvh,calc(100dvh-2rem))] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-700/80 bg-zinc-900 shadow-2xl shadow-black/50 ring-1 ring-white/[0.06] lg:max-h-[min(88dvh,calc(100dvh-2.5rem))] lg:flex-row"
+              onClick={(e) => e.stopPropagation()}
+              aria-labelledby="document-detail-title"
+            >
             <div className="flex min-h-0 w-full min-w-0 flex-col border-b border-zinc-800/90 lg:w-[min(100%,26rem)] lg:max-w-md lg:shrink-0 lg:border-b-0 lg:border-r lg:border-zinc-800/90">
               <div className="relative shrink-0 bg-gradient-to-br from-emerald-950/55 via-zinc-900/95 to-zinc-950 px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_0%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
@@ -1086,39 +1179,24 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     </button>
                   </div>
                 ) : preview?.kind === "text" ? (
-                  <pre className="scrollbar-chat-hidden max-h-[min(58vh,32rem)] flex-1 overflow-auto whitespace-pre-wrap rounded-2xl border border-zinc-800/80 bg-zinc-950 p-4 text-xs leading-relaxed text-zinc-300 shadow-inner sm:max-h-none sm:p-5">
-                    {preview.text}
-                  </pre>
+                  <DocumentReadablePanel label={t.previewContentTitle} className="min-h-0 flex-1">
+                    <PreviewPlainText text={preview.text} />
+                  </DocumentReadablePanel>
                 ) : preview?.kind === "pdf" ? (
                   <div className="flex min-h-0 flex-1 flex-col gap-3">
-                    <iframe
-                      title="pdf-preview"
-                      src={preview.url}
-                      className="min-h-[min(52vh,28rem)] w-full flex-1 rounded-2xl border border-zinc-800 bg-zinc-950 shadow-inner sm:min-h-[56vh]"
-                    />
-                    {(displayDoc?.description?.trim() ||
-                      displayDoc?.documentTitle?.trim() ||
-                      displayDoc?.originalFileName) && (
-                      <div className="shrink-0 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 text-xs leading-relaxed text-zinc-300">
-                        <p className="mb-2 font-semibold text-zinc-400">
-                          {language === "en" ? "Catalog summary (if PDF looks empty)" : "Tóm tắt danh mục (khi PDF trắng hoặc scan)"}
-                        </p>
-                        <p className="whitespace-pre-wrap">
-                          {displayDoc?.description?.trim() ||
-                            [displayDoc?.documentTitle, displayDoc?.originalFileName]
-                              .filter(Boolean)
-                              .join(" — ")}
-                        </p>
-                        <a
-                          href={preview.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-3 inline-block text-[11px] font-medium text-emerald-400/90 underline-offset-2 hover:text-emerald-300 hover:underline"
-                        >
-                          {language === "en" ? "Open PDF in new tab" : "Mở PDF trong tab mới"}
-                        </a>
-                      </div>
-                    )}
+                    <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 px-4 py-5 text-center text-sm text-zinc-400">
+                      {language === "en"
+                        ? "Text preview is preferred; this session still has a PDF blob. Open in a new tab or download."
+                        : "Ưu tiên xem trước dạng văn bản; phiên bản này vẫn là blob PDF. Mở tab mới hoặc tải xuống."}
+                      <a
+                        href={preview.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-block text-[13px] font-medium text-emerald-400/95 underline-offset-2 hover:text-emerald-300 hover:underline"
+                      >
+                        {t.pdfOpenNewTab}
+                      </a>
+                    </div>
                   </div>
                 ) : preview?.kind === "binary" ? (
                   <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/40 px-6 py-12 text-center">
@@ -1138,8 +1216,12 @@ export function SearchView({ initialQuery }: SearchViewProps) {
               </div>
             </div>
           </div>
+          </div>
         </div>
-      ) : null}
+            ),
+            document.body
+          )
+        : null}
     </div>
   );
 }

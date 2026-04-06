@@ -40,7 +40,7 @@ export function KnowledgeVolumeChart() {
             <Database className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
           </div>
           <h3 className="text-xl font-bold text-zinc-900 dark:text-white">
-            {isEn ? "Knowledge base" : "Tri thức (KB)"}
+            {isEn ? "Document Dashboard" : "Document Dashboard"}
           </h3>
         </div>
         <p className="text-sm text-zinc-700 dark:text-zinc-400">

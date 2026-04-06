@@ -11,7 +11,7 @@ export default function AuthTemplate({
 
   return (
     <motion.div
-      className="min-h-screen w-full"
+      className="min-h-dvh w-full"
       initial={reduceMotion ? false : { opacity: 0, scale: 0.995 }}
       animate={reduceMotion ? false : { opacity: 1, scale: 1 }}
       transition={{
