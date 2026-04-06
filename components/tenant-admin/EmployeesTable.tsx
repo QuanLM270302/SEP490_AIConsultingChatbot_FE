@@ -6,6 +6,8 @@ import {
   getTenantUsers,
   getTenantUserById,
   updateTenantUser,
+  updateTenantUserPermissions,
+  getTenantAvailablePermissions,
   activateTenantUser,
   deactivateTenantUser,
   resetTenantUserPassword,
@@ -22,6 +24,7 @@ import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { getStoredUser } from "@/lib/auth-store";
 import { mergeRolesWithCache, readTenantRolesCache } from "@/lib/tenant-roles-cache";
+import { getPermissionLabel } from "@/lib/permission-labels";
 
 /** Không gán user thường làm admin nền tảng / tenant admin / staff */
 const ROLE_CODES_EXCLUDED_FROM_USER_ASSIGNMENT = new Set(["TENANT_ADMIN", "SUPER_ADMIN", "STAFF"]);
@@ -30,7 +33,9 @@ type StatusFilter = "ACTIVE" | "INACTIVE" | "ALL";
 
 export function EmployeesTable() {
   const { language } = useLanguageStore();
+  const isEn = language === "en";
   const t = translations[language];
+  const genericError = isEn ? "An error occurred" : "Lỗi";
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +45,10 @@ export function EmployeesTable() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [detailUser, setDetailUser] = useState<UserResponse | null>(null);
   const [editUser, setEditUser] = useState<UserResponse | null>(null);
+  const [permissionUser, setPermissionUser] = useState<UserResponse | null>(null);
+  const [availablePermissions, setAvailablePermissions] = useState<{ code: string; name?: string }[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [permissionMetaLoading, setPermissionMetaLoading] = useState(false);
 
   const loadUsers = () => {
     setLoading(true);
@@ -91,7 +100,7 @@ export function EmployeesTable() {
     setActionLoading(userId);
     activateTenantUser(userId)
       .then(loadUsers)
-      .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"))
+      .catch((e) => alert(e instanceof Error ? e.message : genericError))
       .finally(() => setActionLoading(null));
   };
 
@@ -101,7 +110,7 @@ export function EmployeesTable() {
     setActionLoading(userId);
     deactivateTenantUser(userId)
       .then(loadUsers)
-      .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"))
+      .catch((e) => alert(e instanceof Error ? e.message : genericError))
       .finally(() => setActionLoading(null));
   };
 
@@ -111,7 +120,7 @@ export function EmployeesTable() {
     setActionLoading(userId);
     resetTenantUserPassword(userId)
       .then(() => alert(t.passwordResetSent))
-      .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"))
+      .catch((e) => alert(e instanceof Error ? e.message : genericError))
       .finally(() => setActionLoading(null));
   };
 
@@ -122,7 +131,7 @@ export function EmployeesTable() {
     setActionLoading(userId);
     deleteTenantUser(userId)
       .then(loadUsers)
-      .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"))
+      .catch((e) => alert(e instanceof Error ? e.message : genericError))
       .finally(() => setActionLoading(null));
   };
 
@@ -131,13 +140,34 @@ export function EmployeesTable() {
     setMenuPos(null);
     getTenantUserById(userId)
       .then(setDetailUser)
-      .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"));
+      .catch((e) => alert(e instanceof Error ? e.message : genericError));
   };
 
   const openEdit = (user: UserResponse) => {
     setOpenMenuId(null);
     setMenuPos(null);
     setEditUser(user);
+  };
+
+  const openPermissionEditor = async (userId: string) => {
+    setOpenMenuId(null);
+    setMenuPos(null);
+    setPermissionMetaLoading(true);
+    try {
+      const [userDetail, permissions] = await Promise.all([
+        getTenantUserById(userId),
+        getTenantAvailablePermissions(),
+      ]);
+      const currentPermissions =
+        ((userDetail as unknown as { permissions?: string[] }).permissions ?? []).filter(Boolean);
+      setPermissionUser(userDetail);
+      setAvailablePermissions(permissions);
+      setSelectedPermissions(currentPermissions);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : genericError);
+    } finally {
+      setPermissionMetaLoading(false);
+    }
   };
 
   const handleSaveEdit = async (userId: string, body: UpdateUserRequest) => {
@@ -147,7 +177,7 @@ export function EmployeesTable() {
       setEditUser(null);
       loadUsers();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Lỗi");
+      alert(e instanceof Error ? e.message : genericError);
     } finally {
       setActionLoading(null);
     }
@@ -284,6 +314,13 @@ export function EmployeesTable() {
             >
               <Pencil className="h-4 w-4" /> {t.updateUserInfo}
             </button>
+            <button
+              type="button"
+              onClick={() => void openPermissionEditor(openMenuId)}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Key className="h-4 w-4" /> {t.updateUserPermissions}
+            </button>
             {isActive(users.find((u) => u.id === openMenuId)) ? (
               <button
                 type="button"
@@ -334,6 +371,29 @@ export function EmployeesTable() {
           onClose={() => setEditUser(null)}
           onSave={(body) => handleSaveEdit(editUser.id, body)}
           loading={actionLoading === editUser.id}
+        />
+      )}
+
+      {permissionUser && (
+        <UpdatePermissionsModal
+          user={permissionUser}
+          permissions={availablePermissions}
+          selected={selectedPermissions}
+          setSelected={setSelectedPermissions}
+          loading={permissionMetaLoading || actionLoading === permissionUser.id}
+          onClose={() => setPermissionUser(null)}
+          onSave={async () => {
+            setActionLoading(permissionUser.id);
+            try {
+              await updateTenantUserPermissions(permissionUser.id, selectedPermissions);
+              setPermissionUser(null);
+              loadUsers();
+            } catch (e) {
+              alert(e instanceof Error ? e.message : genericError);
+            } finally {
+              setActionLoading(null);
+            }
+          }}
         />
       )}
 
@@ -588,6 +648,96 @@ function EditUserModal({ user, onClose, onSave, loading }: { user: UserResponse;
             {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : t.save}
           </button>
           <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">{t.cancel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UpdatePermissionsModal({
+  user,
+  permissions,
+  selected,
+  setSelected,
+  loading,
+  onClose,
+  onSave,
+}: {
+  user: UserResponse;
+  permissions: { code: string; name?: string }[];
+  selected: string[];
+  setSelected: (next: string[]) => void;
+  loading: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  const isEn = language === "en";
+
+  const togglePermission = (code: string) => {
+    setSelected(selected.includes(code) ? selected.filter((p) => p !== code) : [...selected, code]);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
+      <div className="relative w-full max-w-2xl rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{t.updateUserPermissions}</h3>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          {(user.fullName ?? user.email ?? "User")} - {t.selectPermissions}
+        </p>
+
+        <div className="mt-4 max-h-[52vh] overflow-y-auto rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+          {permissions.length === 0 ? (
+            <p className="text-sm text-zinc-500">{t.noPermissions}</p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {permissions.map((p) => {
+                const active = selected.includes(p.code);
+                return (
+                  <button
+                    key={p.code}
+                    type="button"
+                    onClick={() => togglePermission(p.code)}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm transition ${
+                      active
+                        ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    <div className="font-medium">
+                      {getPermissionLabel(p.code, p.name, isEn ? "en" : "vi")}
+                    </div>
+                    <div className="mt-0.5 text-[11px] uppercase tracking-wide opacity-70">{p.code}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex items-center justify-between">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            {isEn ? "Selected" : "Đã chọn"}: {selected.length}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
+            >
+              {t.cancel}
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={loading}
+              className="rounded-xl bg-purple-500 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-600 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : t.save}
+            </button>
+          </div>
         </div>
       </div>
     </div>

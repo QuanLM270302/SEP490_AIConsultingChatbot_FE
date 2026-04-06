@@ -2,21 +2,22 @@
 
 import { useState } from "react";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
-import { FileText, FolderTree, Tag } from "lucide-react";
+import { FileText, FolderTree, Tag, Upload } from "lucide-react";
 import { DocumentsTab } from "@/components/tenant-admin/DocumentsTab";
 import { CategoriesTab } from "@/components/tenant-admin/CategoriesTab";
 import { TagsTab } from "@/components/tenant-admin/TagsTab";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
-type TabId = "documents" | "categories" | "tags";
+type TabId = "upload" | "documents" | "categories" | "tags";
 
 export default function DocumentsPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("documents");
+  const [activeTab, setActiveTab] = useState<TabId>("upload");
   const { language } = useLanguageStore();
   const t = translations[language];
 
   const tabs: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: "upload", label: language === "en" ? "Upload documents" : "Đăng tải tài liệu", icon: Upload },
     { id: "documents", label: t.documents, icon: FileText },
     { id: "categories", label: t.categories, icon: FolderTree },
     { id: "tags", label: t.tags, icon: Tag },
@@ -56,7 +57,8 @@ export default function DocumentsPage() {
           })}
         </div>
 
-        {activeTab === "documents" && <DocumentsTab />}
+        {activeTab === "upload" && <DocumentsTab mode="upload" />}
+        {activeTab === "documents" && <DocumentsTab mode="library" />}
         {activeTab === "categories" && <CategoriesTab />}
         {activeTab === "tags" && <TagsTab />}
       </div>

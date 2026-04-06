@@ -61,6 +61,15 @@ function parseBilingualContent(rawContent: string): ParsedBilingualContent {
     };
   }
 
+  if (enIndex >= 0 && viIndex > enIndex) {
+    const en = normalized.slice(enIndex + enToken.length, viIndex).trim();
+    const vi = normalized.slice(viIndex + viToken.length).trim();
+    return {
+      vi: vi || en || normalized,
+      en: en || vi || normalized,
+    };
+  }
+
   if (enIndex >= 0) {
     const en = normalized.slice(enIndex + enToken.length).trim();
     return {
@@ -75,8 +84,24 @@ function parseBilingualContent(rawContent: string): ParsedBilingualContent {
   };
 }
 
+function hasVietnameseChars(text: string): boolean {
+  return /[ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/i.test(
+    text
+  );
+}
+
 function parseInlineBilingual(rawText: string): ParsedBilingualContent {
   const normalized = rawText.trim();
+
+  if (!normalized) {
+    return { vi: "", en: "" };
+  }
+
+  // Prefer explicit tokens if provided in title/summary.
+  if (normalized.includes("[VI]") || normalized.includes("[EN]")) {
+    return parseBilingualContent(normalized);
+  }
+
   const separator = " / ";
   const splitIndex = normalized.indexOf(separator);
   if (splitIndex < 0) {
@@ -88,6 +113,20 @@ function parseInlineBilingual(rawText: string): ParsedBilingualContent {
 
   const vi = normalized.slice(0, splitIndex).trim();
   const en = normalized.slice(splitIndex + separator.length).trim();
+
+  // Only treat as bilingual if we can reasonably infer VI + EN parts.
+  const looksBilingual =
+    vi.length > 0 &&
+    en.length > 0 &&
+    hasVietnameseChars(vi) &&
+    !hasVietnameseChars(en);
+  if (!looksBilingual) {
+    return {
+      vi: normalized,
+      en: normalized,
+    };
+  }
+
   return {
     vi: vi || normalized,
     en: en || vi || normalized,
@@ -194,9 +233,13 @@ export function OnboardingModal({
   const readableAttachmentTextLines = useMemo(
     () =>
       attachmentContent?.kind === "text"
-        ? parseReadableLines(attachmentContent.text)
+        ? parseReadableLines(
+            language === "en"
+              ? parseBilingualContent(attachmentContent.text).en
+              : parseBilingualContent(attachmentContent.text).vi
+          )
         : [],
-    [attachmentContent]
+    [attachmentContent, language]
   );
 
   const selectedModuleTitle = useMemo(() => {

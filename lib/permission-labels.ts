@@ -8,7 +8,7 @@ export const PERMISSION_LABELS: Record<string, { vi: string; en: string }> = {
   ROLE_READ: { vi: "Xem vai trò", en: "View roles" },
   ROLE_WRITE: { vi: "Thêm/sửa vai trò", en: "Create/update roles" },
   DOCUMENT_ALL: { vi: "Toàn quyền tài liệu", en: "Full document access" },
-  DOCUMENT_READ: { vi: "Xem/tải tài liệu", en: "View/download documents" },
+  DOCUMENT_READ: { vi: "Xem tài liệu", en: "View documents" },
   DOCUMENT_WRITE: { vi: "Tải lên/cập nhật tài liệu", en: "Upload/update documents" },
   DOCUMENT_DELETE: { vi: "Xóa tài liệu", en: "Delete documents" },
   ANALYTICS_VIEW: { vi: "Xem phân tích", en: "View analytics" },
