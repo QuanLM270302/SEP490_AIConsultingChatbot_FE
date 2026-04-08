@@ -6,8 +6,12 @@ import { DepartmentsTable } from "@/components/tenant-admin/DepartmentsTable";
 import { DepartmentStructure } from "@/components/tenant-admin/DepartmentStructure";
 import { Plus } from "lucide-react";
 import { createTenantDepartment } from "@/lib/api/tenant-admin";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 export default function DepartmentsPage() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [createOpen, setCreateOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [filter, setFilter] = useState<"all" | "active">("all");
@@ -18,10 +22,10 @@ export default function DepartmentsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
-              Quản lý Phòng ban
+              {t.manageDepartments}
             </h1>
             <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-              Cấu trúc tổ chức và phân bổ nhân viên
+              {t.organizationStructure}
             </p>
           </div>
           <button
@@ -30,7 +34,7 @@ export default function DepartmentsPage() {
             className="flex items-center gap-2 rounded-2xl bg-green-500 px-6 py-3 font-semibold text-white shadow-lg hover:bg-green-600"
           >
             <Plus className="h-4 w-4" />
-            Thêm phòng ban
+            {t.addDepartment}
           </button>
         </div>
 
@@ -44,7 +48,7 @@ export default function DepartmentsPage() {
                 : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
             }`}
           >
-            Tất cả
+            {t.allDepartments}
           </button>
           <button
             type="button"
@@ -55,7 +59,7 @@ export default function DepartmentsPage() {
                 : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
             }`}
           >
-            Đang hoạt động
+            {t.activeDepartments}
           </button>
         </div>
 

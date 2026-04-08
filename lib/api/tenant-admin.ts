@@ -12,7 +12,28 @@ export interface TenantDashboardResponse {
     totalTokensUsed?: number;
     totalRequests?: number;
     requestsThisMonth?: number;
+    tokensThisMonth?: number;
+    averageTokensPerRequest?: number;
   };
+}
+
+/** GET /api/v1/tenant-admin/dashboard/llm-usage */
+export interface TenantLlmUsageResponse {
+  totalTokensUsed?: number;
+  totalRequests?: number;
+  tokensThisMonth?: number;
+  requestsThisMonth?: number;
+  tokensToday?: number;
+  requestsToday?: number;
+  averageTokensPerRequest?: number;
+}
+
+/** GET /api/v1/tenant-admin/dashboard/documents */
+export interface TenantDocumentDashboardStatsResponse {
+  totalDocuments?: number;
+  totalChunks?: number;
+  averageChunksPerDocument?: number;
+  embeddingStatusBreakdown?: Record<string, number>;
 }
 
 export interface TenantAnalyticsResponse {
@@ -32,7 +53,10 @@ export interface UserResponse {
   fullName?: string;
   departmentId?: number;
   departmentName?: string;
+  /** Trùng `roles.id` / `role_id` trong DB (một user — một role). */
   roleId?: number;
+  /** Ví dụ EMPLOYEE, TENANT_ADMIN */
+  roleCode?: string;
   roleName?: string;
   status?: string;
   isActive?: boolean;
@@ -55,11 +79,90 @@ export interface RoleResponse {
   code?: string;
   description?: string;
   usersCount?: number;
+  /** Optional permissions list (if BE returns in role detail). */
+  permissions?: string[];
+}
+
+/** Parse `permissions` from GET role / list (string[] or legacy { code }[]). */
+function parsePermissionsField(raw: unknown): string[] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!Array.isArray(raw)) return undefined;
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item === "string" && item.length > 0) out.push(item);
+    else if (item && typeof item === "object" && "code" in item) {
+      const c = (item as { code?: unknown }).code;
+      if (typeof c === "string" && c.length > 0) out.push(c);
+    }
+  }
+  return out;
+}
+
+function firstNonNegativeInt(...values: unknown[]): number {
+  for (const v of values) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n >= 0) return Math.trunc(n);
+  }
+  return 0;
+}
+
+/** Map BE variants (userCount, users_count, …) into RoleResponse.usersCount */
+export function normalizeTenantRole(raw: unknown): RoleResponse {
+  if (!raw || typeof raw !== "object") {
+    return { id: 0 };
+  }
+  const o = raw as Record<string, unknown>;
+  const idRaw = o.id ?? o.role_id ?? o.roleId;
+  const id = Number(idRaw);
+  const permissions = parsePermissionsField(o.permissions);
+
+  return {
+    id: Number.isFinite(id) ? id : 0,
+    name: typeof o.name === "string" ? o.name : undefined,
+    code: typeof o.code === "string" ? o.code : undefined,
+    description: typeof o.description === "string" ? o.description : undefined,
+    usersCount: firstNonNegativeInt(
+      o.usersCount,
+      o.userCount,
+      o.users_count,
+      o.user_count,
+      o.assignedUserCount,
+      o.assignedUsersCount,
+      o.memberCount,
+      o.membersCount,
+      o.numberOfUsers,
+    ),
+    ...(permissions !== undefined ? { permissions } : {}),
+  };
+}
+
+function normalizeRoleList(list: unknown): RoleResponse[] {
+  if (!Array.isArray(list)) {
+    if (list && typeof list === "object") {
+      const o = list as Record<string, unknown>;
+      const inner = o.content ?? o.data ?? o.roles;
+      if (Array.isArray(inner)) return normalizeRoleList(inner);
+    }
+    return [];
+  }
+  return list.map((item) => normalizeTenantRole(item)).filter((r) => r.id > 0);
 }
 
 export async function getTenantDashboard(): Promise<TenantDashboardResponse> {
   const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/dashboard`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load dashboard"));
+  return res.json();
+}
+
+export async function getTenantLlmUsage(): Promise<TenantLlmUsageResponse> {
+  const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/dashboard/llm-usage`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load LLM usage"));
+  return res.json();
+}
+
+export async function getTenantDocumentDashboardStats(): Promise<TenantDocumentDashboardStatsResponse> {
+  const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/dashboard/documents`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load document statistics"));
   return res.json();
 }
 
@@ -69,8 +172,16 @@ export async function getTenantAnalytics(): Promise<TenantAnalyticsResponse> {
   return res.json();
 }
 
-export async function getTenantUsers(status: string = "ACTIVE"): Promise<UserResponse[]> {
-  const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/users?status=${status}`);
+/** `status`: ACTIVE (default) | INACTIVE | ALL. `roleId`: lọc user theo role (optional). */
+export async function getTenantUsers(
+  status: string = "ACTIVE",
+  options?: { roleId?: number }
+): Promise<UserResponse[]> {
+  const params = new URLSearchParams({ status });
+  if (options?.roleId != null && Number.isFinite(options.roleId)) {
+    params.set("roleId", String(options.roleId));
+  }
+  const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/users?${params.toString()}`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load users"));
   return res.json();
 }
@@ -84,7 +195,8 @@ export async function getTenantDepartments(): Promise<DepartmentResponse[]> {
 export async function getTenantRoles(): Promise<RoleResponse[]> {
   const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/roles`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load roles"));
-  return res.json();
+  const data: unknown = await res.json();
+  return normalizeRoleList(data);
 }
 
 // ---------- User management (align with API 11) ----------
@@ -228,19 +340,22 @@ export async function deleteTenantDepartment(departmentId: number): Promise<{ me
 export async function getTenantRoleById(roleId: number): Promise<RoleResponse> {
   const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/roles/${roleId}`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load role"));
-  return res.json();
+  const data: unknown = await res.json();
+  return normalizeTenantRole(data);
 }
 
 export async function getTenantCustomRoles(): Promise<RoleResponse[]> {
   const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/roles/custom`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load custom roles"));
-  return res.json();
+  const data: unknown = await res.json();
+  return normalizeRoleList(data);
 }
 
 export async function getTenantFixedRoles(): Promise<RoleResponse[]> {
   const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/roles/fixed`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load fixed roles"));
-  return res.json();
+  const data: unknown = await res.json();
+  return normalizeRoleList(data);
 }
 
 /** Backend returns { category, permissions: { code, ... }[] }[]; we flatten to { code }[] */
@@ -273,7 +388,8 @@ export async function createTenantRole(body: CreateRoleRequest): Promise<RoleRes
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to create role"));
-  return res.json();
+  const data: unknown = await res.json();
+  return normalizeTenantRole(data);
 }
 
 export async function updateTenantRole(roleId: number, body: UpdateRoleRequest): Promise<RoleResponse> {
@@ -283,7 +399,8 @@ export async function updateTenantRole(roleId: number, body: UpdateRoleRequest):
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to update role"));
-  return res.json();
+  const data: unknown = await res.json();
+  return normalizeTenantRole(data);
 }
 
 export async function deleteTenantRole(roleId: number): Promise<{ message: string }> {

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { CreditCard, Calendar, TrendingUp, Loader2 } from "lucide-react";
 import type { MySubscriptionResponse } from "@/lib/api/subscription";
 import { cancelSubscription, toggleAutoRenew } from "@/lib/api/subscription";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 interface SubscriptionInfoProps {
   subscription: MySubscriptionResponse | null;
@@ -11,7 +13,13 @@ interface SubscriptionInfoProps {
   onUpdated?: () => void;
 }
 
-const tierLabel: Record<string, string> = {
+const tierNameVi: Record<string, string> = {
+  STARTER: "Khởi đầu",
+  STANDARD: "Tiêu chuẩn",
+  ENTERPRISE: "Doanh nghiệp",
+  TRIAL: "Dùng thử",
+};
+const tierNameEn: Record<string, string> = {
   STARTER: "Starter",
   STANDARD: "Standard",
   ENTERPRISE: "Enterprise",
@@ -27,6 +35,8 @@ export function SubscriptionInfo({
   const [autoRenewLoading, setAutoRenewLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [showCancelForm, setShowCancelForm] = useState(false);
+  const { language } = useLanguageStore();
+  const t = translations[language];
 
   const handleCancel = async () => {
     if (!cancelReason.trim()) return;
@@ -61,7 +71,7 @@ export function SubscriptionInfo({
     return (
       <div className="flex items-center justify-center gap-2 rounded-3xl bg-white p-8 shadow-lg dark:bg-zinc-950">
         <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-        <span className="text-sm text-zinc-500">Đang tải…</span>
+        <span className="text-sm text-zinc-500">{t.loading}…</span>
       </div>
     );
   }
@@ -74,16 +84,17 @@ export function SubscriptionInfo({
             <CreditCard className="h-6 w-6 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Gói hiện tại</h3>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">Chưa có gói hoặc chưa tải được</p>
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{t.currentPlan}</h3>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">{t.noPlanYet}</p>
           </div>
         </div>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Chọn gói ở tab &quot;Gói dịch vụ&quot; hoặc kiểm tra kết nối API.</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">{t.selectPlanInTab}</p>
       </div>
     );
   }
 
-  const tier = tierLabel[subscription.tier] || subscription.tier;
+  const tierMap = language === "vi" ? tierNameVi : tierNameEn;
+  const tier = tierMap[subscription.tier] ?? subscription.tier;
   const nextDate = subscription.nextBillingDate || subscription.endDate;
   const isCancelled = !!subscription.cancelledAt;
 
@@ -94,8 +105,8 @@ export function SubscriptionInfo({
           <CreditCard className="h-6 w-6 text-green-600 dark:text-green-400" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Gói hiện tại</h3>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">Gói dịch vụ hiện tại</p>
+          <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{t.currentPlan}</h3>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{t.currentPlanDescription}</p>
         </div>
       </div>
 
@@ -109,7 +120,11 @@ export function SubscriptionInfo({
                 : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"
             }`}
           >
-            {subscription.status === "ACTIVE" ? (isCancelled ? "Đã hủy (còn hiệu lực đến hết kỳ)" : "Active") : subscription.status}
+            {subscription.status === "ACTIVE"
+              ? isCancelled
+                ? "Đã hủy (còn hiệu lực đến hết kỳ)"
+                : t.active
+              : subscription.status}
           </span>
         </div>
         <p className="text-2xl font-bold text-zinc-900 dark:text-white">
@@ -127,10 +142,10 @@ export function SubscriptionInfo({
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
               <Calendar className="h-4 w-4" />
-              Ngày gia hạn / Hết hạn
+              {t.renewalDate}
             </span>
             <span className="font-semibold text-zinc-900 dark:text-white">
-              {new Date(nextDate).toLocaleDateString("vi-VN")}
+              {new Date(nextDate).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
             </span>
           </div>
         )}
@@ -138,11 +153,11 @@ export function SubscriptionInfo({
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
               <TrendingUp className="h-4 w-4" />
-              Tự động gia hạn
+              {t.autoRenew}
             </span>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-zinc-900 dark:text-white">
-                {subscription.autoRenew ? "Bật" : "Tắt"}
+                {subscription.autoRenew ? t.on : t.off}
               </span>
               <button
                 type="button"
@@ -150,7 +165,7 @@ export function SubscriptionInfo({
                 onClick={handleToggleAutoRenew}
                 className="rounded-lg bg-green-500/20 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-500/30 dark:text-green-400 disabled:opacity-50"
               >
-                {autoRenewLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : subscription.autoRenew ? "Tắt" : "Bật"}
+                {autoRenewLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : subscription.autoRenew ? t.off : t.on}
               </button>
             </div>
           </div>
@@ -165,18 +180,18 @@ export function SubscriptionInfo({
               onClick={() => setShowCancelForm(true)}
               className="rounded-2xl border border-red-200 bg-white px-4 py-3 font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:bg-zinc-900 dark:text-red-400 dark:hover:bg-red-950/30"
             >
-              Hủy gói (cuối kỳ)
+              {t.cancelPlan}
             </button>
           ) : (
             <div className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Lý do hủy (tùy chọn)
+                {t.cancelReason}
               </label>
               <input
                 type="text"
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Nhập lý do..."
+                placeholder={t.enterReason}
                 className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
               />
               <div className="flex gap-2">
@@ -186,14 +201,14 @@ export function SubscriptionInfo({
                   onClick={handleCancel}
                   className="rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
                 >
-                  {cancelLoading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Xác nhận hủy"}
+                  {cancelLoading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : t.confirmCancel}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowCancelForm(false); setCancelReason(""); }}
                   className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
                 >
-                  Hủy
+                  {t.cancel}
                 </button>
               </div>
             </div>

@@ -1,12 +1,10 @@
-import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import { SystemMetrics } from "@/components/super-admin/SystemMetrics";
 import { PerformanceCharts } from "@/components/super-admin/PerformanceCharts";
 import { ServiceStatus } from "@/components/super-admin/ServiceStatus";
 
 export default function SystemPage() {
   return (
-    <SuperAdminLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
             System Health & Performance
@@ -20,6 +18,5 @@ export default function SystemPage() {
         <ServiceStatus />
         <PerformanceCharts />
       </div>
-    </SuperAdminLayout>
   );
 }

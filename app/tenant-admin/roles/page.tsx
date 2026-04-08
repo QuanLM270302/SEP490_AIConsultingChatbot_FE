@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { getPermissionLabel } from "@/lib/permission-labels";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import {
   createTenantRole,
@@ -15,10 +16,20 @@ import {
   type RoleResponse,
 } from "@/lib/api/tenant-admin";
 import { Eye, Loader2, MoreVertical, Pencil, Plus, Shield, Trash2 } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
+import { getStoredUser } from "@/lib/auth-store";
+import {
+  mergeRolesWithCache,
+  readTenantRolesCache,
+  writeTenantRolesCache,
+} from "@/lib/tenant-roles-cache";
 
 type FilterMode = "all" | "custom" | "fixed";
 
 export default function TenantAdminRolesPage() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [filter, setFilter] = useState<FilterMode>("all");
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [permissions, setPermissions] = useState<{ code: string; name?: string }[]>([]);
@@ -31,11 +42,27 @@ export default function TenantAdminRolesPage() {
   const [detail, setDetail] = useState<RoleResponse | null>(null);
   const [editRole, setEditRole] = useState<RoleResponse | null>(null);
 
-  const fixedCodes = useMemo(() => new Set(["TENANT_ADMIN", "CONTENT_MANAGER", "EMPLOYEE"]), []);
+  const fixedCodes = useMemo(() => new Set(["TENANT_ADMIN", "EMPLOYEE"]), []);
 
-  const load = async () => {
+  /** Lưu snapshot đầy đủ (tab “Tất cả”) để sau đăng xuất vẫn khôi phục hiển thị. */
+  const persistFullCatalog = useCallback(async () => {
+    const tenantId = getStoredUser()?.tenantId;
+    if (!tenantId) return;
+    try {
+      const full = await getTenantRoles();
+      const cached = readTenantRolesCache(tenantId);
+      const merged = mergeRolesWithCache(full, cached, "all");
+      writeTenantRolesCache(tenantId, merged);
+    } catch {
+      /* bỏ qua — chỉ là bản sao phụ */
+    }
+  }, []);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const tenantId = getStoredUser()?.tenantId ?? null;
+    const cached = readTenantRolesCache(tenantId);
     try {
       const [list, perms] = await Promise.all([
         filter === "custom"
@@ -45,18 +72,37 @@ export default function TenantAdminRolesPage() {
             : getTenantRoles(),
         getTenantAvailablePermissions().catch(() => []),
       ]);
-      setRoles(list);
+      const merged = mergeRolesWithCache(list, cached, filter);
+      setRoles(merged);
+      if (tenantId && filter === "all") {
+        writeTenantRolesCache(tenantId, merged);
+      }
       setPermissions(perms);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Lỗi tải roles");
+      if (cached?.length) {
+        const fallback =
+          filter === "all"
+            ? cached
+            : filter === "custom"
+              ? cached.filter((r) => !fixedCodes.has((r.code ?? "").toUpperCase()))
+              : cached.filter((r) => fixedCodes.has((r.code ?? "").toUpperCase()));
+        setRoles(fallback);
+        setError(
+          language === "en"
+            ? `Cannot reach server — showing roles saved on this device. ${e instanceof Error ? `(${e.message})` : ""}`
+            : `Không kết nối được máy chủ — hiển thị vai trò đã lưu trên thiết bị. ${e instanceof Error ? `(${e.message})` : ""}`
+        );
+      } else {
+        setError(e instanceof Error ? e.message : "Lỗi tải roles");
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, language, fixedCodes]);
 
   useEffect(() => {
     void load();
-  }, [filter]);
+  }, [load]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -111,6 +157,7 @@ export default function TenantAdminRolesPage() {
     try {
       await deleteTenantRole(role.id);
       await load();
+      await persistFullCatalog();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Xóa role thất bại");
     } finally {
@@ -123,9 +170,9 @@ export default function TenantAdminRolesPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Roles & Permissions</h1>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t.rolesAndPermissions}</h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Quản lý fixed roles và custom roles trong tenant
+              {t.manageRolesDescription}
             </p>
           </div>
           <button
@@ -134,7 +181,7 @@ export default function TenantAdminRolesPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600"
           >
             <Plus className="h-4 w-4" />
-            Tạo custom role
+            {t.addCustomRole}
           </button>
         </div>
 
@@ -150,7 +197,7 @@ export default function TenantAdminRolesPage() {
                   : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               }`}
             >
-              {f === "all" ? "Tất cả" : f === "custom" ? "Custom roles" : "Fixed roles"}
+              {f === "all" ? t.all : f === "custom" ? t.customRoles : t.fixedRoles}
             </button>
           ))}
         </div>
@@ -159,7 +206,7 @@ export default function TenantAdminRolesPage() {
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12">
               <Loader2 className="h-5 w-5 animate-spin text-green-500" />
-              <span className="text-sm text-zinc-500">Đang tải roles…</span>
+              <span className="text-sm text-zinc-500">{t.loading}…</span>
             </div>
           ) : error ? (
             <div className="p-5 text-sm text-red-600 dark:text-red-400">{error}</div>
@@ -168,18 +215,18 @@ export default function TenantAdminRolesPage() {
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="border-b border-zinc-200 bg-zinc-50/60 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
                   <tr>
-                    <th className="px-6 py-4 font-medium">Role</th>
-                    <th className="px-6 py-4 font-medium">Code</th>
-                    <th className="px-6 py-4 font-medium">Users</th>
-                    <th className="px-6 py-4 font-medium">Type</th>
-                    <th className="px-6 py-4 font-medium text-right">Thao tác</th>
+                    <th className="px-6 py-4 font-medium">{t.roleLabel}</th>
+                    <th className="px-6 py-4 font-medium">{t.codeLabel}</th>
+                    <th className="px-6 py-4 font-medium">{t.usersCount}</th>
+                    <th className="px-6 py-4 font-medium">{t.typeLabel}</th>
+                    <th className="px-6 py-4 font-medium text-right">{t.thaoTac}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                   {roles.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
-                        Không có role nào.
+                        {t.noData}
                       </td>
                     </tr>
                   ) : (
@@ -189,7 +236,7 @@ export default function TenantAdminRolesPage() {
                         <tr key={role.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
                           <td className="px-6 py-4">
                             <p className="font-medium text-zinc-900 dark:text-white">{role.name ?? "—"}</p>
-                            <p className="text-xs text-zinc-500">{role.description ?? "Không có mô tả"}</p>
+                            <p className="text-xs text-zinc-500">{role.description ?? (language === "vi" ? "Không có mô tả" : "No description")}</p>
                           </td>
                           <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.code ?? "—"}</td>
                           <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.usersCount ?? 0}</td>
@@ -197,11 +244,11 @@ export default function TenantAdminRolesPage() {
                             {fixed ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700 ring-1 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-300">
                                 <Shield className="h-3 w-3" />
-                                Fixed
+                                {t.fixed}
                               </span>
                             ) : (
                               <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700 ring-1 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-300">
-                                Custom
+                                {t.custom}
                               </span>
                             )}
                           </td>
@@ -279,34 +326,176 @@ export default function TenantAdminRolesPage() {
           onSuccess={async () => {
             setCreateOpen(false);
             await load();
+            await persistFullCatalog();
           }}
         />
       )}
 
       {editRole && (
         <EditRoleModal
+          key={editRole.id}
           role={editRole}
           permissions={permissions}
           onClose={() => setEditRole(null)}
           onSuccess={async () => {
             setEditRole(null);
             await load();
+            await persistFullCatalog();
           }}
         />
       )}
 
       {detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-zinc-900/60" onClick={() => setDetail(null)} />
-          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Chi tiết role</h3>
-            <dl className="mt-4 space-y-2 text-sm">
-              <div><dt className="text-zinc-500">Name</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.name ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Code</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.code ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Description</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.description ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Users</dt><dd className="font-medium text-zinc-900 dark:text-white">{detail.usersCount ?? 0}</dd></div>
-            </dl>
-            <button type="button" onClick={() => setDetail(null)} className="mt-6 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200">Đóng</button>
+          <div className="absolute inset-0 bg-zinc-900/70 backdrop-blur-sm" onClick={() => setDetail(null)} />
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-zinc-900">
+            {/* HEADER */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 px-8 py-8 dark:from-emerald-600 dark:to-emerald-700">
+              <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+              <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+              <div className="relative flex items-start justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+                    <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">
+                      {detail.name ?? "—"}
+                    </h3>
+                    <p className="mt-1 text-sm text-emerald-50">Role Details</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDetail(null)}
+                  className="rounded-xl bg-white/20 p-2 text-white backdrop-blur-sm transition hover:bg-white/30"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* CONTENT - Card Based Layout */}
+            <div className="space-y-6 p-8">
+              {/* Stats Cards Row */}
+              <div className="grid gap-4 sm:grid-cols-3">
+                {/* Role Code Card */}
+                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-emerald-500/5 blur-2xl" />
+                  <div className="relative">
+                    <div className="mb-2 flex items-center gap-2">
+                      <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                      </svg>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Code
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                      {detail.code ?? "—"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Users Count Card */}
+                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-blue-500/5 blur-2xl" />
+                  <div className="relative">
+                    <div className="mb-2 flex items-center gap-2">
+                      <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Users
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                      {detail.usersCount ?? 0}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Status Card */}
+                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-purple-500/5 blur-2xl" />
+                  <div className="relative">
+                    <div className="mb-2 flex items-center gap-2">
+                      <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Status
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                      Active
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description Card */}
+              {detail.description && (
+                <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="mb-3 flex items-center gap-2">
+                    <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Description
+                    </h4>
+                  </div>
+                  <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    {detail.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Permissions Card */}
+              {detail.permissions && detail.permissions.length > 0 && (
+                <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="mb-4 flex items-center gap-2">
+                    <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Permissions
+                    </h4>
+                    <span className="ml-auto rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+                      {detail.permissions.length}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {detail.permissions.map((perm: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                        title={perm}
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {getPermissionLabel(perm, undefined, language === "en" ? "en" : "vi")}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* FOOTER */}
+            <div className="flex items-center justify-end border-t border-zinc-200 bg-zinc-50 px-8 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <button
+                type="button"
+                onClick={() => setDetail(null)}
+                className="rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-zinc-900/20 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:shadow-white/20 dark:hover:bg-zinc-100"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -318,30 +507,38 @@ function PermissionSelector({
   selected,
   allPermissions,
   onChange,
+  disabled,
 }: {
   selected: string[];
   allPermissions: { code: string; name?: string }[];
   onChange: (next: string[]) => void;
+  disabled?: boolean;
 }) {
+  const { language } = useLanguageStore();
+  const lang = language === "en" ? "en" : "vi";
   const toggle = (code: string) => {
+    if (disabled) return;
     onChange(selected.includes(code) ? selected.filter((p) => p !== code) : [...selected, code]);
   };
   return (
-    <div className="flex max-h-40 flex-wrap gap-2 overflow-auto rounded-xl border border-zinc-200 p-2 dark:border-zinc-700">
+    <div className="flex max-h-56 flex-wrap gap-2 overflow-auto rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
       {allPermissions.map((p) => {
         const active = selected.includes(p.code);
+        const label = getPermissionLabel(p.code, p.name, lang);
         return (
           <button
             key={p.code}
             type="button"
+            disabled={disabled}
             onClick={() => toggle(p.code)}
-            className={`rounded-full px-2.5 py-1 text-xs transition ${
+            title={p.code}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
               active
-                ? "bg-green-500 text-white"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-            }`}
+                ? "bg-emerald-500 text-white shadow-md shadow-emerald-600/35 ring-2 ring-emerald-300/60 dark:ring-emerald-400/40"
+                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+            } disabled:cursor-not-allowed disabled:opacity-50`}
           >
-            {p.name ?? p.code}
+            {label}
           </button>
         );
       })}
@@ -358,13 +555,15 @@ function CreateRoleModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [form, setForm] = useState<CreateRoleRequest>({ code: "", name: "", description: "", permissions: [] });
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.code.trim() || !form.name.trim()) {
-      alert("Code và tên role là bắt buộc.");
+      alert(language === "en" ? "Code and role name are required." : "Code và tên role là bắt buộc.");
       return;
     }
     setLoading(true);
@@ -377,7 +576,7 @@ function CreateRoleModal({
       });
       onSuccess();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Tạo role thất bại");
+      alert(e instanceof Error ? e.message : language === "en" ? "Failed to create role." : "Tạo role thất bại");
     } finally {
       setLoading(false);
     }
@@ -387,27 +586,39 @@ function CreateRoleModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo custom role</h3>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{t.addCustomRole}</h3>
         <form onSubmit={submit} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Code *</label>
+            <label className="block text-xs font-medium text-zinc-500">
+              {language === "en" ? "Code *" : "Mã *"}
+            </label>
             <input value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm uppercase dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" placeholder="HR_MANAGER" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Tên role *</label>
+            <label className="block text-xs font-medium text-zinc-500">{t.roleLabel} *</label>
             <input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" placeholder="HR Manager" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Mô tả</label>
+            <label className="block text-xs font-medium text-zinc-500">{t.description}</label>
             <textarea value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="mt-1 h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500">Permissions</label>
-            <PermissionSelector selected={form.permissions} allPermissions={permissions} onChange={(next) => setForm((p) => ({ ...p, permissions: next }))} />
+            <label className="mb-1 block text-xs font-medium text-zinc-500">
+              {language === "en" ? "Permissions" : "Quyền"}
+            </label>
+            <PermissionSelector
+              selected={form.permissions}
+              allPermissions={permissions}
+              onChange={(next) => setForm((p) => ({ ...p, permissions: next }))}
+            />
           </div>
           <div className="mt-6 flex gap-2">
-            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? "Đang tạo..." : "Tạo role"}</button>
-            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
+            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">
+              {loading ? (language === "en" ? "Creating…" : "Đang tạo…") : language === "en" ? "Create role" : "Tạo role"}
+            </button>
+            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
+              {t.cancel}
+            </button>
           </div>
         </form>
       </div>
@@ -426,23 +637,66 @@ function EditRoleModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [name, setName] = useState(role.name ?? "");
   const [description, setDescription] = useState(role.description ?? "");
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(role.permissions ?? []);
+  const [permsLoading, setPermsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  const permissionsForUi = useMemo(() => {
+    const codes = new Set(permissions.map((p) => p.code));
+    const extra = selectedPermissions
+      .filter((c) => !codes.has(c))
+      .map((code) => ({ code }));
+    return [...permissions, ...extra];
+  }, [permissions, selectedPermissions]);
+
+  useEffect(() => {
+    setName(role.name ?? "");
+    setDescription(role.description ?? "");
+  }, [role]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPermsLoading(true);
+    void getTenantRoleById(role.id)
+      .then((full) => {
+        if (cancelled) return;
+        setSelectedPermissions(Array.isArray(full.permissions) ? full.permissions : []);
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedPermissions(role.permissions ?? []);
+      })
+      .finally(() => {
+        if (!cancelled) setPermsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [role.id]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedPermissions.length === 0) {
+      alert(
+        language === "en"
+          ? "Choose at least one permission (server requires a non-empty list)."
+          : "Chọn ít nhất một quyền (máy chủ yêu cầu danh sách không rỗng)."
+      );
+      return;
+    }
     setLoading(true);
     try {
       await updateTenantRole(role.id, {
         name: name.trim(),
         description: description.trim() || undefined,
-        permissions: selectedPermissions.length ? selectedPermissions : undefined,
+        permissions: selectedPermissions,
       });
       onSuccess();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Cập nhật role thất bại");
+      alert(e instanceof Error ? e.message : language === "en" ? "Failed to update role." : "Cập nhật role thất bại");
     } finally {
       setLoading(false);
     }
@@ -452,26 +706,48 @@ function EditRoleModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Cập nhật custom role</h3>
-        <p className="mt-1 text-xs text-zinc-500">Code: {role.code ?? "—"} (không thể đổi)</p>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+          {language === "en" ? "Edit custom role" : "Sửa vai trò tùy chỉnh"}
+        </h3>
+        <p className="mt-1 text-xs text-zinc-500">
+          {language === "en" ? "Code" : "Mã"}: {role.code ?? "—"} (
+          {language === "en" ? "cannot change" : "không đổi được"})
+        </p>
         <form onSubmit={submit} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Tên role</label>
+            <label className="block text-xs font-medium text-zinc-500">{t.roleLabel}</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Mô tả</label>
+            <label className="block text-xs font-medium text-zinc-500">{language === "en" ? "Description" : "Mô tả"}</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">
-              Permissions mới (để trống nếu không đổi)
+              {language === "en"
+                ? "Permissions — currently granted are highlighted; tap to turn on or off"
+                : "Quyền — quyền đang gán được tô sáng; bấm để bật/tắt"}
             </label>
-            <PermissionSelector selected={selectedPermissions} allPermissions={permissions} onChange={setSelectedPermissions} />
+            {permsLoading ? (
+              <div className="flex items-center gap-2 rounded-xl border border-zinc-200 px-3 py-8 text-sm text-zinc-500 dark:border-zinc-700">
+                <Loader2 className="h-5 w-5 animate-spin text-green-500" />
+                {language === "en" ? "Loading current permissions…" : "Đang tải quyền hiện tại…"}
+              </div>
+            ) : (
+              <PermissionSelector
+                selected={selectedPermissions}
+                allPermissions={permissionsForUi}
+                onChange={setSelectedPermissions}
+              />
+            )}
           </div>
           <div className="mt-6 flex gap-2">
-            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? "Đang lưu..." : "Lưu thay đổi"}</button>
-            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
+            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">
+              {loading ? (language === "en" ? "Saving…" : "Đang lưu…") : t.save}
+            </button>
+            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
+              {t.cancel}
+            </button>
           </div>
         </form>
       </div>

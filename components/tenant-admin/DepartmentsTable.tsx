@@ -10,6 +10,8 @@ import {
   type DepartmentResponse,
   type UpdateDepartmentRequest,
 } from "@/lib/api/tenant-admin";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 export function DepartmentsTable({
   refreshKey = 0,
@@ -18,6 +20,8 @@ export function DepartmentsTable({
   refreshKey?: number;
   filter: "all" | "active";
 }) {
+  const { language } = useLanguageStore();
+  const t = translations[language];
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +40,13 @@ export function DepartmentsTable({
           filter === "active" ? await getTenantActiveDepartments() : await getTenantDepartments();
         setDepartments(data);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Lỗi tải danh sách");
+        setError(e instanceof Error ? e.message : t.errorLoadingData);
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [refreshKey, filter]);
+  }, [refreshKey, filter, t.errorLoadingData]);
 
   useEffect(() => {
     if (openMenuId == null) return;
@@ -78,7 +82,7 @@ export function DepartmentsTable({
   if (loading) {
     return (
       <div className="overflow-hidden rounded-3xl bg-white p-8 shadow-lg dark:bg-zinc-950">
-        <p className="text-sm text-zinc-500">Đang tải danh sách phòng ban…</p>
+        <p className="text-sm text-zinc-500">{t.loadingDepartments}</p>
       </div>
     );
   }
@@ -97,18 +101,18 @@ export function DepartmentsTable({
         <table className="min-w-full divide-y divide-zinc-100 dark:divide-zinc-900">
           <thead className="bg-zinc-50 dark:bg-zinc-900">
             <tr>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Department</th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Code</th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Employees</th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Status</th>
-              <th className="relative px-6 py-4"><span className="sr-only">Actions</span></th>
+              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.department}</th>
+              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.code}</th>
+              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.employees}</th>
+              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.status}</th>
+              <th className="relative px-6 py-4"><span className="sr-only">{t.actions}</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-900 dark:bg-zinc-950">
             {departments.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
-                  Chưa có phòng ban. Dữ liệu được tải từ server.
+                  {t.noDepartments}
                 </td>
               </tr>
             ) : (
@@ -120,10 +124,10 @@ export function DepartmentsTable({
                   <td className="whitespace-nowrap px-6 py-4">
                     <span
                       className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
-                        (dept.isActive ?? (filter === "active")) ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"
+                        (dept.isActive ?? (filter === "active")) ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-500/20 text-red-600 dark:text-red-400"
                       }`}
                     >
-                      {(dept.isActive ?? (filter === "active")) ? "Active" : "Inactive"}
+                      {(dept.isActive ?? (filter === "active")) ? t.active : t.inactive}
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right">
@@ -166,12 +170,12 @@ export function DepartmentsTable({
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              <Pencil className="h-4 w-4" /> Sửa
+              <Pencil className="h-4 w-4" /> {t.edit}
             </button>
             <button
               type="button"
               onClick={() => {
-                if (!confirm("Bạn có chắc muốn xóa phòng ban này?")) return;
+                if (!confirm(t.confirmDeleteDepartment)) return;
                 setActionLoadingId(openMenuId);
                 deleteTenantDepartment(openMenuId)
                   .then(async () => {
@@ -181,13 +185,13 @@ export function DepartmentsTable({
                     setOpenMenuId(null);
                     setMenuPos(null);
                   })
-                  .catch((e) => alert(e instanceof Error ? e.message : "Xóa thất bại"))
+                  .catch((e) => alert(e instanceof Error ? e.message : t.error))
                   .finally(() => setActionLoadingId(null));
               }}
               disabled={actionLoadingId === openMenuId}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
             >
-              <Trash2 className="h-4 w-4" /> {actionLoadingId === openMenuId ? "Đang xóa…" : "Xóa"}
+              <Trash2 className="h-4 w-4" /> {actionLoadingId === openMenuId ? t.deleting : t.delete}
             </button>
           </div>
         </>
@@ -210,6 +214,7 @@ export function DepartmentsTable({
             }
           }}
           loading={editLoading}
+          t={t}
         />
       )}
     </div>
@@ -221,11 +226,13 @@ function EditDepartmentModal({
   onClose,
   onSave,
   loading,
+  t,
 }: {
   dept: DepartmentResponse;
   onClose: () => void;
   onSave: (body: UpdateDepartmentRequest) => Promise<void>;
   loading: boolean;
+  t: typeof translations.vi;
 }) {
   const [code, setCode] = useState(dept.code ?? "");
   const [name, setName] = useState(dept.name ?? "");
@@ -247,10 +254,10 @@ function EditDepartmentModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Cập nhật phòng ban</h3>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{t.updateDepartment}</h3>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Code</label>
+            <label className="block text-xs font-medium text-zinc-500">{t.code}</label>
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -258,7 +265,7 @@ function EditDepartmentModal({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Tên</label>
+            <label className="block text-xs font-medium text-zinc-500">{t.name}</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -266,7 +273,7 @@ function EditDepartmentModal({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Mô tả</label>
+            <label className="block text-xs font-medium text-zinc-500">{t.description}</label>
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -275,7 +282,7 @@ function EditDepartmentModal({
           </div>
           <label className="flex items-center gap-2 pt-1 text-sm text-zinc-700 dark:text-zinc-200">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-green-500" />
-            Đang hoạt động
+            {t.active}
           </label>
           <div className="mt-6 flex gap-2">
             <button
@@ -283,14 +290,14 @@ function EditDepartmentModal({
               disabled={loading}
               className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-60"
             >
-              {loading ? "Đang lưu…" : "Lưu"}
+              {loading ? t.saving : t.save}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
             >
-              Hủy
+              {t.cancel}
             </button>
           </div>
         </form>

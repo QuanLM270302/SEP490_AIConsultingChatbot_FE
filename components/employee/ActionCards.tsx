@@ -10,7 +10,7 @@ export function ActionCards() {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       <Link
-        href="/employee/chatplatform"
+        href="/chatbot"
         className="group relative overflow-hidden rounded-3xl border-2 border-green-200 bg-linear-to-br from-green-50 to-white p-8 shadow-lg transition-all hover:border-green-400 hover:shadow-xl dark:border-green-900/50 dark:from-green-950/30 dark:to-zinc-950"
       >
         <div className="relative z-10">

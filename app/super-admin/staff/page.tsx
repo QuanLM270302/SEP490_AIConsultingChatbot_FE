@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SuperAdminLayout } from "@/components/super-admin/SuperAdminLayout";
 import {
   getStaffList,
   getStaffById,
@@ -13,8 +12,11 @@ import {
   type CreateStaffRequest,
 } from "@/lib/api/admin";
 import { UserPlus, MoreVertical, Eye, UserCheck, UserX, Trash2, Loader2, Search } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 export default function StaffManagementPage() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [list, setList] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export default function StaffManagementPage() {
     setError(null);
     getStaffList()
       .then(setList)
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải danh sách"))
+      .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load list" : "Lỗi tải danh sách"))
       .finally(() => setLoading(false));
   };
 
@@ -90,7 +92,7 @@ export default function StaffManagementPage() {
   };
 
   const handleDelete = (userId: string) => {
-    if (!confirm("Bạn có chắc muốn xóa tài khoản STAFF này?")) return;
+    if (!confirm(isEn ? "Are you sure you want to delete this STAFF account?" : "Bạn có chắc muốn xóa tài khoản nhân viên vận hành này?")) return;
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoading(userId);
@@ -117,15 +119,13 @@ export default function StaffManagementPage() {
     : list;
 
   return (
-    <SuperAdminLayout>
+    <>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-              Quản lý Staff
-            </h1>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{isEn ? "Staff Management" : "Quản lý nhân viên vận hành"}</h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Tạo, xem, kích hoạt / vô hiệu hóa, xóa tài khoản STAFF
+              {isEn ? "Create, view, activate/deactivate, and delete STAFF accounts" : "Tạo, xem, kích hoạt / vô hiệu hóa, xóa tài khoản nhân viên vận hành"}
             </p>
           </div>
           <button
@@ -134,7 +134,7 @@ export default function StaffManagementPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
           >
             <UserPlus className="h-4 w-4" />
-            Thêm Staff
+            {isEn ? "Add Staff" : "Thêm nhân viên"}
           </button>
         </div>
 
@@ -144,7 +144,7 @@ export default function StaffManagementPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
               <input
                 type="text"
-                placeholder="Tìm theo tên hoặc email..."
+                placeholder={isEn ? "Search by name or email..." : "Tìm theo tên hoặc thư điện tử..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-lg border-0 bg-zinc-50 py-2 pl-10 pr-4 text-sm text-zinc-900 ring-1 ring-inset ring-zinc-200 focus:ring-2 focus:ring-green-500 dark:bg-zinc-900/50 dark:text-white dark:ring-zinc-800"
@@ -155,7 +155,7 @@ export default function StaffManagementPage() {
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12">
               <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-              <span className="text-sm text-zinc-500">Đang tải…</span>
+              <span className="text-sm text-zinc-500">{isEn ? "Loading..." : "Đang tải…"}</span>
             </div>
           ) : error ? (
             <div className="p-6 text-sm text-red-600 dark:text-red-400">{error}</div>
@@ -164,17 +164,17 @@ export default function StaffManagementPage() {
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="border-b border-zinc-200 bg-zinc-50/50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
                   <tr>
-                    <th className="px-6 py-4 font-medium">Tên / Email</th>
-                    <th className="px-6 py-4 font-medium">SĐT</th>
-                    <th className="px-6 py-4 font-medium">Trạng thái</th>
-                    <th className="px-6 py-4 font-medium text-right">Thao tác</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Name / Email" : "Tên / thư điện tử"}</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Phone" : "SĐT"}</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Status" : "Trạng thái"}</th>
+                    <th className="px-6 py-4 font-medium text-right">{isEn ? "Actions" : "Thao tác"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-6 py-8 text-center text-sm text-zinc-500">
-                        Chưa có staff. Bấm &quot;Thêm Staff&quot; để tạo.
+                        {isEn ? 'No staff yet. Click "Add Staff" to create one.' : 'Chưa có nhân viên vận hành. Bấm "Thêm nhân viên" để tạo.'}
                       </td>
                     </tr>
                   ) : (
@@ -196,7 +196,7 @@ export default function StaffManagementPage() {
                             }`}
                           >
                             <span className={`h-1.5 w-1.5 rounded-full ${staff.isActive ? "bg-green-500" : "bg-zinc-400"}`} />
-                            {staff.isActive ? "Active" : "Vô hiệu hóa"}
+                            {staff.isActive ? "Active" : isEn ? "Inactive" : "Vô hiệu hóa"}
                           </span>
                         </td>
                         <td className="relative px-6 py-4 text-right">
@@ -235,17 +235,120 @@ export default function StaffManagementPage() {
 
       {detailUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-zinc-900/60" onClick={() => setDetailUser(null)} />
-          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Chi tiết Staff</h3>
-            <dl className="mt-4 space-y-2 text-sm">
-              <div><dt className="text-zinc-500">Họ tên</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailUser.fullName ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Email</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailUser.email ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">SĐT</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailUser.phoneNumber ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Trạng thái</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailUser.isActive ? "Active" : "Vô hiệu hóa"}</dd></div>
-              <div><dt className="text-zinc-500">Ngày tạo</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailUser.createdAt ? new Date(detailUser.createdAt).toLocaleDateString("vi-VN") : "—"}</dd></div>
-            </dl>
-            <button type="button" onClick={() => setDetailUser(null)} className="mt-6 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200">Đóng</button>
+          <div className="absolute inset-0 bg-zinc-900/70 backdrop-blur-sm" onClick={() => setDetailUser(null)} />
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-zinc-900">
+            {/* HEADER */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 px-8 py-8 dark:from-indigo-600 dark:to-indigo-700">
+              <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+              <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+              <div className="relative flex items-start justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+                    <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">
+                      {detailUser.fullName ?? "Staff Member"}
+                    </h3>
+                    <div className="mt-2 flex items-center gap-2">
+                      <p className="text-sm text-indigo-50">Staff Details</p>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm ${
+                        detailUser.isActive ? 'bg-green-500/30 text-white' : 'bg-red-500/30 text-white'
+                      }`}>
+                        {detailUser.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDetailUser(null)}
+                  className="rounded-xl bg-white/20 p-2 text-white backdrop-blur-sm transition hover:bg-white/30"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* CONTENT */}
+            <div className="space-y-6 p-8">
+              {/* Contact Info Cards */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Email Card */}
+                <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="mb-3 flex items-center gap-2">
+                    <svg className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Email
+                    </h4>
+                  </div>
+                  <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                    {detailUser.email ?? "—"}
+                  </p>
+                </div>
+
+                {/* Phone Card */}
+                <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="mb-3 flex items-center gap-2">
+                    <svg className="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Phone
+                    </h4>
+                  </div>
+                  <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                    {detailUser.phoneNumber ?? "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status & Date Card */}
+              <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                <div className="mb-4 flex items-center gap-2">
+                  <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Account Information
+                  </h4>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Status</span>
+                    <p className={`mt-1 text-sm font-semibold ${
+                      detailUser.isActive 
+                        ? 'text-emerald-600 dark:text-emerald-400' 
+                        : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      {detailUser.isActive ? "Active" : "Inactive"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Created Date</span>
+                    <p className="mt-1 text-sm font-semibold text-zinc-900 dark:text-white">
+                      {detailUser.createdAt ? new Date(detailUser.createdAt).toLocaleDateString("vi-VN") : "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* FOOTER */}
+            <div className="flex items-center justify-end border-t border-zinc-200 bg-zinc-50 px-8 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <button
+                type="button"
+                onClick={() => setDetailUser(null)}
+                className="rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-zinc-900/20 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:shadow-white/20 dark:hover:bg-zinc-100"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -268,7 +371,7 @@ export default function StaffManagementPage() {
               onClick={() => handleViewDetail(openMenuId)}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              <Eye className="h-4 w-4" /> Xem chi tiết
+              <Eye className="h-4 w-4" /> {isEn ? "View details" : "Xem chi tiết"}
             </button>
             {list.find((s) => s.id === openMenuId)?.isActive ? (
               <button
@@ -277,7 +380,7 @@ export default function StaffManagementPage() {
                 disabled={!!actionLoading}
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-60 dark:text-amber-400 dark:hover:bg-amber-950/30"
               >
-                <UserX className="h-4 w-4" /> Vô hiệu hóa
+                <UserX className="h-4 w-4" /> {isEn ? "Deactivate" : "Vô hiệu hóa"}
               </button>
             ) : (
               <button
@@ -286,7 +389,7 @@ export default function StaffManagementPage() {
                 disabled={!!actionLoading}
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-green-700 hover:bg-green-50 disabled:opacity-60 dark:text-green-400 dark:hover:bg-green-950/30"
               >
-                <UserCheck className="h-4 w-4" /> Kích hoạt
+                <UserCheck className="h-4 w-4" /> {isEn ? "Activate" : "Kích hoạt"}
               </button>
             )}
             <button
@@ -295,12 +398,12 @@ export default function StaffManagementPage() {
               disabled={!!actionLoading}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
             >
-              <Trash2 className="h-4 w-4" /> Xóa
+              <Trash2 className="h-4 w-4" /> {isEn ? "Delete" : "Xóa"}
             </button>
           </div>
         </>
       )}
-    </SuperAdminLayout>
+    </>
   );
 }
 
@@ -328,7 +431,7 @@ function CreateStaffModal({ onClose, onSuccess }: { onClose: () => void; onSucce
       }
       onSuccess();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Tạo staff thất bại");
+      alert(e instanceof Error ? e.message : "Tạo tài khoản nhân viên vận hành thất bại");
     } finally {
       setLoading(false);
     }
@@ -338,7 +441,7 @@ function CreateStaffModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo tài khoản STAFF</h3>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo tài khoản nhân viên vận hành</h3>
         <p className="mt-1 text-xs text-zinc-500">Tạo mới tài khoản nhân viên để quản trị hệ thống.</p>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>

@@ -10,6 +10,8 @@ interface CreateUserModalProps {
   onSuccess: () => void;
 }
 
+const SYSTEM_ROLES_TO_EXCLUDE = ['TENANT_ADMIN', 'SUPER_ADMIN', 'STAFF'];
+
 export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalProps) {
   const [fullName, setFullName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -45,7 +47,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim() || !contactEmail.trim()) {
-      alert("Họ tên và email không được để trống.");
+      alert("Họ tên và thư điện tử không được để trống.");
       return;
     }
     if (roleId === "" || roleId === undefined) {
@@ -54,18 +56,19 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
     }
     setLoading(true);
     try {
+      const cleanPhone = phoneNumber.replace(/-/g, '');
       const body: CreateUserRequest = {
         fullName: fullName.trim(),
         contactEmail: contactEmail.trim(),
         roleId: Number(roleId),
       };
-      if (phoneNumber.trim()) body.phoneNumber = phoneNumber.trim();
+      if (cleanPhone.trim()) body.phoneNumber = cleanPhone.trim();
       if (departmentId !== "") body.departmentId = Number(departmentId);
       await createTenantUser(body);
       onSuccess();
       onClose();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Tạo user thất bại");
+      alert(e instanceof Error ? e.message : "Tạo người dùng thất bại");
     } finally {
       setLoading(false);
     }
@@ -91,7 +94,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Email (contact) *</label>
+            <label className="block text-xs font-medium text-zinc-500">Thư điện tử (liên hệ) *</label>
             <input
               type="email"
               value={contactEmail}
@@ -108,6 +111,9 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
               onChange={(e) => setPhoneNumber(e.target.value)}
               className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
             />
+            <p className="mt-1 text-xs text-zinc-500">
+              Định dạng: 0xxxxxxxxx hoặc +84xxxxxxxxx (không dùng dấu gạch ngang)
+            </p>
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-500">Vai trò *</label>
@@ -118,7 +124,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
               className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
             >
               <option value="">-- Chọn --</option>
-              {roles.map((r) => (
+              {roles.filter((r) => !SYSTEM_ROLES_TO_EXCLUDE.some((s) => r.code?.includes(s))).map((r) => (
                 <option key={r.id} value={r.id}>{r.name ?? r.code ?? r.id}</option>
               ))}
             </select>
@@ -138,7 +144,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
           </div>
           <div className="mt-6 flex gap-2">
             <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo user"}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo người dùng"}
             </button>
             <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
               Hủy

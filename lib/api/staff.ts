@@ -3,7 +3,14 @@ import { STAFF_BASE } from "./config";
 
 export type TenantStatus = "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED";
 
-export type TransactionStatus = "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
+export type TransactionStatus =
+  | "PENDING"
+  | "COMPLETED"
+  | "FAILED"
+  | "REFUNDED"
+  | "SUCCESS"
+  | "CANCELLED"
+  | "CANCELED";
 
 export interface Transaction {
   id: string;
@@ -40,14 +47,42 @@ export interface Tenant {
   updatedAt?: string;
 }
 
+export type StaffSubscriptionStatus =
+  | "ACTIVE"
+  | "TRIAL"
+  | "EXPIRED"
+  | "CANCELLED"
+  | "CANCELED"
+  | "PENDING";
+
+export interface StaffSubscription {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  tenantEmail?: string;
+  tier?: string;
+  planName?: string;
+  status?: StaffSubscriptionStatus | string;
+  subscriptionCode?: string;
+  startedAt?: string;
+  endedAt?: string;
+  autoRenew?: boolean;
+}
+
 export interface StaffDashboardStats {
   tenants: {
     total: number;
     active: number;
     pending: number;
     suspended: number;
+    /** When BE returns tenant analytics breakdown */
+    rejected?: number;
     activePercentage?: number;
   };
+  /**
+   * Staff dashboard: same as `tenants.active` (active organizations), not platform user count.
+   * Prefer parsing via `parsePlatformDashboardJson` in `lib/api/platform-dashboard.ts`.
+   */
   totalUsers: number;
   subscriptions: { total: number };
   totalDocuments: number;
@@ -176,4 +211,50 @@ export async function getTransactionsByTenant(tenantId: string): Promise<Transac
   const res = await fetchWithAuth(`${STAFF_BASE}/transactions/tenants/${tenantId}`);
   if (!res.ok) throw new Error("Không tải được giao dịch của tenant");
   return res.json();
+}
+
+export async function getStaffSubscriptions(): Promise<StaffSubscription[]> {
+  const res = await fetchWithAuth(`${STAFF_BASE}/subscriptions`);
+  if (!res.ok) throw new Error("Không tải được danh sách subscription");
+  const raw = await res.json();
+  const rows = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.items)
+      ? raw.items
+      : [];
+  return rows.map((item: any, idx: number) => ({
+    id: String(item?.id ?? item?.subscriptionId ?? idx),
+    tenantId: String(item?.tenantId ?? item?.tenant?.id ?? ""),
+    tenantName: String(item?.tenantName ?? item?.tenant?.name ?? "—"),
+    tenantEmail:
+      typeof item?.tenantEmail === "string"
+        ? item.tenantEmail
+        : typeof item?.tenant?.contactEmail === "string"
+          ? item.tenant.contactEmail
+          : undefined,
+    tier:
+      typeof item?.tier === "string"
+        ? item.tier
+        : typeof item?.subscriptionTier === "string"
+          ? item.subscriptionTier
+          : undefined,
+    planName:
+      typeof item?.planName === "string"
+        ? item.planName
+        : typeof item?.plan?.name === "string"
+          ? item.plan.name
+          : undefined,
+    status: typeof item?.status === "string" ? item.status : undefined,
+    subscriptionCode:
+      typeof item?.subscriptionCode === "string"
+        ? item.subscriptionCode
+        : typeof item?.code === "string"
+          ? item.code
+          : typeof item?.subscriptionId === "string"
+            ? item.subscriptionId
+            : undefined,
+    startedAt: typeof item?.startedAt === "string" ? item.startedAt : undefined,
+    endedAt: typeof item?.endedAt === "string" ? item.endedAt : undefined,
+    autoRenew: typeof item?.autoRenew === "boolean" ? item.autoRenew : undefined,
+  }));
 }

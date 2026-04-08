@@ -1,1014 +1,427 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { AppHeader } from "@/components/layout/AppHeader";
 import {
-  Building2,
-  Users,
-  FileText,
+  Activity,
+  AlertCircle,
+  CheckCircle,
+  Clock,
   CreditCard,
-  ClipboardCheck,
-  PauseCircle,
-  PlayCircle,
-  BarChart3,
+  Database,
+  FileText,
   Loader2,
-  Eye,
-  Trash2,
-  X,
-  DollarSign,
-  Bot,
+  MessageSquare,
+  PieChart,
 } from "lucide-react";
 import {
-  getStaffDashboard,
-  getTenants,
-  getTenantById,
-  approveTenant,
-  suspendTenant,
-  activateTenant,
-  rejectTenant,
-  deleteTenant,
-  getTransactions,
-  getTransactionById,
-  type Tenant,
-  type TenantStatus,
-  type StaffDashboardStats,
-  type Transaction,
-  type TransactionStatus,
-} from "@/lib/api/staff";
-
-const statusLabel: Record<TenantStatus, string> = {
-  PENDING: "Chờ duyệt",
-  ACTIVE: "Đang hoạt động",
-  REJECTED: "Từ chối",
-  SUSPENDED: "Tạm ngưng",
-};
-
-const statusColor: Record<TenantStatus, string> = {
-  PENDING: "bg-amber-500/20 text-amber-700 dark:text-amber-400",
-  ACTIVE: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
-  REJECTED: "bg-red-500/20 text-red-700 dark:text-red-400",
-  SUSPENDED: "bg-zinc-500/20 text-zinc-600 dark:text-zinc-400",
-};
-
-const transactionStatusLabel: Record<TransactionStatus, string> = {
-  PENDING: "Chờ xử lý",
-  COMPLETED: "Hoàn thành",
-  FAILED: "Thất bại",
-  REFUNDED: "Hoàn tiền",
-};
-
-const transactionStatusColor: Record<TransactionStatus, string> = {
-  PENDING: "bg-amber-500/20 text-amber-700 dark:text-amber-400",
-  COMPLETED: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
-  FAILED: "bg-red-500/20 text-red-700 dark:text-red-400",
-  REFUNDED: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
-};
+  fetchPlatformDashboard,
+  parsePlatformDashboardJson,
+  type ParsedPlatformDashboard,
+} from "@/lib/api/platform-dashboard";
+import { getStaffSubscriptions, type StaffSubscription } from "@/lib/api/staff";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
+import {
+  formatCheckedAt,
+  formatCompactInt,
+  formatUptimeSeconds,
+} from "@/components/super-admin/dashboard-chart-utils";
 
 export default function StaffDashboardPage() {
-  const [stats, setStats] = useState<StaffDashboardStats | null>(null);
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  const [parsed, setParsed] = useState<ParsedPlatformDashboard | null>(null);
+  const [subs, setSubs] = useState<StaffSubscription[]>([]);
+  const [subsLoading, setSubsLoading] = useState(true);
+  const [subsError, setSubsError] = useState<string | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [tenantsLoading, setTenantsLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<TenantStatus | "ALL">("ALL");
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [rejectTenantId, setRejectTenantId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleteTenantId, setDeleteTenantId] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [transactionsLoading, setTransactionsLoading] = useState(true);
-  const [transactionStatusFilter, setTransactionStatusFilter] = useState<TransactionStatus | "ALL">("ALL");
-  const [transactionDetailModalOpen, setTransactionDetailModalOpen] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
-  const loadDashboard = () => {
+  const loadDashboard = useCallback(() => {
     setStatsLoading(true);
     setError(null);
-    getStaffDashboard()
-      .then(setStats)
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải thống kê"))
+    void fetchPlatformDashboard(true)
+      .then(({ ok, status, data }) => {
+        if (!ok) {
+          if (status === 401) throw new Error(language === "en" ? "Session expired. Please login again." : "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+          if (status === 403) throw new Error(language === "en" ? "You do not have permission to view this dashboard." : "Bạn không có quyền xem dashboard này.");
+          if (status >= 500) throw new Error(language === "en" ? "Server error. Please retry." : "Lỗi máy chủ. Vui lòng thử lại.");
+          throw new Error(t.errorLoadingData);
+        }
+        setParsed(parsePlatformDashboardJson(true, data));
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : t.error);
+        setParsed(null);
+      })
       .finally(() => setStatsLoading(false));
-  };
-
-  const loadTenants = () => {
-    setTenantsLoading(true);
-    setError(null);
-    getTenants()
-      .then(setTenants)
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải danh sách tenant"))
-      .finally(() => setTenantsLoading(false));
-  };
-
-  const loadTransactions = () => {
-    setTransactionsLoading(true);
-    setError(null);
-    getTransactions()
-      .then(setTransactions)
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải danh sách giao dịch"))
-      .finally(() => setTransactionsLoading(false));
-  };
+  }, [language, t.error, t.errorLoadingData]);
 
   useEffect(() => {
-    loadDashboard();
-    loadTenants();
-    loadTransactions();
-  }, []);
-
-  const handleApprove = (tenantId: string) => {
-    setActionLoading(tenantId);
-    approveTenant(tenantId)
-      .then(() => {
-        loadTenants();
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
         loadDashboard();
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi"))
-      .finally(() => setActionLoading(null));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      setSubsLoading(true);
+      setSubsError(null);
+      void getStaffSubscriptions()
+        .then((data) => {
+          if (!cancelled) {
+            setSubs(data);
+          }
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            setSubsError(e instanceof Error ? e.message : language === "en" ? "Failed to load subscriptions" : "Không tải được subscriptions");
+            setSubs([]);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setSubsLoading(false);
+          }
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
+  const llmRows = parsed
+    ? [
+        { key: "tr", label: language === "en" ? "Total requests" : "Tổng request", value: parsed.llmUsage.totalRequests },
+        { key: "rm", label: language === "en" ? "Requests (this month)" : "Request tháng này", value: parsed.llmUsage.requestsThisMonth },
+        { key: "tt", label: language === "en" ? "Total tokens" : "Tổng token", value: parsed.llmUsage.totalTokensUsed },
+        { key: "tm", label: language === "en" ? "Tokens (this month)" : "Token tháng này", value: parsed.llmUsage.tokensThisMonth },
+      ]
+    : [];
+  const llmMax = Math.max(...llmRows.map((r) => r.value), 1);
+
+  const docsBars = parsed
+    ? [
+        {
+          key: "doc",
+          label: language === "en" ? "Documents" : "Tài liệu",
+          value: parsed.documents.totalDocuments,
+          icon: FileText,
+          hint: language === "en" ? "Files" : "Tệp",
+        },
+        {
+          key: "chunk",
+          label: language === "en" ? "Chunks" : "Chunk",
+          value: parsed.documents.totalChunks,
+          icon: Database,
+          hint: language === "en" ? "Indexed chunks" : "Chunk đã lập chỉ mục",
+        },
+      ]
+    : [];
+  const docsMax = Math.max(...docsBars.map((b) => b.value), 1);
+  const tenantRows = parsed
+    ? [
+        { key: "active", name: language === "en" ? "Active" : "Hoạt động", count: parsed.tenants.active, color: "bg-emerald-500" },
+        { key: "pending", name: language === "en" ? "Pending" : "Chờ duyệt", count: parsed.tenants.pending, color: "bg-amber-500" },
+        { key: "suspended", name: language === "en" ? "Suspended" : "Tạm ngưng", count: parsed.tenants.suspended, color: "bg-zinc-500" },
+        { key: "rejected", name: language === "en" ? "Rejected" : "Từ chối", count: parsed.tenants.rejected, color: "bg-red-500" },
+      ]
+    : [];
+  const tenantSum = tenantRows.reduce((s, x) => s + x.count, 0);
+  const planCodeOrder = ["TRIAL", "STARTER", "STANDARD", "ENTERPRISE"] as const;
+  type PlanCode = (typeof planCodeOrder)[number];
+  const viPlanMap: Record<string, string> = {
+    TRIAL: "Dùng thử",
+    STARTER: "Khởi đầu",
+    STANDARD: "Tiêu chuẩn",
+    ENTERPRISE: "Doanh nghiệp",
   };
-
-  const handleSuspend = (tenantId: string) => {
-    setActionLoading(tenantId);
-    suspendTenant(tenantId)
-      .then(() => {
-        loadTenants();
-        loadDashboard();
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi"))
-      .finally(() => setActionLoading(null));
+  const enPlanMap: Record<string, string> = {
+    TRIAL: "Trial",
+    STARTER: "Starter",
+    STANDARD: "Standard",
+    ENTERPRISE: "Enterprise",
   };
-
-  const handleActivate = (tenantId: string) => {
-    setActionLoading(tenantId);
-    activateTenant(tenantId)
-      .then(() => {
-        loadTenants();
-        loadDashboard();
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi"))
-      .finally(() => setActionLoading(null));
+  const isActiveSub = (status?: string) => {
+    const x = (status || "").toUpperCase();
+    return x === "ACTIVE" || x === "TRIAL";
   };
-
-  const openRejectModal = (tenantId: string) => {
-    setRejectTenantId(tenantId);
-    setRejectReason("");
-    setRejectModalOpen(true);
-  };
-
-  const handleReject = async () => {
-    if (!rejectTenantId || !rejectReason.trim()) {
-      setError("Vui lòng nhập lý do từ chối");
-      return;
-    }
-    
-    setActionLoading(rejectTenantId);
-    setError(null);
-    
-    try {
-      console.log("Rejecting tenant:", rejectTenantId, "with reason:", rejectReason);
-      await rejectTenant(rejectTenantId, rejectReason);
-      console.log("Reject successful");
-      
-      // Reload data
-      await Promise.all([loadTenants(), loadDashboard()]);
-      
-      // Close modal
-      setRejectModalOpen(false);
-      setRejectTenantId(null);
-      setRejectReason("");
-    } catch (e) {
-      console.error("Reject error:", e);
-      setError(e instanceof Error ? e.message : "Lỗi khi từ chối tenant");
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const openDetailModal = async (tenantId: string) => {
-    setDetailModalOpen(true);
-    setSelectedTenant(null);
-    try {
-      const tenant = await getTenantById(tenantId);
-      setSelectedTenant(tenant);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Không tải được chi tiết tenant");
-      setDetailModalOpen(false);
-    }
-  };
-
-  const openDeleteModal = (tenantId: string) => {
-    setDeleteTenantId(tenantId);
-    setDeleteModalOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTenantId) return;
-    
-    setActionLoading(deleteTenantId);
-    setError(null);
-    
-    try {
-      await deleteTenant(deleteTenantId);
-      await Promise.all([loadTenants(), loadDashboard()]);
-      setDeleteModalOpen(false);
-      setDeleteTenantId(null);
-    } catch (e) {
-      console.error("Delete error:", e);
-      setError(e instanceof Error ? e.message : "Lỗi khi xóa tenant");
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const openTransactionDetailModal = async (transactionId: string) => {
-    setTransactionDetailModalOpen(true);
-    setSelectedTransaction(null);
-    try {
-      const transaction = await getTransactionById(transactionId);
-      setSelectedTransaction(transaction);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Không tải được chi tiết giao dịch");
-      setTransactionDetailModalOpen(false);
-    }
-  };
-
-  const filteredTransactions =
-    transactionStatusFilter === "ALL"
-      ? transactions
-      : transactions.filter((t) => t.status === transactionStatusFilter);
-
-  const filteredTenants =
-    statusFilter === "ALL"
-      ? tenants
-      : tenants.filter((t) => t.status === statusFilter);
+  const byPlan = new Map<string, number>();
+  const isPlanCode = (value: string): value is PlanCode =>
+    (planCodeOrder as readonly string[]).includes(value);
+  planCodeOrder.forEach((code) => byPlan.set(code, 0));
+  subs.forEach((s) => {
+    const code = (s.tier || "").toUpperCase();
+    if (!isPlanCode(code)) return;
+    if (isActiveSub(s.status)) byPlan.set(code, (byPlan.get(code) || 0) + 1);
+  });
+  const subChartRows = planCodeOrder.map((code) => ({
+    code,
+    label: language === "en" ? enPlanMap[code] : viPlanMap[code],
+    active: byPlan.get(code) || 0,
+  }));
+  const maxSubActive = Math.max(...subChartRows.map((x) => x.active), 1);
+  const totalActiveSubs = subChartRows.reduce((s, x) => s + x.active, 0);
+  const systemLabel =
+    parsed?.systemStatus === "Healthy"
+      ? t.healthy
+      : parsed?.systemStatus === "Unhealthy"
+        ? t.unhealthy
+        : (parsed?.system.statusLabel || parsed?.systemStatusLabelRaw || "").trim() || t.unknown;
 
   return (
-    <div className="flex min-h-screen flex-col bg-linear-to-br from-zinc-100 via-white to-zinc-100 text-zinc-900 dark:from-zinc-900 dark:via-black dark:to-zinc-900">
-      <AppHeader />
-      <main className="flex-1 px-4 py-10 sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-6xl space-y-10">
-          {/* Header */}
-          <section className="overflow-hidden rounded-3xl bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-500 p-6 text-white shadow-xl shadow-emerald-500/30 dark:shadow-emerald-900/40">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Staff Dashboard
-              </h1>
-              <p className="mt-1 max-w-xl text-sm text-emerald-50/90">
-                Trung tâm điều phối cho đội ngũ Staff: phê duyệt tenant, quản lý subscription và theo dõi chỉ số thống kê toàn nền tảng.
-              </p>
-              </div>
-              <Link
-                href="/chatbot"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/30 hover:bg-white/30"
-              >
-                <Bot className="h-4 w-4" />
-                Mở AI Chatbot
-              </Link>
-            </div>
-          </section>
-
-          {/* 1. Chỉ số thống kê (on dashboard) */}
-          <section className="space-y-4">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-emerald-500" />
-              Chỉ số thống kê
-            </h2>
-            {statsLoading ? (
-              <div className="flex items-center justify-center gap-2 rounded-3xl bg-white p-8 dark:bg-zinc-950">
-                <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
-                <span className="text-sm text-zinc-500">Đang tải…</span>
-              </div>
-            ) : stats ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                  icon={Building2}
-                  label="Tổng tenants"
-                  value={stats.tenants.total}
-                />
-                <StatCard
-                  icon={ClipboardCheck}
-                  label="Chờ duyệt"
-                  value={stats.tenants.pending}
-                  accent="amber"
-                />
-                <StatCard
-                  icon={PlayCircle}
-                  label="Đang hoạt động"
-                  value={stats.tenants.active}
-                  accent="emerald"
-                />
-                <StatCard
-                  icon={PauseCircle}
-                  label="Tạm ngưng"
-                  value={stats.tenants.suspended}
-                  accent="zinc"
-                />
-                <StatCard
-                  icon={Users}
-                  label="Tổng users"
-                  value={stats.totalUsers}
-                />
-                <StatCard
-                  icon={CreditCard}
-                  label="Subscriptions"
-                  value={stats.subscriptions.total}
-                />
-                <StatCard
-                  icon={FileText}
-                  label="Tài liệu"
-                  value={stats.totalDocuments}
-                />
-              </div>
-            ) : (
-              <div className="rounded-3xl bg-white p-6 text-center text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-                {error || "Không có dữ liệu. Kiểm tra kết nối API."}
-              </div>
-            )}
-          </section>
-
-          {/* 2. Phê duyệt tenant */}
-          <section className="space-y-4">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5 text-emerald-500" />
-              Phê duyệt tenant
-            </h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Xem và duyệt yêu cầu đăng ký tenant; phê duyệt, tạm ngưng hoặc kích hoạt lại.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(["ALL", "PENDING", "ACTIVE", "REJECTED", "SUSPENDED"] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setStatusFilter(s)}
-                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                    statusFilter === s
-                      ? "bg-emerald-500 text-white"
-                      : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                  }`}
-                >
-                  {s === "ALL" ? "Tất cả" : statusLabel[s]}
-                </button>
-              ))}
-            </div>
-            {tenantsLoading ? (
-              <div className="flex items-center justify-center gap-2 rounded-3xl bg-white p-8 dark:bg-zinc-950">
-                <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
-                <span className="text-sm text-zinc-500">Đang tải danh sách…</span>
-              </div>
-            ) : filteredTenants.length === 0 ? (
-              <div className="rounded-3xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-                Không có tenant nào.
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/50">
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Tên / Email</th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Trạng thái</th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTenants.map((t) => (
-                        <tr
-                          key={t.id}
-                          className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
-                        >
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-zinc-900 dark:text-zinc-50">{t.name}</div>
-                            <div className="text-xs text-zinc-500">{t.contactEmail}</div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[t.status]}`}
-                            >
-                              {statusLabel[t.status]}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              {/* View Detail Button - Always visible */}
-                              <button
-                                type="button"
-                                onClick={() => openDetailModal(t.id)}
-                                className="inline-flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600"
-                                title="Xem chi tiết"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                              </button>
-
-                              {/* Status-specific actions */}
-                              {t.status === "PENDING" && (
-                                <>
-                                  <button
-                                    type="button"
-                                    disabled={actionLoading === t.id}
-                                    onClick={() => handleApprove(t.id)}
-                                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
-                                  >
-                                    {actionLoading === t.id ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : null}
-                                    Phê duyệt
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={actionLoading === t.id}
-                                    onClick={() => openRejectModal(t.id)}
-                                    className="inline-flex items-center gap-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600 disabled:opacity-50"
-                                  >
-                                    Từ chối
-                                  </button>
-                                </>
-                              )}
-                              {t.status === "ACTIVE" && (
-                                <button
-                                  type="button"
-                                  disabled={actionLoading === t.id}
-                                  onClick={() => handleSuspend(t.id)}
-                                  className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
-                                >
-                                  {actionLoading === t.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : null}
-                                  Tạm ngưng
-                                </button>
-                              )}
-                              {t.status === "SUSPENDED" && (
-                                <button
-                                  type="button"
-                                  disabled={actionLoading === t.id}
-                                  onClick={() => handleActivate(t.id)}
-                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
-                                >
-                                  {actionLoading === t.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : null}
-                                  Kích hoạt lại
-                                </button>
-                              )}
-
-                              {/* Delete Button - Always visible */}
-                              <button
-                                type="button"
-                                onClick={() => openDeleteModal(t.id)}
-                                className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
-                                title="Xóa tenant"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* 3. Quản lý subscription */}
-          <section className="space-y-4">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-emerald-500" />
-              Quản lý subscription
-            </h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Xem tenant và gói subscription đang gán. Gán gói phù hợp sau khi tenant được duyệt.
-            </p>
-            {tenantsLoading ? (
-              <div className="flex items-center justify-center gap-2 rounded-3xl bg-white p-8 dark:bg-zinc-950">
-                <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/50">
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Tenant</th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Trạng thái</th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Gói subscription</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tenants.map((t) => (
-                        <tr
-                          key={t.id}
-                          className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
-                        >
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-zinc-900 dark:text-zinc-50">{t.name}</div>
-                            <div className="text-xs text-zinc-500">{t.contactEmail}</div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[t.status]}`}
-                            >
-                              {statusLabel[t.status]}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                            {t.subscriptionId ? (
-                              <span className="text-xs font-mono">{t.subscriptionId}</span>
-                            ) : (
-                              <span className="text-zinc-400 dark:text-zinc-500">Chưa gán</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {tenants.length === 0 && (
-                  <div className="p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                    Chưa có tenant. Gán gói subscription sẽ thực hiện khi backend hỗ trợ API gán gói cho tenant.
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-
-          {/* 4. Transaction Management */}
-          <section className="space-y-4">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-emerald-500" />
-              Quản lý giao dịch thanh toán
-            </h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Quản lý giao dịch thanh toán của tenants (STAFF).
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(["ALL", "PENDING", "COMPLETED", "FAILED", "REFUNDED"] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setTransactionStatusFilter(s)}
-                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                    transactionStatusFilter === s
-                      ? "bg-emerald-500 text-white"
-                      : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                  }`}
-                >
-                  {s === "ALL" ? "Tất cả" : transactionStatusLabel[s]}
-                </button>
-              ))}
-            </div>
-            {transactionsLoading ? (
-              <div className="flex items-center justify-center gap-2 rounded-3xl bg-white p-8 dark:bg-zinc-950">
-                <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
-                <span className="text-sm text-zinc-500">Đang tải danh sách giao dịch…</span>
-              </div>
-            ) : filteredTransactions.length === 0 ? (
-              <div className="rounded-3xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-                Không có giao dịch nào.
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/50">
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Tenant</th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Số tiền</th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Trạng thái</th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Ngày tạo</th>
-                        <th className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTransactions.map((tx) => (
-                        <tr
-                          key={tx.id}
-                          className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
-                        >
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-zinc-900 dark:text-zinc-50">{tx.tenantName}</div>
-                            {tx.description && (
-                              <div className="text-xs text-zinc-500">{tx.description}</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="font-semibold text-zinc-900 dark:text-zinc-50">
-                              {new Intl.NumberFormat("vi-VN", {
-                                style: "currency",
-                                currency: tx.currency || "VND",
-                              }).format(tx.amount)}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${transactionStatusColor[tx.status]}`}
-                            >
-                              {transactionStatusLabel[tx.status]}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                            {new Date(tx.createdAt).toLocaleString("vi-VN")}
-                          </td>
-                          <td className="px-4 py-3">
-                            <button
-                              type="button"
-                              onClick={() => openTransactionDetailModal(tx.id)}
-                              className="inline-flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600"
-                              title="Xem chi tiết"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </section>
-
-          {error && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-              {error}
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Reject Modal */}
-      {rejectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              Từ chối tenant
-            </h3>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              Vui lòng nhập lý do từ chối yêu cầu onboard của tenant này.
-            </p>
-            
-            {error && (
-              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-                {error}
-              </div>
-            )}
-            
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Nhập lý do từ chối..."
-              rows={4}
-              className="mt-4 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:placeholder-zinc-500"
-            />
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setRejectModalOpen(false);
-                  setRejectTenantId(null);
-                  setRejectReason("");
-                  setError(null);
-                }}
-                disabled={actionLoading !== null}
-                className="flex-1 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-300 disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleReject}
-                disabled={actionLoading !== null || !rejectReason.trim()}
-                className="flex-1 rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
-              >
-                {actionLoading === rejectTenantId ? (
-                  <span className="inline-flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Đang xử lý...
-                  </span>
-                ) : (
-                  "Xác nhận từ chối"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Detail Modal */}
-      {detailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                Chi tiết tenant
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setDetailModalOpen(false);
-                  setSelectedTenant(null);
-                }}
-                className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            {!selectedTenant ? (
-              <div className="flex items-center justify-center gap-2 py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
-                <span className="text-sm text-zinc-500">Đang tải...</span>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Tên tổ chức</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Trạng thái</label>
-                    <p className="mt-1">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[selectedTenant.status]}`}>
-                        {statusLabel[selectedTenant.status]}
-                      </span>
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Email liên hệ</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.contactEmail}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Quy mô công ty</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.companySize || "N/A"}</p>
-                  </div>
-                  {selectedTenant.address && (
-                    <div className="col-span-2">
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Địa chỉ</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.address}</p>
-                    </div>
-                  )}
-                  {selectedTenant.website && (
-                    <div className="col-span-2">
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Website</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
-                        <a href={selectedTenant.website} target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">
-                          {selectedTenant.website}
-                        </a>
-                      </p>
-                    </div>
-                  )}
-                  {selectedTenant.representativeName && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Người đại diện</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.representativeName}</p>
-                    </div>
-                  )}
-                  {selectedTenant.representativePosition && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Chức vụ</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.representativePosition}</p>
-                    </div>
-                  )}
-                  {selectedTenant.representativePhone && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Số điện thoại</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.representativePhone}</p>
-                    </div>
-                  )}
-                  {selectedTenant.subscriptionId && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Subscription ID</label>
-                      <p className="mt-1 text-xs font-mono text-zinc-900 dark:text-zinc-50">{selectedTenant.subscriptionId}</p>
-                    </div>
-                  )}
-                  {selectedTenant.requestedAt && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Ngày yêu cầu</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
-                        {new Date(selectedTenant.requestedAt).toLocaleString("vi-VN")}
-                      </p>
-                    </div>
-                  )}
-                  {selectedTenant.reviewedAt && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Ngày duyệt</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
-                        {new Date(selectedTenant.reviewedAt).toLocaleString("vi-VN")}
-                      </p>
-                    </div>
-                  )}
-                  {selectedTenant.reviewedBy && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Người duyệt</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTenant.reviewedBy}</p>
-                    </div>
-                  )}
-                </div>
-                {selectedTenant.requestMessage && (
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Tin nhắn yêu cầu</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50 whitespace-pre-wrap">{selectedTenant.requestMessage}</p>
-                  </div>
-                )}
-                {selectedTenant.rejectionReason && (
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Lý do từ chối</label>
-                    <p className="mt-1 text-sm text-red-600 dark:text-red-400 whitespace-pre-wrap">{selectedTenant.rejectionReason}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
-            <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">
-              Xác nhận xóa tenant
-            </h3>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              Bạn có chắc chắn muốn xóa tenant này? Hành động này không thể hoàn tác.
-            </p>
-            
-            {error && (
-              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-                {error}
-              </div>
-            )}
-            
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setDeleteModalOpen(false);
-                  setDeleteTenantId(null);
-                  setError(null);
-                }}
-                disabled={actionLoading !== null}
-                className="flex-1 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-300 disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={actionLoading !== null}
-                className="flex-1 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {actionLoading === deleteTenantId ? (
-                  <span className="inline-flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Đang xóa...
-                  </span>
-                ) : (
-                  "Xác nhận xóa"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Transaction Detail Modal */}
-      {transactionDetailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                Chi tiết giao dịch
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setTransactionDetailModalOpen(false);
-                  setSelectedTransaction(null);
-                }}
-                className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            {!selectedTransaction ? (
-              <div className="flex items-center justify-center gap-2 py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
-                <span className="text-sm text-zinc-500">Đang tải...</span>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">ID Giao dịch</label>
-                    <p className="mt-1 text-xs font-mono text-zinc-900 dark:text-zinc-50">{selectedTransaction.id}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Trạng thái</label>
-                    <p className="mt-1">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${transactionStatusColor[selectedTransaction.status]}`}>
-                        {transactionStatusLabel[selectedTransaction.status]}
-                      </span>
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Tenant</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTransaction.tenantName}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Tenant ID</label>
-                    <p className="mt-1 text-xs font-mono text-zinc-900 dark:text-zinc-50">{selectedTransaction.tenantId}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Số tiền</label>
-                    <p className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-400">
-                      {new Intl.NumberFormat("vi-VN", {
-                        style: "currency",
-                        currency: selectedTransaction.currency || "VND",
-                      }).format(selectedTransaction.amount)}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Đơn vị tiền tệ</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTransaction.currency || "VND"}</p>
-                  </div>
-                  {selectedTransaction.paymentMethod && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Phương thức thanh toán</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTransaction.paymentMethod}</p>
-                    </div>
-                  )}
-                  {selectedTransaction.transactionType && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Loại giao dịch</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{selectedTransaction.transactionType}</p>
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Ngày tạo</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
-                      {new Date(selectedTransaction.createdAt).toLocaleString("vi-VN")}
-                    </p>
-                  </div>
-                  {selectedTransaction.updatedAt && (
-                    <div>
-                      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Ngày cập nhật</label>
-                      <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
-                        {new Date(selectedTransaction.updatedAt).toLocaleString("vi-VN")}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                {selectedTransaction.description && (
-                  <div>
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Mô tả</label>
-                    <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50 whitespace-pre-wrap">{selectedTransaction.description}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  accent = "emerald",
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number;
-  accent?: "emerald" | "amber" | "zinc";
-}) {
-  const bg =
-    accent === "amber"
-      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-      : accent === "zinc"
-        ? "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"
-        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
-  return (
-    <div className="rounded-3xl bg-white p-5 shadow-lg shadow-emerald-500/5 ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:ring-zinc-800">
-      <div className="flex items-start justify-between">
+      <div className="space-y-8">
         <div>
-          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{value}</p>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
+            {language === "en" ? "Staff Dashboard" : "Bảng điều khiển Staff"}
+          </h1>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            {language === "en" ? "Monitor organizations and usage as staff" : "Theo dõi tổ chức và mức sử dụng với vai trò staff"}
+          </p>
         </div>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${bg}`}>
-          <Icon className="h-5 w-5" />
-        </div>
+
+        {statsLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-3xl bg-white p-8 dark:bg-zinc-950">
+            <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+            <span className="text-sm text-zinc-500">{t.loading}…</span>
+          </div>
+        ) : !parsed ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+            {error || t.noData}
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-8 lg:grid-cols-2">
+              <div className="rounded-3xl bg-white p-8 shadow-lg shadow-green-100/60 ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:ring-zinc-800 dark:shadow-black/40">
+                <div className="mb-8">
+                  <div className="mb-2 flex items-center gap-2">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">
+                      <PieChart className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{language === "en" ? "Tenant overview" : "Tổ chức — tổng quan"}</h3>
+                  </div>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-400">
+                    {language === "en" ? "Counts and share by lifecycle status" : "Số lượng và tỷ lệ theo trạng thái vòng đời"}
+                  </p>
+                </div>
+                <div className="space-y-5">
+                  {tenantRows.map((row) => {
+                    const pct = tenantSum > 0 ? Math.round((row.count / tenantSum) * 1000) / 10 : 0;
+                    return (
+                      <div key={row.key} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`h-3 w-3 rounded-full ${row.color}`} />
+                            <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{row.name}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-bold text-zinc-900 dark:text-white">{row.count.toLocaleString()}</span>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400">({pct}%)</span>
+                          </div>
+                        </div>
+                        <div className="h-3 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-900">
+                          <div className={`h-full rounded-full ${row.color}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-6 rounded-2xl bg-zinc-100/95 p-4 text-center ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-0">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{language === "en" ? "Approved total" : "Tổng đã duyệt"}</p>
+                    <p className="mt-1 text-xl font-bold text-zinc-900 dark:text-white">{parsed.tenants.total.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 p-6 shadow-lg shadow-blue-100/60 dark:from-zinc-950 dark:to-zinc-900 dark:shadow-black/40 sm:p-8">
+                <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/20">
+                        <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <h3 className="text-xl font-bold text-zinc-900 dark:text-white">
+                        {language === "en" ? "Subscriptions by plan" : "Đăng ký theo gói"}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-400">
+                      {language === "en" ? "Tenant subscriptions grouped by subscription plan" : "Số subscription của tenant theo từng gói"}
+                    </p>
+                  </div>
+                  <Link href="/staff/subscriptions" className="text-sm font-medium text-blue-600 underline-offset-4 hover:underline dark:text-blue-400">
+                    {language === "en" ? "Open full list →" : "Xem danh sách đầy đủ →"}
+                  </Link>
+                </div>
+                <div className="rounded-2xl border border-zinc-300/90 bg-white/95 p-4 dark:border-zinc-800 dark:bg-zinc-950/60 sm:p-5">
+                  <div className="mb-4 flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    <span>{language === "en" ? "Active subscriptions" : "Subscription đang hoạt động"}</span>
+                  </div>
+                  {subsLoading ? (
+                    <div className="py-12 text-center text-zinc-500">
+                      <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 items-end gap-2 pt-4 sm:gap-4">
+                      {subChartRows.map((row) => (
+                        <div key={row.code} className="group flex min-w-0 flex-col items-center gap-2">
+                          <div className="relative flex h-44 w-full items-end justify-center">
+                            <div
+                              className="w-8 rounded-t-lg bg-emerald-500/80 transition-all group-hover:bg-emerald-500 sm:w-10"
+                              style={{ height: `${Math.max((row.active / maxSubActive) * 120, row.active === 0 ? 6 : 16)}px` }}
+                            />
+                          </div>
+                          <p className="line-clamp-2 text-center text-[11px] font-semibold leading-tight text-zinc-800 dark:text-zinc-200 sm:text-xs">
+                            {row.label}
+                          </p>
+                          <p className="text-[11px] tabular-nums text-zinc-700 dark:text-zinc-300">{row.active}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {subsError ? (
+                    <p className="mt-3 text-xs text-amber-700 dark:text-amber-400">{subsError}</p>
+                  ) : null}
+                </div>
+                {!subsLoading && (
+                  <div className="mt-4 rounded-2xl bg-white/90 p-4 text-center ring-1 ring-blue-200/70 dark:ring-0 dark:bg-zinc-900/50">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-600">
+                      {language === "en" ? "Active total" : "Tổng active"}
+                    </p>
+                    <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900 dark:text-white">
+                      {totalActiveSubs}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      {language === "en" ? `All subscriptions: ${subs.length}` : `Tất cả subscription: ${subs.length}`}
+                    </p>
+                  </div>
+                )}
+                <div className="mt-3 rounded-2xl bg-white/95 p-4 text-center ring-1 ring-blue-200/70 dark:bg-zinc-800/40 dark:ring-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                    {language === "en" ? "subscriptions.total (dashboard)" : "subscriptions.total (dashboard)"}
+                  </p>
+                  <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900 dark:text-white">
+                    {parsed.subscriptions.total.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-8 lg:grid-cols-2">
+              <div className="rounded-3xl bg-gradient-to-br from-green-100 to-emerald-100 p-8 shadow-lg shadow-green-100/60 dark:from-zinc-950 dark:to-zinc-900 dark:shadow-black/40">
+                <div className="mb-8 flex items-start justify-between">
+                  <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-green-500/20">
+                        <MessageSquare className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{language === "en" ? "LLM usage" : "Sử dụng LLM"}</h3>
+                    </div>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-400">
+                      {language === "en" ? "Requests and tokens (all-time vs this month)" : "Request và token (tổng vs tháng hiện tại)"}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-5">
+                  {llmRows.map((r) => (
+                    <div key={r.key} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{r.label}</span>
+                        <span className="text-base font-bold text-zinc-900 dark:text-white">{formatCompactInt(r.value)}</span>
+                      </div>
+                      <div className="h-3 overflow-hidden rounded-full bg-white/85 ring-1 ring-emerald-100/70 dark:bg-zinc-800/60 dark:ring-0">
+                        <div className="h-full rounded-full bg-gradient-to-r from-green-400 via-green-500 to-emerald-600" style={{ width: `${Math.max((r.value / llmMax) * 100, r.value > 0 ? 4 : 0)}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl bg-white p-8 shadow-lg shadow-green-100/60 ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:ring-zinc-800 dark:shadow-black/40">
+                <div className="mb-8">
+                  <div className="mb-2 flex items-center gap-2">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-500/20">
+                      <Database className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{language === "en" ? "Document Dashboard" : "Document Dashboard"}</h3>
+                  </div>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-400">
+                    {language === "en" ? "Document files and indexed chunks" : "Tệp tài liệu và chunk index"}
+                  </p>
+                </div>
+                <div className="mb-8 flex min-h-[140px] items-end justify-between gap-4">
+                  {docsBars.map((b) => {
+                    const Icon = b.icon;
+                    const pct = docsMax > 0 ? (b.value / docsMax) * 100 : 0;
+                    return (
+                      <div key={b.key} className="flex flex-1 flex-col items-center gap-3">
+                        <div className="w-full">
+                          <div className="flex w-full min-h-[36px] items-end justify-center rounded-t-xl bg-gradient-to-t from-cyan-400 via-teal-500 to-emerald-600" style={{ height: `${Math.max(pct * 1.2, b.value === 0 ? 6 : 36)}px` }} />
+                        </div>
+                        <div className="text-center">
+                          <Icon className="mx-auto mb-1 h-4 w-4 text-teal-600 dark:text-teal-400" />
+                          <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{b.label}</p>
+                          <p className="mt-0.5 text-[10px] text-zinc-500">{b.hint}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="grid grid-cols-2 gap-6 rounded-2xl bg-zinc-100/95 p-5 ring-1 ring-zinc-200/80 dark:bg-zinc-800/40 dark:ring-0">
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{language === "en" ? "Documents" : "Tài liệu"}</p>
+                    <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">{parsed.documents.totalDocuments.toLocaleString()}</p>
+                  </div>
+                  <div className="border-l border-zinc-200 text-center dark:border-zinc-700">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">{language === "en" ? "Chunks" : "Chunk"}</p>
+                    <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">{formatCompactInt(parsed.documents.totalChunks)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-8 lg:grid-cols-2">
+              <div className="rounded-3xl bg-white p-6 shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{language === "en" ? "System health" : "Sức khỏe hệ thống"}</h3>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{language === "en" ? "From analytics `system` object" : "Từ object `system` trong analytics"}</p>
+                <div className="mt-6 space-y-3">
+                  {[
+                    { id: "platform", name: language === "en" ? "Platform (API status)" : "Nền tảng (API)", detail: systemLabel, ok: parsed.systemStatus === "Healthy" },
+                    { id: "uptime", name: language === "en" ? "App uptime" : "Thời gian chạy", detail: formatUptimeSeconds(parsed.system.appUptimeSeconds), ok: true },
+                    { id: "checked", name: language === "en" ? "Last checked" : "Kiểm tra lần cuối", detail: formatCheckedAt(parsed.system.checkedAt), ok: true },
+                  ].map((s) => (
+                    <div key={s.id} className="flex items-center justify-between rounded-2xl bg-zinc-100/95 p-4 ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-0">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${s.ok ? "bg-green-500/10" : "bg-amber-500/10"}`}>
+                          {s.id === "uptime" ? <Activity className="h-4 w-4 text-green-500" /> : s.id === "checked" ? <Clock className="h-4 w-4 text-green-500" /> : s.ok ? <CheckCircle className="h-4 w-4 text-green-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-zinc-900 dark:text-white">{s.name}</p>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400">{s.detail}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">{s.ok ? (language === "en" ? "OK" : "Ổn") : language === "en" ? "Warn" : "Cảnh báo"}</p>
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400">{language === "en" ? "Status" : "Trạng thái"}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
-    </div>
   );
 }

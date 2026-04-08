@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -12,24 +13,121 @@ import {
   Users,
   CreditCard,
 } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
+import { getStoredUser } from "@/lib/auth-store";
+import {
+  fetchPlatformDashboard,
+  parsePlatformDashboardJson,
+  staffActiveOrganizationsCount,
+  type SystemStatusUi,
+} from "@/lib/api/platform-dashboard";
 
-const navigation = [
-  { name: "Dashboard", href: "/super-admin", icon: LayoutDashboard },
-  { name: "Organizations", href: "/super-admin/organizations", icon: Building2 },
-  { name: "Roles & Permissions", href: "/super-admin/roles", icon: Shield },
-  { name: "AI Chatbot", href: "/chatbot", icon: Bot },
-  { name: "Staff", href: "/super-admin/staff", icon: Users },
-  { name: "Subscription Plans", href: "/super-admin/pricing", icon: CreditCard },
-  { name: "Subscriptions (đã mua)", href: "/super-admin/subscriptions", icon: CreditCard },
-];
+type SidebarSystemStatus = {
+  systemStatus: SystemStatusUi;
+  systemStatusLabelRaw: string;
+  activeOrgs: number;
+  adminPlatformUsers: number;
+};
 
-interface SuperAdminSidebarProps {
+const DEFAULT_STATUS: SidebarSystemStatus = {
+  systemStatus: "Unknown",
+  systemStatusLabelRaw: "",
+  activeOrgs: 0,
+  adminPlatformUsers: 0,
+};
+
+type SuperAdminSidebarProps = {
   open: boolean;
   setOpen: (open: boolean) => void;
-}
+};
 
 export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
   const pathname = usePathname();
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  const [statusData, setStatusData] = useState<SidebarSystemStatus>(DEFAULT_STATUS);
+  /** Tránh hydration mismatch: server không có localStorage → luôn false đến khi mount. */
+  const [mounted, setMounted] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isStaff, setIsStaff] = useState(false);
+
+  useEffect(() => {
+    const roles = getStoredUser()?.roles ?? [];
+    setIsSuperAdmin(roles.some((role) => role.includes("SUPER_ADMIN")));
+    setIsStaff(roles.some((role) => role.includes("STAFF")));
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !isSuperAdmin) return;
+
+    let cancelled = false;
+
+    const fetchDashboardStatus = async () => {
+      try {
+        const { ok, data } = await fetchPlatformDashboard(isStaff);
+        if (!ok) throw new Error("Failed to load dashboard status");
+        const parsed = parsePlatformDashboardJson(isStaff, data);
+
+        if (!cancelled) {
+          setStatusData({
+            systemStatus: parsed.systemStatus,
+            systemStatusLabelRaw: parsed.systemStatusLabelRaw,
+            activeOrgs: staffActiveOrganizationsCount(parsed),
+            adminPlatformUsers: parsed.adminPlatformUsers,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setStatusData(DEFAULT_STATUS);
+        }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && window.location.pathname.startsWith("/super-admin")) {
+        void fetchDashboardStatus();
+      }
+    };
+
+    void fetchDashboardStatus();
+    const intervalId = window.setInterval(() => {
+      void fetchDashboardStatus();
+    }, 30000);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [mounted, isSuperAdmin, isStaff]);
+
+  if (!mounted || !isSuperAdmin) return null;
+
+  /** Không dùng raw API (có thể luôn tiếng Việt); ưu tiên nhãn theo ngôn ngữ. */
+  const statusLabel =
+    statusData.systemStatus === "Healthy"
+      ? t.healthy
+      : statusData.systemStatus === "Unhealthy"
+        ? t.unhealthy
+        : statusData.systemStatusLabelRaw.trim() || t.unknown;
+
+  const statusDotClass =
+    statusData.systemStatus === "Healthy"
+      ? "bg-lime-400"
+      : statusData.systemStatus === "Unhealthy"
+        ? "bg-red-500"
+        : "bg-zinc-400";
+  
+  const navigation = [
+    { name: t.dashboard, href: "/super-admin", icon: LayoutDashboard },
+    { name: t.roles, href: "/super-admin/roles", icon: Shield },
+    { name: t.staff, href: "/super-admin/staff", icon: Users },
+    { name: t.pricing, href: "/super-admin/pricing", icon: CreditCard },
+    { name: t.subscriptions, href: "/super-admin/subscriptions", icon: CreditCard },
+  ];
 
   return (
     <>
@@ -57,7 +155,7 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
                   <Shield className="h-5 w-5" />
                 </div>
                 <span className="text-lg font-semibold text-zinc-900 dark:text-white">
-                  Super Admin
+                  {t.superAdmin}
                 </span>
               </Link>
               <button
@@ -71,7 +169,7 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
             {/* Navigation */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Platform Menu
+                {t.platformMenu}
               </p>
             </div>
 
@@ -108,37 +206,28 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
             <div className="space-y-3 rounded-2xl bg-zinc-50 p-4 text-xs text-zinc-600 shadow-sm dark:bg-zinc-900 dark:text-zinc-300">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-zinc-800 dark:text-zinc-100">
-                  System Status
+                  {t.systemStatus}
                 </p>
                 <span className="inline-flex items-center gap-1 text-[11px]">
-                  <span className="h-2 w-2 rounded-full bg-lime-400" />
-                  Healthy
+                  <span className={cn("h-2 w-2 rounded-full", statusDotClass)} />
+                  {statusLabel}
                 </span>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span>Uptime</span>
-                  <span>99.9%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Active Orgs</span>
-                  <span>24</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Total Users</span>
-                  <span>1,234</span>
-                </div>
+                {isStaff ? (
+                  <div className="flex items-center justify-between">
+                    <span>{t.activeOrganizations}</span>
+                    <span>{statusData.activeOrgs.toLocaleString()}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span>{t.platformTotalUsers}</span>
+                    <span>{statusData.adminPlatformUsers.toLocaleString()}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-
-          {/* Back to home */}
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
-          >
-            ← Back to Home
-          </Link>
         </div>
       </aside>
     </>

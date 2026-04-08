@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-// import { AuthGuard } from "@/components/auth/AuthGuard"; // Tạm thời tắt để xem UI
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { AlertProvider } from "@/components/ui/AlertProvider";
+import { ThemeRouteSync } from "@/components/theme/ThemeRouteSync";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,13 +26,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  var saved = localStorage.getItem("theme");
+                  var theme = saved === "light" || saved === "dark"
+                    ? saved
+                    : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+                  document.documentElement.classList.remove("light", "dark");
+                  document.documentElement.classList.add(theme);
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {/* Tạm thời bỏ AuthGuard để xem UI */}
-        {children}
-        {/* <AuthGuard>{children}</AuthGuard> */}
+        <AlertProvider>
+          <ThemeRouteSync />
+          <AuthGuard>{children}</AuthGuard>
+        </AlertProvider>
       </body>
     </html>
   );

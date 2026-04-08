@@ -1,43 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Message } from "@/types/chat";
 import { AIBoxSidebar } from "@/components/chat/AIBoxSidebar";
 import { ChatHistorySidebar } from "@/components/chat/ChatHistorySidebar";
-import { ChatHeader } from "@/components/chat/ChatHeader";
-import { ChatMessageList } from "@/components/chat/ChatMessageList";
-import { ChatInput } from "@/components/chat/ChatInput";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { chat } from "@/lib/api/chatbot";
-import { listCategoriesFlat } from "@/lib/api/categories";
-import { listTagsActive } from "@/lib/api/tags";
-import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
-import { useEffect } from "react";
+import { ArrowLeft, Send, ThumbsUp, ThumbsDown, FileText, MessageSquare } from "lucide-react";
+import { chat, chatbotHealth, getConversationHistory } from "@/lib/api/chatbot";
 
 export default function ChatPlatformPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<DocumentCategoryResponse[]>([]);
-  const [tags, setTags] = useState<DocumentTagResponse[]>([]);
-  const [categoryId, setCategoryId] = useState<string>("");
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [topK, setTopK] = useState<number>(5);
+  const [healthStatus, setHealthStatus] = useState<'healthy' | 'error' | 'checking'>('checking');
+  const [showHealthToast, setShowHealthToast] = useState(false);
 
+  // Check chatbot health on mount and periodically
   useEffect(() => {
-    Promise.all([listCategoriesFlat().catch(() => []), listTagsActive().catch(() => [])]).then(
-      ([cats, activeTags]) => {
-        setCategories(cats);
-        setTags(activeTags);
+    const checkHealth = async () => {
+      try {
+        await chatbotHealth();
+        setHealthStatus('healthy');
+        setShowHealthToast(false);
+      } catch (err) {
+        setHealthStatus('error');
+        setShowHealthToast(true);
+        setTimeout(() => setShowHealthToast(false), 5000);
       }
-    );
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000); // Check every 30s
+    return () => clearInterval(interval);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,10 +52,11 @@ export default function ChatPlatformPage() {
       const response = await chat({
         message: question,
         conversationId: conversationId ?? undefined,
-        topK,
-        categoryId: categoryId || undefined,
-        tagIds: selectedTagIds.length ? selectedTagIds : undefined,
+        topK: 5,
       });
+
+      console.log("API Response:", response);
+      console.log("Sources:", response.sources);
 
       if (response.conversationId) {
         setConversationId(response.conversationId);
@@ -69,6 +69,8 @@ export default function ChatPlatformPage() {
         confidence: s.relevanceScore,
       }));
 
+      console.log("Mapped references:", references);
+
       const newMessage: Message = {
         id: userMessageId,
         question,
@@ -78,9 +80,8 @@ export default function ChatPlatformPage() {
         rating: null,
       };
 
-      setMessages((prev) => [newMessage, ...prev]);
+      setMessages((prev) => [...prev, newMessage]);
       setCurrentQuestion("");
-      setSelectedMessage(newMessage.id);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Không thể kết nối tới chatbot. Vui lòng thử lại.";
       setError(message);
@@ -92,8 +93,7 @@ export default function ChatPlatformPage() {
         timestamp: new Date(),
         rating: null,
       };
-      setMessages((prev) => [fallbackMessage, ...prev]);
-      setSelectedMessage(fallbackMessage.id);
+      setMessages((prev) => [...prev, fallbackMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -105,135 +105,258 @@ export default function ChatPlatformPage() {
     );
   };
 
-  const handleNewChat = () => {
-    setSelectedMessage(null);
-    setCurrentQuestion("");
-    setConversationId(null);
-  };
-
-  const handleSelectExample = (example: string) => {
-    setCurrentQuestion(example);
-  };
-
-  const toggleTag = (tagId: string) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
-    );
-  };
-
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-zinc-50">
+    <div className="flex h-dvh min-h-0 bg-gradient-to-br from-zinc-50 via-white to-emerald-50/30 dark:from-zinc-950 dark:via-black dark:to-emerald-950/20">
       <AIBoxSidebar />
 
-      <div className="flex flex-1">
-        <main className="flex flex-1 flex-col bg-zinc-950">
-          <div className="flex items-center gap-3 px-6 pt-6">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {/* FIXED HEADER with Subtle Health Status */}
+        <div className="shrink-0 border-b border-zinc-200/50 bg-white/80 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/80">
+          <div className="flex items-center justify-between px-6 py-4">
             <button
               type="button"
               onClick={() => router.back()}
-              className="inline-flex items-center gap-2 rounded-full border border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-600 hover:bg-zinc-900"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              <ArrowLeftIcon className="h-4 w-4" />
-              <span>Quay lại</span>
+              <ArrowLeft className="h-4 w-4" />
+              Back
             </button>
-            <button
-              type="button"
-              onClick={() => setIsHistoryOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-600 hover:bg-zinc-900"
-            >
-              Lịch sử chat
-            </button>
-          </div>
+            
+            <div className="flex items-center gap-3">
+              {/* Subtle Health Status */}
+              <div className="group relative flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-full transition-colors ${
+                  healthStatus === 'healthy' ? 'bg-emerald-500' :
+                  healthStatus === 'error' ? 'bg-red-500' :
+                  'bg-yellow-500'
+                }`} />
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {healthStatus === 'healthy' ? 'Online' :
+                   healthStatus === 'error' ? 'Offline' :
+                   'Connecting'}
+                </span>
+                
+                {/* Tooltip on hover */}
+                <div className="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden w-56 rounded-xl border border-zinc-200 bg-white p-3 shadow-xl group-hover:block dark:border-zinc-800 dark:bg-zinc-900">
+                  <div className="flex items-start gap-2">
+                    <div className={`mt-0.5 h-2 w-2 rounded-full ${
+                      healthStatus === 'healthy' ? 'bg-emerald-500' :
+                      healthStatus === 'error' ? 'bg-red-500' :
+                      'bg-yellow-500'
+                    }`} />
+                    <div>
+                      <p className="text-xs font-semibold text-zinc-900 dark:text-white">
+                        {healthStatus === 'healthy' ? 'AI Service Online' :
+                         healthStatus === 'error' ? 'AI Service Offline' :
+                         'Checking Status...'}
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                        {healthStatus === 'healthy' ? 'All systems operational' :
+                         healthStatus === 'error' ? 'Service temporarily unavailable' :
+                         'Connecting to chatbot service'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
+              <button
+                type="button"
+                onClick={() => setIsHistoryOpen(true)}
+                className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                History
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* SCROLLABLE CONTENT AREA */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 md:px-6">
+          {/* ERROR MESSAGE */}
           {error && (
-            <div className="mx-6 mt-3 rounded-lg bg-red-900/30 px-4 py-2 text-sm text-red-200">
-              {error}
+            <div className="mx-auto mb-4 w-full max-w-4xl">
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+                {error}
+              </div>
             </div>
           )}
 
-          <ChatHeader />
-
-          <div className="mx-6 mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
-              RAG Filters
-            </p>
-            <div className="grid gap-3 lg:grid-cols-3">
+          {/* RESULTS */}
+          <div className="mx-auto max-w-4xl space-y-10">
+            {messages.length === 0 ? (
               <div>
-                <label className="mb-1 block text-xs text-zinc-400">Category</label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-                >
-                  <option value="">Tất cả category</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                {/* Colorful Header */}
+                <div className="animate-gradient relative mb-10 overflow-hidden rounded-2xl bg-[length:220%_220%] bg-gradient-to-r from-lime-400 via-fuchsia-500 via-emerald-400 to-violet-600 px-5 py-4 shadow-md shadow-fuchsia-500/15 dark:shadow-lg dark:shadow-emerald-500/25">
+                  <div className="pointer-events-none absolute inset-0 bg-black/20 dark:bg-black/10" />
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
+                  <div className="pointer-events-none absolute -bottom-12 left-1/4 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
 
-              <div>
-                <label className="mb-1 block text-xs text-zinc-400">Top K</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={topK}
-                  onChange={(e) => setTopK(Math.min(20, Math.max(1, Number(e.target.value) || 5)))}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-                />
-              </div>
+                  <div className="relative flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+                        <MessageSquare className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-lg font-semibold text-white sm:text-xl">
+                          Internal AI Consulting Chatbot
+                        </h1>
+                        <p className="mt-1 text-xs text-white/90 sm:text-sm">
+                          Ask questions in English • RAG-powered • Based on company documents
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-              <div>
-                <label className="mb-1 block text-xs text-zinc-400">Tags</label>
-                <div className="flex flex-wrap gap-2">
-                  {tags.slice(0, 12).map((t) => {
-                    const active = selectedTagIds.includes(t.id);
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => toggleTag(t.id)}
-                        className={`rounded-full px-2.5 py-1 text-xs transition ${
-                          active
-                            ? "bg-green-500 text-white"
-                            : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                        }`}
-                      >
-                        {t.name}
-                      </button>
-                    );
-                  })}
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
+                    <MessageSquare className="h-8 w-8 text-emerald-500" />
+                  </div>
+                  <h2 className="mb-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                    How can I help you today?
+                  </h2>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    Ask me anything about your company policies, procedures, or documents.
+                  </p>
                 </div>
               </div>
-            </div>
-          </div>
+            ) : (
+              messages.map((msg) => (
+                <div key={msg.id} className="space-y-6">
+                  {/* QUERY */}
+                  <div className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+                    {msg.question}
+                  </div>
 
-          <div className="flex-1 overflow-y-auto px-6 py-8">
-            <ChatMessageList
-              messages={messages}
-              selectedMessage={selectedMessage}
-              onSelectExample={handleSelectExample}
-              onRate={handleRate}
-            />
-          </div>
+                  {/* ANSWER */}
+                  <div className="space-y-4">
+                    <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-900 dark:text-zinc-50">
+                      {msg.answer}
+                    </p>
 
-          <ChatInput
-            value={currentQuestion}
-            onChange={setCurrentQuestion}
-            onSubmit={handleSubmit}
-            isLoading={isLoading}
-          />
-        </main>
+                    {/* INLINE SOURCES */}
+                    {msg.references && msg.references.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {msg.references.map((ref, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-emerald-500 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400"
+                          >
+                            <FileText className="h-3 w-3" />
+                            {ref.documentName}
+                            {ref.confidence && (
+                              <span className="ml-1 text-emerald-600 dark:text-emerald-400">
+                                {Math.round(ref.confidence * 100)}%
+                              </span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* FEEDBACK */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleRate(msg.id, "helpful")}
+                      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-medium transition ${
+                        msg.rating === "helpful"
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
+                          : "border-zinc-200 bg-white text-zinc-600 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-emerald-500 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400"
+                      }`}
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5" />
+                      Useful
+                    </button>
+                    <button
+                      onClick={() => handleRate(msg.id, "not-helpful")}
+                      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-medium transition ${
+                        msg.rating === "not-helpful"
+                          ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
+                          : "border-zinc-200 bg-white text-zinc-600 hover:border-red-500 hover:bg-red-50 hover:text-red-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-red-500 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                      }`}
+                    >
+                      <ThumbsDown className="h-3.5 w-3.5" />
+                      Not useful
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* FIXED INPUT AT BOTTOM */}
+        <div className="shrink-0 border-t border-zinc-200/50 bg-white/80 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/80">
+          <div className="mx-auto max-w-4xl px-4 py-4 md:px-6">
+            <form onSubmit={handleSubmit}>
+              <div className="flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-3 shadow-lg transition focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900">
+                <input
+                  type="text"
+                  value={currentQuestion}
+                  onChange={(e) => setCurrentQuestion(e.target.value)}
+                  placeholder="Ask anything about your company..."
+                  disabled={isLoading}
+                  className="flex-1 bg-transparent text-sm text-zinc-900 placeholder-zinc-400 outline-none disabled:opacity-50 dark:text-zinc-50 dark:placeholder-zinc-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading || !currentQuestion.trim()}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600 disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </form>
+            <p className="mt-2 text-center text-[11px] text-zinc-500 dark:text-zinc-400">
+              AI may produce incorrect answers. Verify critical information.
+            </p>
+          </div>
+        </div>
       </div>
 
       <ChatHistorySidebar
         open={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
+        onToggle={() => setIsHistoryOpen(false)}
         onSelectChat={(chatId) => {
           setCurrentChatId(chatId || null);
+          if (chatId) {
+            getConversationHistory(chatId).then((history) => {
+              if (history) {
+                const msgs: Message[] = [];
+                for (let i = 0; i < history.messages.length; i += 2) {
+                  const userMsg = history.messages[i];
+                  const aiMsg = history.messages[i + 1];
+                  msgs.push({
+                    id: aiMsg?.id ?? userMsg?.id ?? "",
+                    question: userMsg?.content ?? "",
+                    answer: aiMsg?.content ?? "",
+                    references: (aiMsg?.sources ?? []).map((s) => ({
+                      documentId: s.documentId,
+                      documentName: s.fileName,
+                      excerpt: s.chunkContent ?? "",
+                      confidence: s.relevanceScore,
+                    })),
+                    timestamp: new Date(aiMsg?.createdAt ?? userMsg?.createdAt ?? new Date()),
+                    rating: (aiMsg?.rating as "helpful" | "not-helpful" | null) ?? null,
+                  });
+                }
+                setMessages(msgs);
+              }
+            });
+          } else {
+            setMessages([]);
+          }
+        }}
+        onNewChat={() => {
+          setConversationId(null);
+          setMessages([]);
+          setCurrentChatId(null);
         }}
         currentChatId={currentChatId}
       />

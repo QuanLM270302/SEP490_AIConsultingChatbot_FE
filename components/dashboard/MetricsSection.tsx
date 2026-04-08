@@ -20,7 +20,7 @@ export function MetricsSection() {
           </button>
         </div>
         <div className="mt-4 h-40 rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900/50 flex items-center justify-center">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Dữ liệu từ API</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Chart placeholder</p>
         </div>
         <div className="flex items-center justify-between text-[11px] text-zinc-400">
           <div className="flex items-center gap-3">
@@ -69,7 +69,7 @@ export function MetricsSection() {
                 <div className="h-12 w-full rounded-full bg-green-400" />
               </div>
               <p className="text-xs text-zinc-500">
-                New internal files ingested into the knowledge base this month.
+                New internal files ingested into the Document Dashboard this month.
               </p>
             </div>
           </div>

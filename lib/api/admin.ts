@@ -78,6 +78,8 @@ export interface AdminRoleResponse {
   name?: string;
   description?: string;
   usersCount?: number;
+  /** Optional permissions list (used by Super Admin Roles detail modal). */
+  permissions?: string[];
   isSystemRole?: boolean;
   tenantId?: string | null;
   tenantName?: string | null;
@@ -250,7 +252,11 @@ export async function createSubscriptionPlan(body: CreateSubscriptionPlanRequest
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to create plan"));
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => "Failed to create plan");
+    console.error("❌ Backend error response:", errorText);
+    throw new Error(errorText);
+  }
   return res.json();
 }
 
@@ -268,6 +274,20 @@ export async function deleteSubscriptionPlan(id: string): Promise<{ message: str
   const res = await fetchWithAuth(`${ADMIN_BASE}/subscription-plans/${id}`, { method: "DELETE" });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.message || "Failed to delete plan");
+  return data;
+}
+
+export async function activateSubscriptionPlan(id: string): Promise<{ message: string }> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/subscription-plans/${id}/activate`, { method: "PUT" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || "Failed to activate plan");
+  return data;
+}
+
+export async function deactivateSubscriptionPlan(id: string): Promise<{ message: string }> {
+  const res = await fetchWithAuth(`${ADMIN_BASE}/subscription-plans/${id}/deactivate`, { method: "PUT" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || "Failed to deactivate plan");
   return data;
 }
 

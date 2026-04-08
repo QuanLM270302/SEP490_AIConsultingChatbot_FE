@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 import { logout } from "@/lib/api/auth";
 import { getAccessToken, clearAuth } from "@/lib/auth-store";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 interface LogoutButtonProps {
   /** Optional class for the label (e.g. hide in collapsed sidebar, show on hover) */
@@ -14,6 +16,8 @@ interface LogoutButtonProps {
 export function LogoutButton({ labelClassName }: LogoutButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const { language } = useLanguageStore();
+  const t = translations[language];
 
   const handleLogout = async () => {
     const token = getAccessToken();
@@ -28,7 +32,7 @@ export function LogoutButton({ labelClassName }: LogoutButtonProps) {
     setLoading(false);
   };
 
-  const label = loading ? "Signing out…" : "Log out";
+  const label = loading ? (language === "en" ? "Signing out..." : "Đang đăng xuất...") : t.logout;
 
   return (
     <button

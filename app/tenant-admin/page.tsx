@@ -1,3 +1,5 @@
+"use client";
+
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { OrganizationStats } from "@/components/tenant-admin/OrganizationStats";
 import { AIUsageChart } from "@/components/tenant-admin/AIUsageChart";
@@ -5,47 +7,52 @@ import { EmployeeOverview } from "@/components/tenant-admin/EmployeeOverview";
 import { DepartmentOverview } from "@/components/tenant-admin/DepartmentOverview";
 import Link from "next/link";
 import { Users, Building, Shield, CreditCard, FileText, Bot } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 export default function TenantAdminPage() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
+
   const quickLinks = [
     {
-      title: "Nhân viên",
-      description: "Quản lý danh sách nhân viên",
+      title: t.employeesLabel,
+      description: t.employeesDescription,
       href: "/tenant-admin/employees",
       icon: Users,
       color: "bg-green-500",
     },
     {
-      title: "Phòng ban",
-      description: "Quản lý cấu trúc phòng ban",
+      title: t.departmentsLabel,
+      description: t.departmentsDescription,
       href: "/tenant-admin/departments",
       icon: Building,
       color: "bg-lime-500",
     },
     {
-      title: "Roles & Permissions",
-      description: "Quản lý quyền và vai trò",
+      title: t.rolesPermissions,
+      description: t.rolesPermissionsDescription,
       href: "/tenant-admin/roles",
       icon: Shield,
       color: "bg-emerald-500",
     },
     {
-      title: "Subscription",
-      description: "Quản lý gói & nâng cấp tổ chức",
+      title: t.subscriptionLabel,
+      description: t.subscriptionDescription,
       href: "/tenant-admin/subscription",
       icon: CreditCard,
       color: "bg-teal-500",
     },
     {
-      title: "Documents",
-      description: "Quản lý tài liệu, categories & tags",
+      title: t.documentsLabel,
+      description: t.documentsDescription,
       href: "/tenant-admin/documents",
       icon: FileText,
       color: "bg-sky-500",
     },
     {
-      title: "AI Chatbot",
-      description: "Hỏi đáp AI trên dữ liệu nội bộ",
+      title: t.aiChatbot,
+      description: t.aiChatbotDescription,
       href: "/chatbot",
       icon: Bot,
       color: "bg-violet-500",
@@ -58,10 +65,10 @@ export default function TenantAdminPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
-            Organization Dashboard
+            {t.organizationDashboard}
           </h1>
           <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Quản lý nhân viên và cấu trúc tổ chức
+            {t.manageEmployeesStructure}
           </p>
         </div>
 
@@ -74,7 +81,7 @@ export default function TenantAdminPage() {
         {/* Quick Links */}
         <div>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-            Quick Actions
+            {t.quickActions}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {quickLinks.map((link) => (

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import {
   listDocuments,
   listDeletedDocuments,
+  getDocument,
+  getDocumentPreview,
   getVersionHistory,
   uploadDocument,
   uploadNewVersion,
@@ -12,6 +14,7 @@ import {
   softDeleteDocument,
   restoreDocument,
   type UploadDocumentParams,
+  type DocumentPreviewResponse,
 } from "@/lib/api/documents";
 import type {
   DocumentResponse,
@@ -29,28 +32,100 @@ import {
   Trash2,
   RotateCcw,
   Lock,
+  Eye,
   FileText,
   History,
   X,
   ChevronDown,
   Check,
+  Calendar,
+  Files,
+  ShieldCheck,
+  Loader2,
+  CircleCheckBig,
+  CircleAlert,
+  Cpu,
 } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
+import { translations } from "@/lib/translations";
 
 const VISIBILITY_LABELS: Record<DocumentVisibility, string> = {
   COMPANY_WIDE: "Toàn công ty",
   SPECIFIC_DEPARTMENTS: "Theo phòng ban",
   SPECIFIC_ROLES: "Theo vai trò",
+  SPECIFIC_DEPARTMENTS_AND_ROLES: "Theo phòng ban VÀ vai trò",
 };
 
 function prettifyDocumentAccessError(message: string): string {
   const lower = message.toLowerCase();
   if (lower.includes("visibility_enum") && lower.includes("does not exist")) {
-    return "Không thể cập nhật quyền truy cập do backend chưa đồng bộ schema DB (thiếu enum visibility). Vui lòng backend kiểm tra migration/schema.";
+    return "Không thể cập nhật quyền truy cập do máy chủ chưa đồng bộ lược đồ cơ sở dữ liệu (thiếu kiểu visibility). Vui lòng kiểm tra migration/lược đồ phía máy chủ.";
   }
   return message;
 }
 
-export function DocumentsTab() {
+function mapEmbeddingStatusLabel(
+  raw: string | undefined,
+  t: (typeof translations)["vi"]
+): string {
+  const key = (raw ?? "").trim().toUpperCase();
+  switch (key) {
+    case "COMPLETED":
+      return t.statusCompleted;
+    case "PENDING":
+    case "DOCUMENTS AWAITING PROCESSING":
+      return t.statusPending;
+    case "PROCESSING":
+      return t.statusProcessing;
+    case "FAILED":
+      return t.statusFailed;
+    default:
+      return raw?.trim() || "—";
+  }
+}
+
+type EmbeddingState = "completed" | "in-progress" | "failed" | "unknown";
+
+function getEmbeddingState(raw: string | undefined): EmbeddingState {
+  const key = (raw ?? "").trim().toUpperCase();
+  if (!key) return "unknown";
+  if (key === "COMPLETED" || key.includes("SUCCESS") || key.includes("READY")) {
+    return "completed";
+  }
+  if (key === "FAILED" || key.includes("ERROR") || key.includes("FAIL")) {
+    return "failed";
+  }
+  if (
+    key === "PENDING" ||
+    key === "PROCESSING" ||
+    key.includes("PEND") ||
+    key.includes("PROCESS") ||
+    key.includes("QUEUE") ||
+    key.includes("AWAIT")
+  ) {
+    return "in-progress";
+  }
+  return "unknown";
+}
+
+function extractCompletionTimestamp(doc: DocumentResponse): string | null {
+  const raw = doc as unknown as Record<string, unknown>;
+  const candidates = [
+    raw.embeddingCompletedAt,
+    raw.embeddingUpdatedAt,
+    raw.completedAt,
+    raw.lastEmbeddedAt,
+    raw.updatedAt,
+  ];
+  for (const c of candidates) {
+    if (typeof c !== "string" || c.trim().length === 0) continue;
+    const d = new Date(c);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  return null;
+}
+
+export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "library" }) {
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [deleted, setDeleted] = useState<DeletedDocumentResponse[]>([]);
   const [categories, setCategories] = useState<DocumentCategoryResponse[]>([]);
@@ -70,8 +145,56 @@ export function DocumentsTab() {
   const [versions, setVersions] = useState<DocumentVersionResponse[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [newVersionDocId, setNewVersionDocId] = useState<string | null>(null);
+  const [detailDoc, setDetailDoc] = useState<DocumentResponse | null>(null);
+  const [detailPreview, setDetailPreview] = useState<DocumentPreviewResponse | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false);
+  const [embeddingTrackDocId, setEmbeddingTrackDocId] = useState<string | null>(null);
+  const [embeddingTrackFileName, setEmbeddingTrackFileName] = useState<string>("");
+  const [embeddingTrackStatus, setEmbeddingTrackStatus] = useState<string>("PENDING");
+  const [embeddingProgress, setEmbeddingProgress] = useState(10);
+  const [embeddingCompletedAtByDocId, setEmbeddingCompletedAtByDocId] = useState<Record<string, string>>({});
+  const previousEmbeddingStateRef = useRef<Record<string, EmbeddingState>>({});
+  const { language } = useLanguageStore();
+  const t = translations[language];
 
-  const load = async () => {
+  const updateEmbeddingCompletionTimestamps = useCallback((nextDocs: DocumentResponse[]) => {
+    setEmbeddingCompletedAtByDocId((prev) => {
+      const next = { ...prev };
+      const seen = new Set<string>();
+
+      for (const doc of nextDocs) {
+        seen.add(doc.id);
+        const state = getEmbeddingState(doc.embeddingStatus);
+        const prevState = previousEmbeddingStateRef.current[doc.id];
+        const serverTimestamp = extractCompletionTimestamp(doc);
+
+        if (state === "completed") {
+          if (serverTimestamp) {
+            next[doc.id] = serverTimestamp;
+          } else if (prevState && prevState !== "completed") {
+            next[doc.id] = new Date().toISOString();
+          } else if (!next[doc.id]) {
+            next[doc.id] = doc.uploadedAt;
+          }
+        }
+
+        if (state !== "completed" && prevState === "completed") {
+          delete next[doc.id];
+        }
+
+        previousEmbeddingStateRef.current[doc.id] = state;
+      }
+
+      for (const id of Object.keys(next)) {
+        if (!seen.has(id)) delete next[id];
+      }
+
+      return next;
+    });
+  }, []);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -83,6 +206,7 @@ export function DocumentsTab() {
         getTenantRoles().catch(() => []),
       ]);
       setDocuments(docs);
+      updateEmbeddingCompletionTimestamps(docs);
       setCategories(cats);
       setTags(activeTags);
       setDepartments(depts);
@@ -94,18 +218,51 @@ export function DocumentsTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [updateEmbeddingCompletionTimestamps]);
+
+  const refreshDocumentsRealtime = useCallback(async () => {
+    try {
+      const docs = await listDocuments();
+      setDocuments(docs);
+      updateEmbeddingCompletionTimestamps(docs);
+    } catch {
+      // Ignore transient polling errors and keep current UI state.
+    }
+  }, [updateEmbeddingCompletionTimestamps]);
+
+  const hasInProgressEmbedding = useMemo(
+    () => documents.some((d) => getEmbeddingState(d.embeddingStatus) === "in-progress"),
+    [documents]
+  );
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!hasInProgressEmbedding) return;
+    const id = window.setInterval(() => {
+      void refreshDocumentsRealtime();
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [hasInProgressEmbedding, refreshDocumentsRealtime]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      if (hasInProgressEmbedding) {
+        void refreshDocumentsRealtime();
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [hasInProgressEmbedding, refreshDocumentsRealtime]);
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const file = (form.elements.namedItem("file") as HTMLInputElement)?.files?.[0];
     if (!file) {
-      setError("Chọn file để upload");
+      setError("Chọn tệp để tải lên");
       return;
     }
     setUploading(true);
@@ -116,16 +273,26 @@ export function DocumentsTab() {
       const description = (form.elements.namedItem("description") as HTMLInputElement)?.value || undefined;
       const visibility = uploadVisibility;
       const accessibleDepartments =
-        visibility === "SPECIFIC_DEPARTMENTS" ? selectedDepartmentIds : null;
+        visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES"
+          ? selectedDepartmentIds
+          : null;
       const accessibleRoles =
-        visibility === "SPECIFIC_ROLES" ? selectedRoleIds : null;
+        visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES"
+          ? selectedRoleIds
+          : null;
 
-      if (visibility === "SPECIFIC_DEPARTMENTS" && selectedDepartmentIds.length === 0) {
+      if (
+        (visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+        selectedDepartmentIds.length === 0
+      ) {
         setError("Vui lòng chọn ít nhất 1 phòng ban.");
         setUploading(false);
         return;
       }
-      if (visibility === "SPECIFIC_ROLES" && selectedRoleIds.length === 0) {
+      if (
+        (visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+        selectedRoleIds.length === 0
+      ) {
         setError("Vui lòng chọn ít nhất 1 vai trò.");
         setUploading(false);
         return;
@@ -139,19 +306,73 @@ export function DocumentsTab() {
         accessibleDepartments,
         accessibleRoles,
       };
-      await uploadDocument(params);
+      const uploadedDoc = await uploadDocument(params);
       form.reset();
       setSelectedTagIds([]);
       setUploadVisibility("COMPANY_WIDE");
       setSelectedDepartmentIds([]);
       setSelectedRoleIds([]);
+      setEmbeddingTrackDocId(uploadedDoc.id);
+      setEmbeddingTrackFileName(uploadedDoc.originalFileName || uploadedDoc.documentTitle || file.name);
+      setEmbeddingTrackStatus(uploadedDoc.embeddingStatus || "PENDING");
+      setEmbeddingProgress(12);
+      setEmbeddingModalOpen(true);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload thất bại");
+      setError(e instanceof Error ? e.message : "Tải lên thất bại");
     } finally {
       setUploading(false);
     }
   };
+
+  const mapStatusToTargetProgress = (raw: string | undefined): number => {
+    const state = getEmbeddingState(raw);
+    if (state === "completed") return 100;
+    if (state === "failed") return 100;
+    if (state === "in-progress") return 72;
+    return 26;
+  };
+
+  useEffect(() => {
+    if (!embeddingModalOpen || !embeddingTrackDocId) return;
+    const statusState = getEmbeddingState(embeddingTrackStatus);
+    if (statusState === "completed" || statusState === "failed") return;
+
+    const pollId = window.setInterval(async () => {
+      try {
+        const docs = await listDocuments();
+        const matched = docs.find((d) => d.id === embeddingTrackDocId);
+        if (!matched) return;
+
+        setEmbeddingTrackStatus(matched.embeddingStatus || "PENDING");
+        const state = getEmbeddingState(matched.embeddingStatus);
+        if (state === "completed" || state === "failed") {
+          setEmbeddingProgress(100);
+          await load();
+        }
+      } catch {
+        // keep existing status UI on transient polling errors
+      }
+    }, 2500);
+
+    return () => window.clearInterval(pollId);
+  }, [embeddingModalOpen, embeddingTrackDocId, embeddingTrackStatus, load]);
+
+  useEffect(() => {
+    if (!embeddingModalOpen) return;
+    const target = mapStatusToTargetProgress(embeddingTrackStatus);
+    if (embeddingProgress >= target) return;
+
+    const tick = window.setInterval(() => {
+      setEmbeddingProgress((prev) => {
+        if (prev >= target) return prev;
+        const step = target >= 90 ? 1 : 2;
+        return Math.min(target, prev + step);
+      });
+    }, 70);
+
+    return () => window.clearInterval(tick);
+  }, [embeddingModalOpen, embeddingTrackStatus, embeddingProgress]);
 
   const handleUpdateAccess = async (id: string, body: UpdateDocumentAccessRequest) => {
     setError(null);
@@ -218,10 +439,37 @@ export function DocumentsTab() {
       form.reset();
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload phiên bản thất bại");
+      setError(e instanceof Error ? e.message : "Tải lên phiên bản thất bại");
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleViewDetail = async (id: string) => {
+    setDetailLoading(true);
+    setError(null);
+    try {
+      const [doc, preview] = await Promise.all([getDocument(id), getDocumentPreview(id)]);
+      setDetailDoc(doc);
+      setDetailPreview(preview);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không tải được chi tiết tài liệu");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const formatFileSize = (bytes?: number | null): string => {
+    if (!bytes || bytes <= 0) return "—";
+    const units = ["B", "KB", "MB", "GB"];
+    let value = bytes;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit += 1;
+    }
+    const fractionDigits = value >= 10 || unit === 0 ? 0 : 1;
+    return `${value.toFixed(fractionDigits)} ${units[unit]}`;
   };
 
   if (loading) {
@@ -240,9 +488,10 @@ export function DocumentsTab() {
         </div>
       )}
 
+      {(mode === "all" || mode === "upload") && (
       <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          Upload tài liệu
+          Tải lên tài liệu
         </h3>
         <form onSubmit={handleUpload} className="flex flex-col gap-4">
           <div>
@@ -279,7 +528,7 @@ export function DocumentsTab() {
             </label>
             <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
               {tags.length === 0 ? (
-                <span className="px-2 py-1 text-xs text-zinc-500">Chưa có tags.</span>
+                <span className="px-2 py-1 text-xs text-zinc-500">Chưa có thẻ.</span>
               ) : (
                 tags.map((t) => {
                   const active = selectedTagIds.includes(t.id);
@@ -327,8 +576,8 @@ export function DocumentsTab() {
               onChange={(e) => {
                 const v = e.target.value as DocumentVisibility;
                 setUploadVisibility(v);
-                if (v !== "SPECIFIC_DEPARTMENTS") setSelectedDepartmentIds([]);
-                if (v !== "SPECIFIC_ROLES") setSelectedRoleIds([]);
+                if (v !== "SPECIFIC_DEPARTMENTS" && v !== "SPECIFIC_DEPARTMENTS_AND_ROLES") setSelectedDepartmentIds([]);
+                if (v !== "SPECIFIC_ROLES" && v !== "SPECIFIC_DEPARTMENTS_AND_ROLES") setSelectedRoleIds([]);
               }}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
@@ -337,14 +586,14 @@ export function DocumentsTab() {
               ))}
             </select>
           </div>
-          {uploadVisibility === "SPECIFIC_DEPARTMENTS" && (
+          {(uploadVisibility === "SPECIFIC_DEPARTMENTS" || uploadVisibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Chọn phòng ban
               </label>
               <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
                 {departments.length === 0 ? (
-                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có phòng ban active.</span>
+                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có phòng ban đang hoạt động.</span>
                 ) : (
                   departments.map((d) => {
                     const active = selectedDepartmentIds.includes(d.id);
@@ -375,14 +624,14 @@ export function DocumentsTab() {
               </p>
             </div>
           )}
-          {uploadVisibility === "SPECIFIC_ROLES" && (
+          {(uploadVisibility === "SPECIFIC_ROLES" || uploadVisibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Chọn vai trò
               </label>
               <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
                 {roles.length === 0 ? (
-                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có roles.</span>
+                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có vai trò.</span>
                 ) : (
                   roles.map((r) => {
                     const active = selectedRoleIds.includes(r.id);
@@ -419,7 +668,10 @@ export function DocumentsTab() {
           </Button>
         </form>
       </div>
+      )}
 
+      {(mode === "all" || mode === "library") && (
+      <>
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
           Danh sách tài liệu ({documents.length})
@@ -477,7 +729,9 @@ export function DocumentsTab() {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Tên / Tiêu đề</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Phạm vi</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Trạng thái embedding</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  {t.embeddingStatus}
+                </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">Thao tác</th>
               </tr>
             </thead>
@@ -491,10 +745,26 @@ export function DocumentsTab() {
                     {VISIBILITY_LABELS[doc.visibility]}
                   </td>
                   <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
-                    {doc.embeddingStatus}
+                    <div className="flex flex-col gap-0.5">
+                      <span>{mapEmbeddingStatusLabel(doc.embeddingStatus, t)}</span>
+                      {getEmbeddingState(doc.embeddingStatus) === "completed" &&
+                      embeddingCompletedAtByDocId[doc.id] ? (
+                        <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                          {language === "en" ? "Updated" : "Cập nhật"}: {new Date(embeddingCompletedAtByDocId[doc.id]).toLocaleString(language === "en" ? "en-US" : "vi-VN")}
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleViewDetail(doc.id)}
+                        className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                        title="Xem chi tiết"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => loadVersions(doc.id)}
@@ -515,7 +785,7 @@ export function DocumentsTab() {
                         type="button"
                         onClick={() => setNewVersionDocId(doc.id)}
                         className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                        title="Upload phiên bản mới"
+                        title="Tải lên phiên bản mới"
                       >
                         <Upload className="h-4 w-4" />
                       </button>
@@ -534,8 +804,192 @@ export function DocumentsTab() {
             </tbody>
           </table>
           {documents.length === 0 && (
-            <p className="px-4 py-6 text-center text-sm text-zinc-500">Chưa có tài liệu nào. Hãy upload file phía trên.</p>
+            <p className="px-4 py-6 text-center text-sm text-zinc-500">Chưa có tài liệu nào. Hãy tải lên tệp phía trên.</p>
           )}
+        </div>
+      )}
+      </>
+      )}
+
+      {detailDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[85vh] w-full max-w-4xl overflow-auto rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                Chi tiết tài liệu
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (detailPreview?.kind === "pdf") URL.revokeObjectURL(detailPreview.url);
+                  setDetailDoc(null);
+                  setDetailPreview(null);
+                }}
+                className="rounded p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <div className="mb-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+                  Thông tin tài liệu
+                </p>
+                <p className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  {detailDoc.documentTitle || detailDoc.originalFileName}
+                </p>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                  {detailDoc.originalFileName}
+                </p>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  <span className="text-zinc-500 dark:text-zinc-400">Phạm vi:</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {VISIBILITY_LABELS[detailDoc.visibility]}
+                  </span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
+                  <Files className="h-4 w-4 text-cyan-500" />
+                  <span className="text-zinc-500 dark:text-zinc-400">Chunks:</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {detailDoc.chunkCount ?? 0}
+                  </span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
+                  <Calendar className="h-4 w-4 text-amber-500" />
+                  <span className="text-zinc-500 dark:text-zinc-400">{language === "en" ? "Uploaded:" : "Ngày tải:"}</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {new Date(detailDoc.uploadedAt).toLocaleString(language === "en" ? "en-US" : "vi-VN")}
+                  </span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
+                  <FileText className="h-4 w-4 text-violet-500" />
+                  <span className="text-zinc-500 dark:text-zinc-400">{language === "en" ? "Size:" : "Dung lượng:"}</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {formatFileSize(detailDoc.fileSize)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                {language === "en" ? "Preview content" : "Nội dung xem trước"}
+              </p>
+              {detailLoading ? (
+                <p className="text-sm text-zinc-500">{language === "en" ? "Loading preview..." : "Đang tải preview..."}</p>
+              ) : detailPreview?.kind === "text" ? (
+                <pre className="max-h-[45vh] overflow-auto whitespace-pre-wrap break-words text-sm leading-7 text-zinc-800 dark:text-zinc-100">
+                  {detailPreview.text}
+                </pre>
+              ) : detailPreview?.kind === "pdf" ? (
+                <div className="text-sm text-zinc-600 dark:text-zinc-300">
+                  <p>{language === "en" ? "Preview is PDF. Open in a new tab to view fully." : "File preview dạng PDF. Mở ở tab mới để xem đầy đủ."}</p>
+                  <a
+                    href={detailPreview.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-emerald-600 hover:underline dark:text-emerald-400"
+                  >
+                    {language === "en" ? "Open PDF" : "Mở PDF"}
+                  </a>
+                </div>
+              ) : detailPreview?.kind === "binary" ? (
+                <p className="text-sm text-zinc-500">
+                  {language === "en" ? "Unsupported preview format:" : "Không hỗ trợ xem trước định dạng:"} {detailPreview.mime}
+                </p>
+              ) : (
+                <p className="text-sm text-zinc-500">{language === "en" ? "No preview data yet." : "Chưa có dữ liệu preview."}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {embeddingModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="mt-0.5 rounded-xl bg-emerald-500/15 p-2 text-emerald-500">
+                {getEmbeddingState(embeddingTrackStatus) === "completed" ? (
+                  <CircleCheckBig className="h-5 w-5" />
+                ) : getEmbeddingState(embeddingTrackStatus) === "failed" ? (
+                  <CircleAlert className="h-5 w-5 text-red-500" />
+                ) : (
+                  <Cpu className="h-5 w-5" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  {getEmbeddingState(embeddingTrackStatus) === "completed"
+                    ? language === "en" ? "Embedding completed" : "Nhúng tài liệu hoàn tất"
+                    : getEmbeddingState(embeddingTrackStatus) === "failed"
+                      ? language === "en" ? "Embedding failed" : "Nhúng tài liệu thất bại"
+                      : language === "en" ? "Embedding in progress" : "Đang xử lý nhúng tài liệu"}
+                </p>
+                <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                  {embeddingTrackFileName}
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="font-medium text-zinc-600 dark:text-zinc-300">
+                {getEmbeddingState(embeddingTrackStatus) === "completed"
+                  ? language === "en" ? "Completed" : "Hoàn tất"
+                  : getEmbeddingState(embeddingTrackStatus) === "failed"
+                    ? language === "en" ? "Failed" : "Lỗi xử lý"
+                    : language === "en" ? "Running" : "Đang chạy"}
+              </span>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                {Math.round(embeddingProgress)}%
+              </span>
+            </div>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  getEmbeddingState(embeddingTrackStatus) === "failed"
+                    ? "bg-red-500"
+                    : "bg-gradient-to-r from-emerald-500 to-cyan-500"
+                }`}
+                style={{ width: `${Math.min(100, Math.max(0, embeddingProgress))}%` }}
+              />
+            </div>
+
+            <div className="mt-4 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+              {language === "en" ? "Status:" : "Trạng thái:"} {mapEmbeddingStatusLabel(embeddingTrackStatus, t)}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              {getEmbeddingState(embeddingTrackStatus) === "completed" ||
+              getEmbeddingState(embeddingTrackStatus) === "failed" ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  onClick={() => {
+                    setEmbeddingModalOpen(false);
+                    setEmbeddingTrackDocId(null);
+                  }}
+                >
+                  {language === "en" ? "Close" : "Đóng"}
+                </Button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {language === "en" ? "Tracking..." : "Đang theo dõi..."}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -625,7 +1079,7 @@ export function DocumentsTab() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Upload phiên bản mới</h3>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Tải lên phiên bản mới</h3>
               <button type="button" onClick={() => setNewVersionDocId(null)} className="rounded p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                 <X className="h-5 w-5" />
               </button>
@@ -640,7 +1094,7 @@ export function DocumentsTab() {
                 <input name="versionNote" type="text" className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" placeholder="Tùy chọn" />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" variant="primary" size="md" disabled={uploading}>{uploading ? "Đang upload…" : "Upload phiên bản"}</Button>
+                <Button type="submit" variant="primary" size="md" disabled={uploading}>{uploading ? "Đang tải lên…" : "Tải lên phiên bản"}</Button>
                 <Button type="button" variant="outline" size="md" onClick={() => setNewVersionDocId(null)}>Hủy</Button>
               </div>
             </form>
@@ -688,17 +1142,28 @@ function UpdateAccessModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (visibility === "SPECIFIC_DEPARTMENTS" && selectedDepartmentIds.length === 0) {
+    if (
+      (visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+      selectedDepartmentIds.length === 0
+    ) {
       return;
     }
-    if (visibility === "SPECIFIC_ROLES" && selectedRoleIds.length === 0) {
+    if (
+      (visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+      selectedRoleIds.length === 0
+    ) {
       return;
     }
     const body: UpdateDocumentAccessRequest = {
       visibility,
       accessibleDepartments:
-        visibility === "SPECIFIC_DEPARTMENTS" ? selectedDepartmentIds : null,
-      accessibleRoles: visibility === "SPECIFIC_ROLES" ? selectedRoleIds : null,
+        visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES"
+          ? selectedDepartmentIds
+          : null,
+      accessibleRoles:
+        visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES"
+          ? selectedRoleIds
+          : null,
     };
     onSave(body);
   };
@@ -726,7 +1191,7 @@ function UpdateAccessModal({
               ))}
             </select>
           </div>
-          {visibility === "SPECIFIC_DEPARTMENTS" && (
+          {(visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Chọn phòng ban
@@ -763,7 +1228,7 @@ function UpdateAccessModal({
               )}
             </div>
           )}
-          {visibility === "SPECIFIC_ROLES" && (
+          {(visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Chọn vai trò

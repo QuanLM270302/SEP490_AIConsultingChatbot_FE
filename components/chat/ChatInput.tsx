@@ -1,4 +1,7 @@
+"use client";
+
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import { useLanguageStore } from "@/lib/language-store";
 
 interface ChatInputProps {
   value: string;
@@ -13,6 +16,9 @@ export function ChatInput({
   onSubmit,
   isLoading,
 }: ChatInputProps) {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -21,23 +27,23 @@ export function ChatInput({
   };
 
   return (
-    <div className="border-t border-zinc-800 bg-zinc-900/50 px-6 py-4">
+    <div className="border-t border-zinc-200 bg-zinc-50 px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
       <form onSubmit={onSubmit} className="mx-auto max-w-4xl">
-        <div className="flex items-end gap-3">
-          <div className="flex-1">
+        <div className="flex items-stretch gap-3">
+          <div className="flex h-11 flex-1">
             <textarea
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              placeholder="Làm thế nào để AI chatbot có thể giúp bạn?"
+              placeholder={isEn ? "How can the AI chatbot help you?" : "Làm thế nào để AI chatbot có thể giúp bạn?"}
               rows={1}
-              className="w-full resize-none rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500/20"
+              className="h-11 w-full resize-none overflow-hidden rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-500 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
               onKeyDown={handleKeyDown}
             />
           </div>
           <button
             type="submit"
             disabled={isLoading || !value.trim()}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-500 text-white transition hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex h-11 w-11 shrink-0 items-center justify-center self-stretch rounded-lg bg-green-500 text-white transition hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -46,8 +52,10 @@ export function ChatInput({
             )}
           </button>
         </div>
-        <p className="mt-2 text-xs text-zinc-500">
-          AI có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng.
+        <p className="mt-2 text-center text-xs text-zinc-500">
+          {isEn
+            ? "AI can make mistakes. Verify important information."
+            : "AI có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng."}
         </p>
       </form>
     </div>

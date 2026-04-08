@@ -6,17 +6,40 @@ import {
   getActiveSubscriptionPlans,
   getSubscriptionPlanTypes,
   createSubscriptionPlan,
+  activateSubscriptionPlan,
+  deactivateSubscriptionPlan,
   deleteSubscriptionPlan,
   updateSubscriptionPlan,
   type CreateSubscriptionPlanRequest,
   type SubscriptionPlanTypeOption,
   type SubscriptionPlanResponse,
 } from "@/lib/api/admin";
-import { MoreVertical, Pencil, Trash2, Loader2, Eye, Plus } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Loader2, Eye, Plus, Power, PowerOff } from "lucide-react";
+import { useLanguageStore } from "@/lib/language-store";
 
 type Filter = "all" | "active";
 
+function getLocalizedPlanName(code?: string | null, fallback?: string | null, isEn?: boolean) {
+  const normalized = (code ?? "").toUpperCase();
+  const enMap: Record<string, string> = {
+    TRIAL: "Trial Plan",
+    STARTER: "Starter Plan",
+    STANDARD: "Standard Plan",
+    ENTERPRISE: "Enterprise Plan",
+  };
+  const viMap: Record<string, string> = {
+    TRIAL: "Gói Dùng Thử",
+    STARTER: "Gói Khởi Đầu",
+    STANDARD: "Gói Tiêu Chuẩn",
+    ENTERPRISE: "Gói Doanh Nghiệp",
+  };
+  const mapped = isEn ? enMap[normalized] : viMap[normalized];
+  return mapped ?? fallback ?? "—";
+}
+
 export function SubscriptionPlansTable() {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [plans, setPlans] = useState<SubscriptionPlanResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +56,7 @@ export function SubscriptionPlansTable() {
     setError(null);
     (filter === "active" ? getActiveSubscriptionPlans() : getSubscriptionPlans())
       .then(setPlans)
-      .catch((e) => setError(e instanceof Error ? e.message : "Lỗi tải plans"))
+      .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load plans" : "Lỗi tải danh sách gói"))
       .finally(() => setLoading(false));
   };
 
@@ -72,16 +95,39 @@ export function SubscriptionPlansTable() {
     setOpenMenuId(planId);
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Bạn có chắc muốn deactivate plan này?")) return;
+  const closeMenu = () => {
     setOpenMenuId(null);
     setMenuPos(null);
-    setActionLoading(id);
-    deleteSubscriptionPlan(id)
-      .then(load)
-      .catch((e) => alert(e instanceof Error ? e.message : "Lỗi"))
-      .finally(() => setActionLoading(null));
   };
+
+  const runPlanAction = async (id: string, action: () => Promise<unknown>) => {
+    closeMenu();
+    setActionLoading(id);
+    try {
+      await action();
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : isEn ? "Error" : "Lỗi");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDelete = (plan: SubscriptionPlanResponse) => {
+    if (!confirm(isEn ? "Delete this plan permanently? This action cannot be undone." : "Xóa vĩnh viễn gói này? Hành động này không thể hoàn tác.")) return;
+    void runPlanAction(plan.id, () => deleteSubscriptionPlan(plan.id));
+  };
+
+  const handleDeactivate = (plan: SubscriptionPlanResponse) => {
+    if (!confirm(isEn ? "Are you sure you want to deactivate this plan?" : "Bạn có chắc muốn ngừng kích hoạt gói này?")) return;
+    void runPlanAction(plan.id, () => deactivateSubscriptionPlan(plan.id));
+  };
+
+  const handleActivate = (plan: SubscriptionPlanResponse) => {
+    void runPlanAction(plan.id, () => activateSubscriptionPlan(plan.id));
+  };
+
+  const selectedMenuPlan = openMenuId ? plans.find((x) => x.id === openMenuId) ?? null : null;
 
   return (
     <div className="space-y-4">
@@ -94,21 +140,21 @@ export function SubscriptionPlansTable() {
             className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-600"
           >
             <Plus className="h-4 w-4" />
-            Tạo plan
+            {isEn ? "Create plan" : "Tạo gói"}
           </button>
           <button
             type="button"
             onClick={() => setFilter("all")}
             className={`rounded-xl px-3 py-1.5 text-sm font-medium ${filter === "all" ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
           >
-            Tất cả
+            {isEn ? "All" : "Tất cả"}
           </button>
           <button
             type="button"
             onClick={() => setFilter("active")}
             className={`rounded-xl px-3 py-1.5 text-sm font-medium ${filter === "active" ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
           >
-            Đang active
+            {isEn ? "Active" : "Đang hoạt động"}
           </button>
         </div>
       </div>
@@ -116,7 +162,7 @@ export function SubscriptionPlansTable() {
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-2xl bg-white py-12 dark:bg-zinc-950">
           <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-          <span className="text-sm text-zinc-500">Đang tải…</span>
+          <span className="text-sm text-zinc-500">{isEn ? "Loading..." : "Đang tải…"}</span>
         </div>
       ) : error ? (
         <div className="rounded-2xl bg-white p-6 text-sm text-red-600 dark:bg-zinc-950 dark:text-red-400">{error}</div>
@@ -126,17 +172,17 @@ export function SubscriptionPlansTable() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50">
                 <tr>
-                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Code / Tên</th>
-                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Giá (tháng)</th>
-                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Giới hạn</th>
-                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">Trạng thái</th>
-                  <th className="px-6 py-3 text-right font-semibold text-zinc-700 dark:text-zinc-300">Thao tác</th>
+                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Code / Name" : "Mã / Tên"}</th>
+                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Price (month)" : "Giá (tháng)"}</th>
+                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Limits" : "Giới hạn"}</th>
+                  <th className="px-6 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Status" : "Trạng thái"}</th>
+                  <th className="px-6 py-3 text-right font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Actions" : "Thao tác"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {plans.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">Chưa có plan.</td>
+                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">{isEn ? "No plans yet." : "Chưa có gói nào."}</td>
                   </tr>
                 ) : (
                   plans.map((p) => (
@@ -144,18 +190,20 @@ export function SubscriptionPlansTable() {
                       <td className="px-6 py-4">
                         <div>
                           <p className="font-medium text-zinc-900 dark:text-white">{p.code ?? p.id}</p>
-                          <p className="text-xs text-zinc-500">{p.name ?? "—"}</p>
+                          <p className="text-xs text-zinc-500">{getLocalizedPlanName(p.code, p.name, isEn)}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         {p.monthlyPrice != null ? `${Number(p.monthlyPrice).toLocaleString("vi-VN")} ${p.currency ?? "VND"}` : "—"}
                       </td>
                       <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">
-                        Users: {p.maxUsers ?? "—"} · Docs: {p.maxDocuments ?? "—"}
+                        {isEn
+                          ? `Users: ${p.maxUsers ?? "—"} · Docs: ${p.maxDocuments ?? "—"}`
+                          : `Người dùng: ${p.maxUsers ?? "—"} · Tài liệu: ${p.maxDocuments ?? "—"}`}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${p.isActive ? "bg-green-500/10 text-green-600 dark:text-green-400" : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400"}`}>
-                          {p.isActive ? "Active" : "Inactive"}
+                          {p.isActive ? (isEn ? "Active" : "Đang hoạt động") : isEn ? "Inactive" : "Ngừng kích hoạt"}
                         </span>
                       </td>
                       <td className="relative px-6 py-4 text-right">
@@ -179,18 +227,168 @@ export function SubscriptionPlansTable() {
 
       {detailPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-zinc-900/60" onClick={() => setDetailPlan(null)} />
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Chi tiết plan: {detailPlan.code ?? detailPlan.name}</h3>
-            <dl className="mt-4 space-y-2 text-sm">
-              <div><dt className="text-zinc-500">Code</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.code ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Tên</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.name ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Mô tả</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.description ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Giá tháng / quý / năm</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.monthlyPrice != null ? `${Number(detailPlan.monthlyPrice).toLocaleString("vi-VN")} / ${Number(detailPlan.quarterlyPrice).toLocaleString("vi-VN")} / ${Number(detailPlan.yearlyPrice).toLocaleString("vi-VN")} ${detailPlan.currency ?? ""}` : "—"}</dd></div>
-              <div><dt className="text-zinc-500">Max users / documents / storage (GB)</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.maxUsers ?? "—"} / {detailPlan.maxDocuments ?? "—"} / {detailPlan.maxStorageGb ?? "—"}</dd></div>
-              <div><dt className="text-zinc-500">Active</dt><dd className="font-medium text-zinc-900 dark:text-white">{detailPlan.isActive ? "Có" : "Không"}</dd></div>
-            </dl>
-            <button type="button" onClick={() => setDetailPlan(null)} className="mt-6 rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium dark:bg-zinc-700 dark:text-zinc-200">Đóng</button>
+          <div className="absolute inset-0 bg-zinc-900/70 backdrop-blur-sm" onClick={() => setDetailPlan(null)} />
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-zinc-900">
+            {/* HEADER */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-violet-500 to-violet-600 px-8 py-8 dark:from-violet-600 dark:to-violet-700">
+              <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+              <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+              <div className="relative flex items-start justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+                    <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">
+                      {detailPlan.name ?? detailPlan.code}
+                    </h3>
+                    <div className="mt-2 flex items-center gap-2">
+                      <p className="text-sm text-violet-50">{isEn ? "Plan Details" : "Chi tiết gói"}</p>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm ${
+                        detailPlan.isActive ? 'bg-green-500/30 text-white' : 'bg-red-500/30 text-white'
+                      }`}>
+                        {detailPlan.isActive ? (isEn ? "Active" : "Đang hoạt động") : isEn ? "Inactive" : "Ngừng kích hoạt"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDetailPlan(null)}
+                  className="rounded-xl bg-white/20 p-2 text-white backdrop-blur-sm transition hover:bg-white/30"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* CONTENT */}
+            <div className="space-y-6 p-8">
+              {/* Description Card */}
+              {detailPlan.description && (
+                <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                  <div className="mb-3 flex items-center gap-2">
+                    <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Mô tả
+                    </h4>
+                  </div>
+                  <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    {detailPlan.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Pricing Cards */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  Giá tháng / quý / năm
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {/* Monthly */}
+                  <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                    <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-emerald-500/5 blur-2xl" />
+                    <div className="relative">
+                      <div className="mb-2 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                          Tháng
+                        </span>
+                      </div>
+                      <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {detailPlan.monthlyPrice != null ? `${Number(detailPlan.monthlyPrice).toLocaleString("vi-VN")} VND` : "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quarterly */}
+                  <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                    <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-blue-500/5 blur-2xl" />
+                    <div className="relative">
+                      <div className="mb-2 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                          Quý
+                        </span>
+                      </div>
+                      <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {detailPlan.quarterlyPrice != null ? `${Number(detailPlan.quarterlyPrice).toLocaleString("vi-VN")} VND` : "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Yearly */}
+                  <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                    <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-purple-500/5 blur-2xl" />
+                    <div className="relative">
+                      <div className="mb-2 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                          Năm
+                        </span>
+                      </div>
+                      <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                        {detailPlan.yearlyPrice != null ? `${Number(detailPlan.yearlyPrice).toLocaleString("vi-VN")} VND` : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Limits Card */}
+              <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                <div className="mb-4 flex items-center gap-2">
+                  <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <h4 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    {isEn ? "Max users / documents / storage (GB)" : "Người dùng / tài liệu / dung lượng (GB)"}
+                  </h4>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{isEn ? "Users" : "Người dùng"}</span>
+                    <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
+                      {detailPlan.maxUsers ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{isEn ? "Documents" : "Tài liệu"}</span>
+                    <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
+                      {detailPlan.maxDocuments ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{isEn ? "Storage" : "Dung lượng"}</span>
+                    <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
+                      {detailPlan.maxStorageGb ?? "—"} GB
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* FOOTER */}
+            <div className="flex items-center justify-end border-t border-zinc-200 bg-zinc-50 px-8 py-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <button
+                type="button"
+                onClick={() => setDetailPlan(null)}
+                className="rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-zinc-900/20 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:shadow-white/20 dark:hover:bg-zinc-100"
+              >
+                {isEn ? "Close" : "Đóng"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -207,17 +405,14 @@ export function SubscriptionPlansTable() {
 
       {editPlan && <EditPlanModal plan={editPlan} onClose={() => setEditPlan(null)} onSuccess={() => { setEditPlan(null); load(); }} />}
 
-      {openMenuId && menuPos && (
+      {openMenuId && menuPos && selectedMenuPlan && (
         <>
           <div
             className="fixed inset-0 z-40"
-            onClick={() => {
-              setOpenMenuId(null);
-              setMenuPos(null);
-            }}
+            onClick={closeMenu}
           />
           <div
-            className="fixed z-50 w-40 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            className="fixed z-50 w-48 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
             style={{ top: menuPos.top, left: menuPos.left }}
           >
             <button
@@ -225,8 +420,7 @@ export function SubscriptionPlansTable() {
               onClick={() => {
                 const selected = plans.find((x) => x.id === openMenuId) ?? null;
                 if (selected) setDetailPlan(selected);
-                setOpenMenuId(null);
-                setMenuPos(null);
+                closeMenu();
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
@@ -237,20 +431,38 @@ export function SubscriptionPlansTable() {
               onClick={() => {
                 const selected = plans.find((x) => x.id === openMenuId) ?? null;
                 if (selected) setEditPlan(selected);
-                setOpenMenuId(null);
-                setMenuPos(null);
+                closeMenu();
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               <Pencil className="h-4 w-4" /> Cập nhật
             </button>
+            {selectedMenuPlan.isActive ? (
+              <button
+                type="button"
+                onClick={() => handleDeactivate(selectedMenuPlan)}
+                disabled={!!actionLoading}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-60 dark:text-amber-400 dark:hover:bg-amber-950/30"
+              >
+                <PowerOff className="h-4 w-4" /> {isEn ? "Deactivate" : "Ngừng kích hoạt"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleActivate(selectedMenuPlan)}
+                disabled={!!actionLoading}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+              >
+                <Power className="h-4 w-4" /> {isEn ? "Activate" : "Kích hoạt"}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => handleDelete(openMenuId)}
+              onClick={() => handleDelete(selectedMenuPlan)}
               disabled={!!actionLoading}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
             >
-              <Trash2 className="h-4 w-4" /> Xóa (deactivate)
+              <Trash2 className="h-4 w-4" /> {isEn ? "Delete permanently" : "Xóa vĩnh viễn"}
             </button>
           </div>
         </>
@@ -260,6 +472,8 @@ export function SubscriptionPlansTable() {
 }
 
 function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [loading, setLoading] = useState(false);
   const [types, setTypes] = useState<SubscriptionPlanTypeOption[]>([]);
   const [planType, setPlanType] = useState<SubscriptionPlanTypeOption["code"]>("STARTER");
@@ -298,16 +512,36 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     return Number.isFinite(n) ? n : fallback;
   };
 
+  // Format number with comma separator (Vietnamese style)
+  const formatNumber = (value: string): string => {
+    const num = value.replace(/[^\d]/g, '');
+    if (!num) return '';
+    return Number(num).toLocaleString('vi-VN');
+  };
+
+  // Parse formatted number back to plain number
+  const parseNumber = (value: string): string => {
+    return value.replace(/\./g, '');
+  };
+
+  const handlePriceChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = parseNumber(e.target.value);
+    setter(raw);
+  };
+
   const selectedType = types.find((t) => t.code === planType);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Use defaultName from selected type if name is empty
+      const planName = name.trim() || selectedType?.defaultName || planType;
+      
       const body: CreateSubscriptionPlanRequest = {
         planType,
-        name: name.trim() || undefined,
-        description: description.trim() || undefined,
+        name: planName,
+        description: description.trim() || "Default description",
         monthlyPrice: Math.max(0, toNum(monthlyPrice, 0)),
         quarterlyPrice: Math.max(0, toNum(quarterlyPrice, 0)),
         yearlyPrice: Math.max(0, toNum(yearlyPrice, 0)),
@@ -322,13 +556,22 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         ragChunkSize: 512,
         enableRag: true,
         isTrial: planType === "TRIAL",
-        trialDays: planType === "TRIAL" ? 14 : undefined,
         displayOrder: 0,
       };
+      
+      // Only add optional fields if they have values
+      if (planType === "TRIAL") {
+        body.trialDays = 14;
+      }
+      
+      console.log("📤 Request body:", JSON.stringify(body, null, 2));
+      console.log("📤 selectedType:", selectedType);
+      console.log("📤 planName:", planName);
       await createSubscriptionPlan(body);
       onSuccess();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Tạo plan thất bại");
+      console.error("❌ Error creating plan:", err);
+      alert(err instanceof Error ? err.message : isEn ? "Failed to create plan" : "Tạo gói thất bại");
     } finally {
       setLoading(false);
     }
@@ -338,14 +581,16 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo subscription plan</h3>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{isEn ? "Create subscription plan" : "Tạo gói đăng ký"}</h3>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          {/* Plan Type Dropdown - Moved to top */}
           <div>
-            <label className="block text-xs text-zinc-500">Plan type *</label>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Plan type *" : "Loại gói *"}</label>
             <select
               value={planType}
               onChange={(e) => setPlanType(e.target.value as SubscriptionPlanTypeOption["code"])}
-              className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+              required
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
             >
               {types.map((t) => (
                 <option key={t.code} value={t.code}>
@@ -353,26 +598,119 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-zinc-500">Code sẽ tự map theo loại plan.</p>
+            {selectedType && (
+              <p className="mt-1 text-xs text-zinc-500">
+                {selectedType.defaultName}
+              </p>
+            )}
           </div>
+
           <div>
-            <label className="block text-xs text-zinc-500">Tên (optional)</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={selectedType?.defaultName ?? "Để trống để BE tự gán"} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            <label className="block text-xs text-zinc-500">Mô tả</label>
+            <input 
+              type="text" 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              placeholder="Mô tả ngắn về gói"
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+            />
           </div>
-          <div><label className="block text-xs text-zinc-500">Mô tả</label><input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+          
+          {/* Price Fields with VND */}
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Giá gói</label>
+            <div className="grid grid-cols-1 gap-2">
+              <div>
+                <label className="block text-xs text-zinc-500">Giá tháng</label>
+                <div className="relative mt-1">
+                  <input 
+                    type="text" 
+                    value={formatNumber(monthlyPrice)} 
+                    onChange={handlePriceChange(setMonthlyPrice)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 pr-12 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">VND</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500">Giá quý</label>
+                <div className="relative mt-1">
+                  <input 
+                    type="text" 
+                    value={formatNumber(quarterlyPrice)} 
+                    onChange={handlePriceChange(setQuarterlyPrice)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 pr-12 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">VND</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500">Giá năm</label>
+                <div className="relative mt-1">
+                  <input 
+                    type="text" 
+                    value={formatNumber(yearlyPrice)} 
+                    onChange={handlePriceChange(setYearlyPrice)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 pr-12 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">VND</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Limits */}
           <div className="grid grid-cols-3 gap-2">
-            <div><label className="block text-xs text-zinc-500">Giá tháng</label><input type="number" min="0" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Giá quý</label><input type="number" min="0" value={quarterlyPrice} onChange={(e) => setQuarterlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Giá năm</label><input type="number" min="0" value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div>
+              <label className="block text-xs text-zinc-500">{isEn ? "Max users" : "Số người dùng tối đa"}</label>
+              <input 
+                type="number" 
+                min="1" 
+                value={maxUsers} 
+                onChange={(e) => setMaxUsers(e.target.value)} 
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Số tài liệu</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={maxDocuments} 
+                onChange={(e) => setMaxDocuments(e.target.value)} 
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Dung lượng (GB)</label>
+              <input 
+                type="number" 
+                min="1" 
+                value={maxStorageGb} 
+                onChange={(e) => setMaxStorageGb(e.target.value)} 
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div><label className="block text-xs text-zinc-500">Max users</label><input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Max docs</label><input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Storage GB</label><input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-          </div>
+
           <div className="mt-6 flex gap-2">
-            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo"}</button>
-            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Tạo"}
+            </button>
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700 dark:text-zinc-300"
+            >
+              Hủy
+            </button>
           </div>
         </form>
       </div>
@@ -381,6 +719,8 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 }
 
 function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanResponse; onClose: () => void; onSuccess: () => void }) {
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(plan.name ?? "");
   const [description, setDescription] = useState(plan.description ?? "");
@@ -421,6 +761,7 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
         maxAiTokens: Math.max(0, Math.trunc(plan.maxAiTokens ?? 100000)),
         contextWindowTokens: Math.max(1, Math.trunc(plan.contextWindowTokens ?? 4096)),
         ragChunkSize: Math.max(256, Math.trunc(plan.ragChunkSize ?? 512)),
+        enableRag: Math.max(0, Math.trunc(plan.maxRagDocuments ?? 500)) > 0,
         aiModel: plan.aiModel ?? undefined,
         embeddingModel: plan.embeddingModel ?? undefined,
         features: plan.features ?? undefined,
@@ -439,7 +780,7 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
-        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Cập nhật plan: {plan.code}</h3>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{isEn ? `Update plan: ${plan.code}` : `Cập nhật gói: ${plan.code}`}</h3>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div><label className="block text-xs text-zinc-500">Tên *</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
           <div><label className="block text-xs text-zinc-500">Mô tả</label><input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
@@ -449,14 +790,14 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
             <div><label className="block text-xs text-zinc-500">Giá năm</label><input type="number" min="0" value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="block text-xs text-zinc-500">Max users</label><input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Max documents</label><input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Max storage (GB)</label><input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Display order</label><input type="number" min="0" value={displayOrder} onChange={(e) => setDisplayOrder(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">{isEn ? "Max users" : "Người dùng tối đa"}</label><input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">{isEn ? "Max documents" : "Tài liệu tối đa"}</label><input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">{isEn ? "Max storage (GB)" : "Dung lượng tối đa (GB)"}</label><input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div><label className="block text-xs text-zinc-500">{isEn ? "Display order" : "Thứ tự hiển thị"}</label><input type="number" min="0" value={displayOrder} onChange={(e) => setDisplayOrder(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
           </div>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-green-500" />
-            <span className="text-sm text-zinc-700 dark:text-zinc-300">Đang active</span>
+            <span className="text-sm text-zinc-700 dark:text-zinc-300">{isEn ? "Active" : "Đang hoạt động"}</span>
           </label>
           <div className="mt-6 flex gap-2">
             <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Lưu"}</button>

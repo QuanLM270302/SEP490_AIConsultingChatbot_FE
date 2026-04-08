@@ -1,26 +1,119 @@
 /**
  * fetch with Bearer token from auth-store. On 401, tries refreshAuth() once and retries.
- * Use in client code only (reads localStorage).
+ * On 403, tries tryRefreshAuth() then retries once. Invalid refresh (4xx/5xx) clears storage;
+ * pure network errors keep the session. Use in client code only (reads localStorage).
  */
-import { getAccessToken, refreshAuth } from "@/lib/auth-store";
+import { getAccessToken, getRefreshToken, refreshAuth, tryRefreshAuth } from "@/lib/auth-store";
+
+type RequestAttempt = "initial" | "retry-401-refresh" | "retry-403-refresh";
+
+function isRequestObject(input: RequestInfo | URL): input is Request {
+  return typeof Request !== "undefined" && input instanceof Request;
+}
+
+function resolveRequestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.toString();
+  if (isRequestObject(input)) return input.url;
+  return String(input);
+}
+
+function resolveRequestMethod(input: RequestInfo | URL, init?: RequestInit): string {
+  if (init?.method) return init.method.toUpperCase();
+  if (isRequestObject(input)) return input.method.toUpperCase();
+  return "GET";
+}
+
+function shouldLogApiDebug(): boolean {
+  if (typeof window === "undefined") return false;
+  const flag = process.env.NEXT_PUBLIC_API_DEBUG?.toLowerCase();
+  if (flag === "1" || flag === "true") return true;
+  if (flag === "0" || flag === "false") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
+function summarizeRequestHeaders(headers: Headers): {
+  authorization?: string;
+  accept?: string;
+  contentType?: string;
+  ifNoneMatch?: string;
+} {
+  const authorization = headers.get("Authorization");
+  return {
+    authorization: authorization ? "Bearer ***" : undefined,
+    accept: headers.get("Accept") ?? undefined,
+    contentType: headers.get("Content-Type") ?? undefined,
+    ifNoneMatch: headers.get("If-None-Match") ?? undefined,
+  };
+}
+
+function logApiRequest(
+  url: string,
+  method: string,
+  headers: Headers,
+  attempt: RequestAttempt
+): void {
+  if (!shouldLogApiDebug()) return;
+  console.debug("[api] request", {
+    url,
+    method,
+    attempt,
+    headers: summarizeRequestHeaders(headers),
+  });
+}
+
+function logApiResponse(url: string, method: string, res: Response, attempt: RequestAttempt): void {
+  if (!shouldLogApiDebug()) return;
+  console.debug("[api] response", {
+    url,
+    method,
+    attempt,
+    status: res.status,
+    contentType: res.headers.get("content-type") ?? undefined,
+    contentDisposition: res.headers.get("content-disposition") ?? undefined,
+    etag: res.headers.get("etag") ?? undefined,
+    previewMode: res.headers.get("x-preview-mode") ?? undefined,
+    sourceContentType: res.headers.get("x-source-content-type") ?? undefined,
+    traceId: res.headers.get("x-trace-id") ?? undefined,
+  });
+}
 
 export async function fetchWithAuth(
   input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<Response> {
-  const token = getAccessToken();
-  const headers = new Headers(init?.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const url = resolveRequestUrl(input);
+  const method = resolveRequestMethod(input, init);
 
-  let res = await fetch(input, { ...init, headers });
-  if (res.status === 401 && token) {
+  const doFetch = async (authToken: string | null, attempt: RequestAttempt) => {
+    const headers = new Headers(
+      init?.headers ?? (isRequestObject(input) ? input.headers : undefined)
+    );
+    if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
+    logApiRequest(url, method, headers, attempt);
+    const response = await fetch(input, { ...init, headers });
+    logApiResponse(url, method, response, attempt);
+    return response;
+  };
+
+  let token = getAccessToken();
+  let res = await doFetch(token, "initial");
+
+  /** Access missing/expired but refresh exists — recover once (same as AuthGuard). */
+  if (res.status === 401 && getRefreshToken()) {
     const ok = await refreshAuth();
     if (ok) {
-      const newToken = getAccessToken();
-      if (newToken) {
-        headers.set("Authorization", `Bearer ${newToken}`);
-        res = await fetch(input, { ...init, headers });
-      }
+      token = getAccessToken();
+      if (token) res = await doFetch(token, "retry-401-refresh");
+    }
+  }
+
+  /** 403: refresh JWT from DB (e.g. new DOCUMENT_READ). tryRefreshAuth may clear session if refresh fails with HTTP error. */
+  if (res.status === 403 && getRefreshToken()) {
+    const ok = await tryRefreshAuth();
+    if (ok) {
+      token = getAccessToken();
+      if (token) res = await doFetch(token, "retry-403-refresh");
     }
   }
   return res;
