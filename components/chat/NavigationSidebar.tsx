@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MessageSquare, Users, User, LogOut, Plus, ClipboardCheck } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Search, MessageSquare, Users, Plus, ClipboardCheck } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
-import { clearAuth } from "@/lib/auth-store";
-import { logout } from "@/lib/api/auth";
-import { getAccessToken, getStoredUser } from "@/lib/auth-store";
+import { getStoredUser } from "@/lib/auth-store";
 import { getProfile } from "@/lib/api/profile";
+import { UserMenu } from "./UserMenu";
 
 export type ChatbotNavView = "chat" | "search" | "analytics";
 
@@ -37,17 +35,10 @@ export function NavigationSidebar({
   onOpenOnboarding,
 }: NavigationSidebarProps) {
   const { language } = useLanguageStore();
-  const router = useRouter();
-  const [mounted, setMounted] = useState(false);
   const currentUser = getStoredUser();
   const [displayName, setDisplayName] = useState(
     currentUser?.email?.split("@")[0] || "User"
   );
-  const [showUserMenu, setShowUserMenu] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     getProfile()
@@ -81,17 +72,6 @@ export function NavigationSidebar({
       caption: isEn ? "Analytics" : "Phân tích",
     },
   ];
-
-  const handleLogout = async () => {
-    const token = getAccessToken();
-    try {
-      if (token) await logout(token);
-    } finally {
-      clearAuth();
-      router.push("/login");
-      router.refresh();
-    }
-  };
 
   const nameInitial =
     displayName.trim().charAt(0).toUpperCase() ||
@@ -210,56 +190,11 @@ export function NavigationSidebar({
           </span>
         </div>
 
-        <div className="relative flex flex-col items-center gap-1 pb-1">
-          <button
-            type="button"
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex size-10 items-center justify-center rounded-full bg-zinc-200 text-zinc-700 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-            title={mounted ? displayName : "User"}
-          >
-            <User className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} />
-          </button>
+        <div className="flex flex-col items-center gap-1 pb-1">
+          <UserMenu />
           <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
-            {isEn ? "Account" : "Hồ sơ"}
+            {isEn ? "Menu" : "Menu"}
           </span>
-
-          {showUserMenu ? (
-            <>
-              <button
-                type="button"
-                className="fixed inset-0 z-40"
-                aria-label="Close menu"
-                onClick={() => setShowUserMenu(false)}
-              />
-              <div className="absolute bottom-full left-full z-50 mb-2 ml-2 w-48 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                  <div className="truncate text-sm font-medium text-zinc-900 dark:text-white">{displayName}</div>
-                  <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">{currentUser?.email}</div>
-                </div>
-                <div className="p-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      router.push("/profile");
-                      setShowUserMenu(false);
-                    }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                  >
-                    <User className="h-4 w-4" />
-                    {isEn ? "Profile" : "Hồ sơ"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    {isEn ? "Logout" : "Đăng xuất"}
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : null}
         </div>
       </div>
     </aside>
