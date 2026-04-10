@@ -245,7 +245,7 @@ export const translations = {
     updateUserPermissions: 'Cập nhật quyền',
     selectPermissions: 'Chọn các quyền bổ sung cho người dùng.',
     noPermissions: 'Không có danh sách quyền.',
-    confirmDeleteUser: 'Bạn có chắc muốn xóa (vô hiệu hóa) người dùng này?',
+    confirmDeleteUser: 'Bạn có chắc muốn xóa người dùng này khỏi tổ chức? Hành động này không thể hoàn tác.',
     passwordResetSent: 'Mật khẩu mới đã được gửi đến thư điện tử của người dùng.',
     
     // Department Table
@@ -692,7 +692,7 @@ export const translations = {
     updateUserPermissions: 'Update permissions',
     selectPermissions: 'Select additional permissions for user.',
     noPermissions: 'No permissions available.',
-    confirmDeleteUser: 'Are you sure you want to delete (deactivate) this user?',
+    confirmDeleteUser: 'Are you sure you want to remove this user from the organization? This action cannot be undone.',
     passwordResetSent: 'New password has been sent to user email.',
     
     // Department Table

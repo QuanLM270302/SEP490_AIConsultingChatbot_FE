@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/admin";
 import { MoreVertical, Pencil, Trash2, Loader2, Eye, Plus, Power, PowerOff } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
+import { useConfirmDialog } from "@/components/ui";
 
 type Filter = "all" | "active";
 
@@ -50,6 +51,7 @@ export function SubscriptionPlansTable() {
   const [detailPlan, setDetailPlan] = useState<SubscriptionPlanResponse | null>(null);
   const [editPlan, setEditPlan] = useState<SubscriptionPlanResponse | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const load = () => {
     setLoading(true);
@@ -113,13 +115,33 @@ export function SubscriptionPlansTable() {
     }
   };
 
-  const handleDelete = (plan: SubscriptionPlanResponse) => {
-    if (!confirm(isEn ? "Delete this plan permanently? This action cannot be undone." : "Xóa vĩnh viễn gói này? Hành động này không thể hoàn tác.")) return;
+  const handleDelete = async (plan: SubscriptionPlanResponse) => {
+    const ok = await confirm({
+      title: isEn ? "Delete plan permanently?" : "Xóa vĩnh viễn gói này?",
+      description: isEn
+        ? "This action cannot be undone."
+        : "Hành động này không thể hoàn tác.",
+      confirmText: isEn ? "Delete" : "Xóa",
+      cancelText: isEn ? "Cancel" : "Hủy",
+      tone: "danger",
+    });
+    if (!ok) return;
+
     void runPlanAction(plan.id, () => deleteSubscriptionPlan(plan.id));
   };
 
-  const handleDeactivate = (plan: SubscriptionPlanResponse) => {
-    if (!confirm(isEn ? "Are you sure you want to deactivate this plan?" : "Bạn có chắc muốn ngừng kích hoạt gói này?")) return;
+  const handleDeactivate = async (plan: SubscriptionPlanResponse) => {
+    const ok = await confirm({
+      title: isEn ? "Deactivate this plan?" : "Ngừng kích hoạt gói này?",
+      description: isEn
+        ? "The plan will no longer be available for new subscriptions."
+        : "Gói sẽ không còn khả dụng cho đăng ký mới.",
+      confirmText: isEn ? "Deactivate" : "Ngừng kích hoạt",
+      cancelText: isEn ? "Cancel" : "Hủy",
+      tone: "warning",
+    });
+    if (!ok) return;
+
     void runPlanAction(plan.id, () => deactivateSubscriptionPlan(plan.id));
   };
 
@@ -440,7 +462,7 @@ export function SubscriptionPlansTable() {
             {selectedMenuPlan.isActive ? (
               <button
                 type="button"
-                onClick={() => handleDeactivate(selectedMenuPlan)}
+                onClick={() => void handleDeactivate(selectedMenuPlan)}
                 disabled={!!actionLoading}
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-60 dark:text-amber-400 dark:hover:bg-amber-950/30"
               >
@@ -458,7 +480,7 @@ export function SubscriptionPlansTable() {
             )}
             <button
               type="button"
-              onClick={() => handleDelete(selectedMenuPlan)}
+              onClick={() => void handleDelete(selectedMenuPlan)}
               disabled={!!actionLoading}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
             >
@@ -467,6 +489,8 @@ export function SubscriptionPlansTable() {
           </div>
         </>
       )}
+
+      {confirmDialog}
     </div>
   );
 }

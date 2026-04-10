@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getPermissionLabel } from "@/lib/permission-labels";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
+import { useConfirmDialog } from "@/components/ui";
 import {
   createTenantRole,
   deleteTenantRole,
@@ -41,6 +42,7 @@ export default function TenantAdminRolesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [detail, setDetail] = useState<RoleResponse | null>(null);
   const [editRole, setEditRole] = useState<RoleResponse | null>(null);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const fixedCodes = useMemo(() => new Set(["TENANT_ADMIN", "EMPLOYEE"]), []);
 
@@ -150,7 +152,15 @@ export default function TenantAdminRolesPage() {
       alert("Role cố định không thể xóa.");
       return;
     }
-    if (!confirm(`Bạn có chắc muốn xóa role "${role.name ?? role.code ?? role.id}"?`)) return;
+    const ok = await confirm({
+      title: "Xóa vai trò?",
+      description: `Bạn có chắc muốn xóa role "${role.name ?? role.code ?? role.id}"?`,
+      confirmText: "Xóa",
+      cancelText: t.cancel,
+      tone: "danger",
+    });
+    if (!ok) return;
+
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoadingId(role.id);
@@ -499,6 +509,8 @@ export default function TenantAdminRolesPage() {
           </div>
         </div>
       )}
+
+      {confirmDialog}
     </TenantAdminLayout>
   );
 }

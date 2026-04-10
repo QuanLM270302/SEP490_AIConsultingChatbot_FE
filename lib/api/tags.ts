@@ -57,3 +57,17 @@ export async function deactivateTag(id: string): Promise<void> {
   });
   if (!res.ok) throw new Error(await res.text().catch(() => "Deactivate failed"));
 }
+
+export async function activateTag(id: string): Promise<void> {
+  const res = await fetchWithAuth(`${TAGS_BASE}/${id}/activate`, {
+    method: "PATCH",
+  });
+  if (!res.ok) throw new Error(await res.text().catch(() => "Activate failed"));
+}
+
+export async function deleteTag(id: string): Promise<void> {
+  const res = await fetchWithAuth(`${TAGS_BASE}/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(await res.text().catch(() => "Delete failed"));
+}

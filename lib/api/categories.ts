@@ -18,6 +18,12 @@ export async function listCategoriesTree(): Promise<DocumentCategoryResponse[]> 
   return res.json();
 }
 
+export async function listCategoriesManage(): Promise<DocumentCategoryResponse[]> {
+  const res = await fetchWithAuth(`${CATEGORIES_BASE}/manage`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to list categories"));
+  return res.json();
+}
+
 export async function getCategory(id: string): Promise<DocumentCategoryResponse> {
   const res = await fetchWithAuth(`${CATEGORIES_BASE}/detail/${id}`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Category not found"));
@@ -55,8 +61,28 @@ export async function updateCategory(
   return res.json();
 }
 
-export async function deleteCategory(id: string): Promise<void> {
-  const res = await fetchWithAuth(`${CATEGORIES_BASE}/delete/${id}`, {
+export async function deactivateCategory(id: string): Promise<void> {
+  const res = await fetchWithAuth(`${CATEGORIES_BASE}/${id}/deactivate`, {
+    method: "PATCH",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error((err as { message?: string }).message ?? "Deactivate failed");
+  }
+}
+
+export async function activateCategory(id: string): Promise<void> {
+  const res = await fetchWithAuth(`${CATEGORIES_BASE}/${id}/activate`, {
+    method: "PATCH",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error((err as { message?: string }).message ?? "Activate failed");
+  }
+}
+
+export async function deleteCategoryPermanently(id: string): Promise<void> {
+  const res = await fetchWithAuth(`${CATEGORIES_BASE}/${id}`, {
     method: "DELETE",
   });
   if (!res.ok) {
@@ -64,3 +90,6 @@ export async function deleteCategory(id: string): Promise<void> {
     throw new Error((err as { message?: string }).message ?? "Delete failed");
   }
 }
+
+// Backward compatibility for existing imports.
+export const deleteCategory = deactivateCategory;

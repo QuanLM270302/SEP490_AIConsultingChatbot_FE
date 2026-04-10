@@ -14,6 +14,7 @@ import {
 } from "@/lib/api/admin";
 import { Eye, Loader2, MoreVertical, Pencil, Plus, Search, Shield, Trash2 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
+import { useConfirmDialog } from "@/components/ui";
 
 export default function SuperAdminRolesPage() {
   const { language } = useLanguageStore();
@@ -28,6 +29,7 @@ export default function SuperAdminRolesPage() {
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const load = () => {
     setLoading(true);
@@ -86,7 +88,17 @@ export default function SuperAdminRolesPage() {
       alert(isEn ? "Cannot delete a system role." : "Không thể xóa vai trò hệ thống.");
       return;
     }
-    if (!confirm(isEn ? `Are you sure you want to delete role "${role.name ?? role.code ?? role.id}"?` : `Bạn có chắc muốn xóa vai trò "${role.name ?? role.code ?? role.id}"?`)) return;
+    const ok = await confirm({
+      title: isEn ? "Delete role?" : "Xóa vai trò?",
+      description: isEn
+        ? `Are you sure you want to delete role "${role.name ?? role.code ?? role.id}"?`
+        : `Bạn có chắc muốn xóa vai trò "${role.name ?? role.code ?? role.id}"?`,
+      confirmText: isEn ? "Delete" : "Xóa",
+      cancelText: isEn ? "Cancel" : "Hủy",
+      tone: "danger",
+    });
+    if (!ok) return;
+
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoadingId(role.id);
@@ -428,6 +440,8 @@ export default function SuperAdminRolesPage() {
           </div>
         </>
       ) : null}
+
+      {confirmDialog}
     </>
   );
 }

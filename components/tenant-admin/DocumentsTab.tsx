@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui";
+import { Button, useConfirmDialog } from "@/components/ui";
 import {
   listDocuments,
   listDeletedDocuments,
@@ -157,6 +157,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   const previousEmbeddingStateRef = useRef<Record<string, EmbeddingState>>({});
   const { language } = useLanguageStore();
   const t = translations[language];
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const updateEmbeddingCompletionTimestamps = useCallback((nextDocs: DocumentResponse[]) => {
     setEmbeddingCompletedAtByDocId((prev) => {
@@ -387,7 +388,15 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   };
 
   const handleSoftDelete = async (id: string) => {
-    if (!confirm("Xóa mềm tài liệu này?")) return;
+    const ok = await confirm({
+      title: "Xóa mềm tài liệu?",
+      description: "Bạn có thể khôi phục tài liệu từ thùng rác.",
+      confirmText: "Xóa mềm",
+      cancelText: "Hủy",
+      tone: "warning",
+    });
+    if (!ok) return;
+
     setError(null);
     try {
       await softDeleteDocument(id);
@@ -1101,6 +1110,8 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
           </div>
         </div>
       )}
+
+      {confirmDialog}
     </div>
   );
 }

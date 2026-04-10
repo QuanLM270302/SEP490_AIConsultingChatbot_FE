@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/admin";
 import { UserPlus, MoreVertical, Eye, UserCheck, UserX, Trash2, Loader2, Search } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
+import { useConfirmDialog } from "@/components/ui";
 
 export default function StaffManagementPage() {
   const { language } = useLanguageStore();
@@ -26,6 +27,7 @@ export default function StaffManagementPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [search, setSearch] = useState("");
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const load = () => {
     setLoading(true);
@@ -91,8 +93,18 @@ export default function StaffManagementPage() {
       .finally(() => setActionLoading(null));
   };
 
-  const handleDelete = (userId: string) => {
-    if (!confirm(isEn ? "Are you sure you want to delete this STAFF account?" : "Bạn có chắc muốn xóa tài khoản nhân viên vận hành này?")) return;
+  const handleDelete = async (userId: string) => {
+    const ok = await confirm({
+      title: isEn ? "Delete STAFF account?" : "Xóa tài khoản STAFF?",
+      description: isEn
+        ? "Are you sure you want to delete this STAFF account?"
+        : "Bạn có chắc muốn xóa tài khoản nhân viên vận hành này?",
+      confirmText: isEn ? "Delete" : "Xóa",
+      cancelText: isEn ? "Cancel" : "Hủy",
+      tone: "danger",
+    });
+    if (!ok) return;
+
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoading(userId);
@@ -394,7 +406,7 @@ export default function StaffManagementPage() {
             )}
             <button
               type="button"
-              onClick={() => handleDelete(openMenuId)}
+              onClick={() => void handleDelete(openMenuId)}
               disabled={!!actionLoading}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
             >
@@ -403,6 +415,8 @@ export default function StaffManagementPage() {
           </div>
         </>
       )}
+
+      {confirmDialog}
     </>
   );
 }

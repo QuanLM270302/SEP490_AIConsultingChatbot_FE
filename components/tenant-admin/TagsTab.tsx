@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui";
-import { listTagsManage, createTag, updateTag, deactivateTag } from "@/lib/api/tags";
+import { Button, useConfirmDialog } from "@/components/ui";
+import { listTagsManage, createTag, updateTag, deactivateTag, activateTag, deleteTag } from "@/lib/api/tags";
 import type {
   DocumentTagResponse,
   CreateDocumentTagRequest,
   UpdateDocumentTagRequest,
 } from "@/types/knowledge";
-import { Plus, Pencil, X, Ban } from "lucide-react";
+import { Plus, Pencil, X, Ban, Check, Trash2 } from "lucide-react";
 
 export function TagsTab() {
   const [tags, setTags] = useState<DocumentTagResponse[]>([]);
@@ -16,6 +16,7 @@ export function TagsTab() {
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editTag, setEditTag] = useState<DocumentTagResponse | null>(null);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const load = async () => {
     setLoading(true);
@@ -31,7 +32,7 @@ export function TagsTab() {
   };
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -65,13 +66,59 @@ export function TagsTab() {
   };
 
   const handleDeactivate = async (id: string) => {
-    if (!confirm("Vô hiệu hóa thẻ này?")) return;
+    const ok = await confirm({
+      title: "Vô hiệu hóa thẻ?",
+      description: "Thẻ sẽ ẩn khỏi danh sách active.",
+      confirmText: "Vô hiệu hóa",
+      cancelText: "Hủy",
+      tone: "warning",
+    });
+    if (!ok) return;
+
     setError(null);
     try {
       await deactivateTag(id);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Vô hiệu hóa thất bại");
+    }
+  };
+
+  const handleActivate = async (id: string) => {
+    const ok = await confirm({
+      title: "Kích hoạt lại thẻ?",
+      description: "Thẻ sẽ xuất hiện lại trong danh sách active.",
+      confirmText: "Kích hoạt",
+      cancelText: "Hủy",
+      tone: "default",
+    });
+    if (!ok) return;
+
+    setError(null);
+    try {
+      await activateTag(id);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Kích hoạt thất bại");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Xóa vĩnh viễn thẻ?",
+      description: "Hành động này không thể hoàn tác.",
+      confirmText: "Xóa",
+      cancelText: "Hủy",
+      tone: "danger",
+    });
+    if (!ok) return;
+
+    setError(null);
+    try {
+      await deleteTag(id);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Xóa vĩnh viễn thất bại");
     }
   };
 
@@ -126,11 +173,29 @@ export function TagsTab() {
                       <button type="button" onClick={() => setEditTag(t)} className="mr-2 rounded p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <button type="button" onClick={() => handleDeactivate(t.id)} className="rounded p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30" title="Vô hiệu hóa">
+                      <button type="button" onClick={() => void handleDeactivate(t.id)} className="rounded p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30" title="Vô hiệu hóa">
                         <Ban className="h-4 w-4" />
                       </button>
                     </>
                   )}
+                  {!t.isActive && (
+                    <button
+                      type="button"
+                      onClick={() => void handleActivate(t.id)}
+                      className="rounded p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                      title="Kích hoạt"
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(t.id)}
+                    className={`rounded p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 ${t.isActive ? "ml-2" : ""}`}
+                    title="Xóa vĩnh viễn"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </td>
               </tr>
             ))}
@@ -189,6 +254,8 @@ export function TagsTab() {
           </div>
         </div>
       )}
+
+      {confirmDialog}
     </div>
   );
 }

@@ -25,6 +25,7 @@ import { translations } from "@/lib/translations";
 import { getStoredUser } from "@/lib/auth-store";
 import { mergeRolesWithCache, readTenantRolesCache } from "@/lib/tenant-roles-cache";
 import { getPermissionLabel } from "@/lib/permission-labels";
+import { useConfirmDialog } from "@/components/ui";
 
 /** Không gán user thường làm admin nền tảng / tenant admin / staff */
 const ROLE_CODES_EXCLUDED_FROM_USER_ASSIGNMENT = new Set(["TENANT_ADMIN", "SUPER_ADMIN", "STAFF"]);
@@ -49,6 +50,7 @@ export function EmployeesTable() {
   const [availablePermissions, setAvailablePermissions] = useState<{ code: string; name?: string }[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [permissionMetaLoading, setPermissionMetaLoading] = useState(false);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const loadUsers = () => {
     setLoading(true);
@@ -124,8 +126,16 @@ export function EmployeesTable() {
       .finally(() => setActionLoading(null));
   };
 
-  const handleDelete = (userId: string) => {
-    if (!confirm(t.confirmDeleteUser)) return;
+  const handleDelete = async (userId: string) => {
+    const ok = await confirm({
+      title: language === "en" ? "Remove employee from organization?" : "Xóa nhân viên khỏi tổ chức?",
+      description: t.confirmDeleteUser,
+      confirmText: language === "en" ? "Remove" : "Xóa",
+      cancelText: t.cancel,
+      tone: "danger",
+    });
+    if (!ok) return;
+
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoading(userId);
@@ -350,7 +360,7 @@ export function EmployeesTable() {
             </button>
             <button
               type="button"
-              onClick={() => handleDelete(openMenuId)}
+              onClick={() => void handleDelete(openMenuId)}
               disabled={!!actionLoading}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
             >
@@ -396,6 +406,8 @@ export function EmployeesTable() {
           }}
         />
       )}
+
+      {confirmDialog}
 
     </>
   );

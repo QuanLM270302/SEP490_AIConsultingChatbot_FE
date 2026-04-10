@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Pencil, Trash2, MoreVertical } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui";
 import {
   getTenantDepartments,
   getTenantActiveDepartments,
@@ -30,6 +31,7 @@ export function DepartmentsTable({
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   useEffect(() => {
     setLoading(true);
@@ -174,8 +176,16 @@ export function DepartmentsTable({
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (!confirm(t.confirmDeleteDepartment)) return;
+              onClick={async () => {
+                const ok = await confirm({
+                  title: language === "en" ? "Delete department?" : "Xóa phòng ban?",
+                  description: t.confirmDeleteDepartment,
+                  confirmText: language === "en" ? "Delete" : "Xóa",
+                  cancelText: t.cancel,
+                  tone: "danger",
+                });
+                if (!ok) return;
+
                 setActionLoadingId(openMenuId);
                 deleteTenantDepartment(openMenuId)
                   .then(async () => {
@@ -217,6 +227,8 @@ export function DepartmentsTable({
           t={t}
         />
       )}
+
+      {confirmDialog}
     </div>
   );
 }
