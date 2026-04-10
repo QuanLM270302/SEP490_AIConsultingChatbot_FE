@@ -16,9 +16,8 @@ import { ChatHistorySidebarNew } from "./ChatHistorySidebarNew";
 import { getStoredUser } from "@/lib/auth-store";
 import { getProfile } from "@/lib/api/profile";
 import { chat, getConversationHistory } from "@/lib/api/chatbot";
-import { listCategoriesFlat } from "@/lib/api/categories";
 import { listTagsActive } from "@/lib/api/tags";
-import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
+import type { DocumentTagResponse } from "@/types/knowledge";
 
 interface Message {
   id: string;
@@ -61,9 +60,7 @@ export function ChatView({
     documentName: string;
     confidence?: number;
   } | null>(null);
-  const [categories, setCategories] = useState<DocumentCategoryResponse[]>([]);
   const [tags, setTags] = useState<DocumentTagResponse[]>([]);
-  const [categoryId, setCategoryId] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [topK, setTopK] = useState(5);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -84,12 +81,9 @@ export function ChatView({
   }, []);
 
   useEffect(() => {
-    Promise.all([listCategoriesFlat().catch(() => []), listTagsActive().catch(() => [])]).then(
-      ([cats, activeTags]) => {
-        setCategories(cats);
-        setTags(activeTags);
-      }
-    );
+    listTagsActive()
+      .then((activeTags) => setTags(activeTags))
+      .catch(() => setTags([]));
   }, []);
 
   const toggleTag = (tagId: string) => {
@@ -171,7 +165,6 @@ export function ChatView({
         message: text,
         conversationId: conversationId ?? undefined,
         topK,
-        categoryId: categoryId || undefined,
         tagIds: selectedTagIds.length ? selectedTagIds : undefined,
       });
 
@@ -258,24 +251,7 @@ export function ChatView({
                     <ChevronDown className="h-4 w-4 opacity-70" />
                   </span>
                 </summary>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">
-                      {isEn ? "Category" : "Danh mục"}
-                    </label>
-                    <select
-                      value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
-                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                    >
-                      <option value="">{isEn ? "All categories" : "Tất cả danh mục"}</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">Top K</label>
                     <input
@@ -289,7 +265,7 @@ export function ChatView({
                       className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                     />
                   </div>
-                  <div className="sm:col-span-2 lg:col-span-1">
+                  <div className="sm:col-span-2">
                     <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">
                       {isEn ? "Tags" : "Thẻ"}
                     </label>

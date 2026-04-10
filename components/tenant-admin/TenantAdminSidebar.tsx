@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import {
   LayoutDashboard,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { getMySubscription, type MySubscriptionResponse } from "@/lib/api/subscription";
 
 interface TenantAdminSidebarProps {
   open: boolean;
@@ -26,6 +28,10 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
   const pathname = usePathname();
   const { language } = useLanguageStore();
   const t = translations[language];
+  const [subscription, setSubscription] = useState<MySubscriptionResponse | null>(
+    null
+  );
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   
   const navigation = [
     { name: t.dashboard, href: "/tenant-admin", icon: LayoutDashboard },
@@ -37,6 +43,50 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
     { name: t.analytics, href: "/tenant-admin/analytics", icon: BarChart3 },
     { name: t.subscription, href: "/tenant-admin/subscription", icon: CreditCard },
   ];
+
+  useEffect(() => {
+    let mounted = true;
+    setSubscriptionLoading(true);
+    getMySubscription()
+      .then((data) => {
+        if (mounted) setSubscription(data);
+      })
+      .catch(() => {
+        if (mounted) setSubscription(null);
+      })
+      .finally(() => {
+        if (mounted) setSubscriptionLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const tierVi: Record<string, string> = {
+    TRIAL: "Dùng thử",
+    STARTER: "Khởi đầu",
+    STANDARD: "Tiêu chuẩn",
+    ENTERPRISE: "Doanh nghiệp",
+  };
+  const tierEn: Record<string, string> = {
+    TRIAL: "Trial",
+    STARTER: "Starter",
+    STANDARD: "Standard",
+    ENTERPRISE: "Enterprise",
+  };
+  const tierLabel = subscription
+    ? language === "en"
+      ? tierEn[subscription.tier] ?? subscription.tier
+      : tierVi[subscription.tier] ?? subscription.tier
+    : "—";
+  const usersLabel =
+    subscriptionLoading || !subscription
+      ? "—"
+      : `${subscription.maxUsers ?? "—"}`;
+  const storageLabel =
+    subscriptionLoading || !subscription
+      ? "—"
+      : `${subscription.maxStorageGb ?? "—"} GB`;
 
   return (
     <>
@@ -115,17 +165,27 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
                   {t.currentPlan}
                 </p>
                 <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:text-purple-400">
-                  —
+                  {subscriptionLoading ? "…" : subscription?.status ?? "—"}
                 </span>
               </div>
               <div className="space-y-2 text-zinc-600 dark:text-zinc-400">
                 <div className="flex items-center justify-between">
+                  <span>{t.plan}</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white">
+                    {tierLabel}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span>{t.usersLabel}</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white">—</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white">
+                    {usersLabel}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>{t.storage}</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white">—</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white">
+                    {storageLabel}
+                  </span>
                 </div>
               </div>
             </div>

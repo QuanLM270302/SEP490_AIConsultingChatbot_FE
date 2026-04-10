@@ -16,8 +16,25 @@ import {
   roleToPath,
   hasAllowedRole,
 } from "@/lib/auth-routes";
+import { getMySubscription } from "@/lib/api/subscription";
 
 const REFRESH_TIMEOUT_MS = 12_000;
+const SUBSCRIPTION_REQUIRED_PATHS = [
+  "/chatbot",
+  "/chatbot-new",
+  "/tenant-admin/documents",
+];
+
+function needsActiveSubscription(pathname: string): boolean {
+  return SUBSCRIPTION_REQUIRED_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+}
+
+function hasUsableSubscriptionStatus(status?: string): boolean {
+  const normalized = (status ?? "").toUpperCase();
+  return normalized === "ACTIVE" || normalized === "TRIAL";
+}
 
 function refreshAuthWithTimeout(): Promise<boolean> {
   return Promise.race([
@@ -50,7 +67,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     setChecked(false);
 
-    function finishCheck() {
+    async function finishCheck() {
       try {
         const user = getStoredUser();
         if (!user?.roles?.length) {
@@ -64,6 +81,21 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           router.replace(roleToPath(user.roles));
           return;
         }
+
+        const isTenantAdmin = user.roles.some((role) => role.includes("TENANT_ADMIN"));
+        if (isTenantAdmin && needsActiveSubscription(pathname)) {
+          try {
+            const subscription = await getMySubscription();
+            if (!hasUsableSubscriptionStatus(subscription.status)) {
+              router.replace("/tenant-admin?subscriptionRequired=1");
+              return;
+            }
+          } catch {
+            router.replace("/tenant-admin?subscriptionRequired=1");
+            return;
+          }
+        }
+
         setChecked(true);
       } catch {
         clearAuth();
@@ -76,7 +108,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       const refresh = getRefreshToken();
       if (refresh) {
         void refreshAuthWithTimeout().then((ok) => {
-          if (ok) finishCheck();
+          if (ok) void finishCheck();
           else {
             clearAuth();
             router.replace("/login");
@@ -88,7 +120,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    finishCheck();
+    void finishCheck();
   }, [pathname, router]);
 
   if (!pathname) return null;
