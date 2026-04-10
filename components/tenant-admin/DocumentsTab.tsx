@@ -49,17 +49,30 @@ import {
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
-const VISIBILITY_LABELS: Record<DocumentVisibility, string> = {
-  COMPANY_WIDE: "Toàn công ty",
-  SPECIFIC_DEPARTMENTS: "Theo phòng ban",
-  SPECIFIC_ROLES: "Theo vai trò",
-  SPECIFIC_DEPARTMENTS_AND_ROLES: "Theo phòng ban VÀ vai trò",
-};
+function getVisibilityLabels(language: "vi" | "en"): Record<DocumentVisibility, string> {
+  if (language === "en") {
+    return {
+      COMPANY_WIDE: "Company-wide",
+      SPECIFIC_DEPARTMENTS: "Specific departments",
+      SPECIFIC_ROLES: "Specific roles",
+      SPECIFIC_DEPARTMENTS_AND_ROLES: "Specific departments AND roles",
+    };
+  }
 
-function prettifyDocumentAccessError(message: string): string {
+  return {
+    COMPANY_WIDE: "Toàn công ty",
+    SPECIFIC_DEPARTMENTS: "Theo phòng ban",
+    SPECIFIC_ROLES: "Theo vai trò",
+    SPECIFIC_DEPARTMENTS_AND_ROLES: "Theo phòng ban VÀ vai trò",
+  };
+}
+
+function prettifyDocumentAccessError(message: string, language: "vi" | "en"): string {
   const lower = message.toLowerCase();
   if (lower.includes("visibility_enum") && lower.includes("does not exist")) {
-    return "Không thể cập nhật quyền truy cập do máy chủ chưa đồng bộ lược đồ cơ sở dữ liệu (thiếu kiểu visibility). Vui lòng kiểm tra migration/lược đồ phía máy chủ.";
+    return language === "en"
+      ? "Cannot update document access because the backend schema is out of sync (missing visibility enum). Please check backend migrations/schema."
+      : "Không thể cập nhật quyền truy cập do máy chủ chưa đồng bộ lược đồ cơ sở dữ liệu (thiếu kiểu visibility). Vui lòng kiểm tra migration/lược đồ phía máy chủ.";
   }
   return message;
 }
@@ -157,6 +170,8 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   const previousEmbeddingStateRef = useRef<Record<string, EmbeddingState>>({});
   const { language } = useLanguageStore();
   const t = translations[language];
+  const isEn = language === "en";
+  const visibilityLabels = getVisibilityLabels(language);
   const { confirm, confirmDialog } = useConfirmDialog();
 
   const updateEmbeddingCompletionTimestamps = useCallback((nextDocs: DocumentResponse[]) => {
@@ -215,7 +230,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       const del = await listDeletedDocuments();
       setDeleted(del);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Lỗi tải dữ liệu");
+      setError(e instanceof Error ? e.message : isEn ? "Failed to load data" : "Lỗi tải dữ liệu");
     } finally {
       setLoading(false);
     }
@@ -263,7 +278,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
     const form = e.currentTarget;
     const file = (form.elements.namedItem("file") as HTMLInputElement)?.files?.[0];
     if (!file) {
-      setError("Chọn tệp để tải lên");
+      setError(isEn ? "Please select a file to upload" : "Chọn tệp để tải lên");
       return;
     }
     setUploading(true);
@@ -286,7 +301,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
         (visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
         selectedDepartmentIds.length === 0
       ) {
-        setError("Vui lòng chọn ít nhất 1 phòng ban.");
+        setError(isEn ? "Please select at least one department." : "Vui lòng chọn ít nhất 1 phòng ban.");
         setUploading(false);
         return;
       }
@@ -294,7 +309,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
         (visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
         selectedRoleIds.length === 0
       ) {
-        setError("Vui lòng chọn ít nhất 1 vai trò.");
+        setError(isEn ? "Please select at least one role." : "Vui lòng chọn ít nhất 1 vai trò.");
         setUploading(false);
         return;
       }
@@ -320,7 +335,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       setEmbeddingModalOpen(true);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Tải lên thất bại");
+      setError(e instanceof Error ? e.message : isEn ? "Upload failed" : "Tải lên thất bại");
     } finally {
       setUploading(false);
     }
@@ -382,17 +397,19 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       setAccessDoc(null);
       await load();
     } catch (e) {
-      const raw = e instanceof Error ? e.message : "Cập nhật thất bại";
-      setError(prettifyDocumentAccessError(raw));
+      const raw = e instanceof Error ? e.message : isEn ? "Update failed" : "Cập nhật thất bại";
+      setError(prettifyDocumentAccessError(raw, language));
     }
   };
 
   const handleSoftDelete = async (id: string) => {
     const ok = await confirm({
-      title: "Xóa mềm tài liệu?",
-      description: "Bạn có thể khôi phục tài liệu từ thùng rác.",
-      confirmText: "Xóa mềm",
-      cancelText: "Hủy",
+      title: isEn ? "Soft delete this document?" : "Xóa mềm tài liệu?",
+      description: isEn
+        ? "You can restore this document from deleted documents list."
+        : "Bạn có thể khôi phục tài liệu từ thùng rác.",
+      confirmText: t.softDelete,
+      cancelText: t.cancel,
       tone: "warning",
     });
     if (!ok) return;
@@ -402,7 +419,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       await softDeleteDocument(id);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Xóa thất bại");
+      setError(e instanceof Error ? e.message : isEn ? "Delete failed" : "Xóa thất bại");
     }
   };
 
@@ -413,7 +430,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       setShowDeleted(false);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Khôi phục thất bại");
+      setError(e instanceof Error ? e.message : isEn ? "Restore failed" : "Khôi phục thất bại");
     }
   };
 
@@ -424,7 +441,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       setVersions(v);
       setSelectedVersionId(v?.[0]?.versionId ?? null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không tải được lịch sử phiên bản");
+      setError(e instanceof Error ? e.message : isEn ? "Failed to load version history" : "Không tải được lịch sử phiên bản");
       setVersions([]);
       setSelectedVersionId(null);
     }
@@ -436,7 +453,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
     const form = e.currentTarget;
     const file = (form.elements.namedItem("versionFile") as HTMLInputElement)?.files?.[0];
     if (!file) {
-      setError("Chọn file phiên bản mới");
+      setError(isEn ? "Please select a new version file" : "Chọn file phiên bản mới");
       return;
     }
     setUploading(true);
@@ -448,7 +465,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       form.reset();
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Tải lên phiên bản thất bại");
+      setError(e instanceof Error ? e.message : isEn ? "Version upload failed" : "Tải lên phiên bản thất bại");
     } finally {
       setUploading(false);
     }
@@ -462,7 +479,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       setDetailDoc(doc);
       setDetailPreview(preview);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không tải được chi tiết tài liệu");
+      setError(e instanceof Error ? e.message : isEn ? "Failed to load document details" : "Không tải được chi tiết tài liệu");
     } finally {
       setDetailLoading(false);
     }
@@ -484,7 +501,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   if (loading) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-8 dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-sm text-zinc-500">Đang tải danh sách tài liệu…</p>
+        <p className="text-sm text-zinc-500">{isEn ? "Loading documents..." : "Đang tải danh sách tài liệu..."}</p>
       </div>
     );
   }
@@ -500,12 +517,14 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       {(mode === "all" || mode === "upload") && (
       <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-          Tải lên tài liệu
+          {t.uploadDocument}
         </h3>
         <form onSubmit={handleUpload} className="flex flex-col gap-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              File (PDF, DOCX, XLSX, PPTX, TXT, MD, CSV, tối đa 50MB)
+              {isEn
+                ? "File (PDF, DOCX, XLSX, PPTX, TXT, MD, CSV, max 50MB)"
+                : "Tệp tin (PDF, DOCX, XLSX, PPTX, TXT, MD, CSV, tối đa 50MB)"}
             </label>
             <input
               name="file"
@@ -517,13 +536,13 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Danh mục
+              {t.category}
             </label>
             <select
               name="categoryId"
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
-              <option value="">— Không chọn —</option>
+              <option value="">{t.noCategory}</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.code})
@@ -533,11 +552,11 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Tags
+              {t.tags}
             </label>
             <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
               {tags.length === 0 ? (
-                <span className="px-2 py-1 text-xs text-zinc-500">Chưa có thẻ.</span>
+                <span className="px-2 py-1 text-xs text-zinc-500">{isEn ? "No tags yet." : "Chưa có thẻ."}</span>
               ) : (
                 tags.map((t) => {
                   const active = selectedTagIds.includes(t.id);
@@ -566,18 +585,18 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Mô tả
+              {t.description}
             </label>
             <input
               name="description"
               type="text"
               className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-              placeholder="Mô tả ngắn (tùy chọn)"
+              placeholder={isEn ? "Short description (optional)" : "Mô tả ngắn (tùy chọn)"}
             />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Phạm vi truy cập
+              {t.accessScope}
             </label>
             <select
               name="visibility"
@@ -590,7 +609,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
               }}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
-              {Object.entries(VISIBILITY_LABELS).map(([v, l]) => (
+              {Object.entries(visibilityLabels).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
             </select>
@@ -598,11 +617,11 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
           {(uploadVisibility === "SPECIFIC_DEPARTMENTS" || uploadVisibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Chọn phòng ban
+                {t.selectDepartments}
               </label>
               <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
                 {departments.length === 0 ? (
-                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có phòng ban đang hoạt động.</span>
+                  <span className="px-2 py-1 text-xs text-zinc-500">{isEn ? "No active departments." : "Chưa có phòng ban đang hoạt động."}</span>
                 ) : (
                   departments.map((d) => {
                     const active = selectedDepartmentIds.includes(d.id);
@@ -629,18 +648,18 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                 )}
               </div>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Đã chọn: {selectedDepartmentIds.length}
+                {t.selected}: {selectedDepartmentIds.length}
               </p>
             </div>
           )}
           {(uploadVisibility === "SPECIFIC_ROLES" || uploadVisibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Chọn vai trò
+                {t.selectRoles}
               </label>
               <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
                 {roles.length === 0 ? (
-                  <span className="px-2 py-1 text-xs text-zinc-500">Chưa có vai trò.</span>
+                  <span className="px-2 py-1 text-xs text-zinc-500">{isEn ? "No roles found." : "Chưa có vai trò."}</span>
                 ) : (
                   roles.map((r) => {
                     const active = selectedRoleIds.includes(r.id);
@@ -667,13 +686,13 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                 )}
               </div>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Đã chọn: {selectedRoleIds.length}
+                {t.selected}: {selectedRoleIds.length}
               </p>
             </div>
           )}
           <Button type="submit" variant="primary" size="md" disabled={uploading}>
             <Upload className="mr-2 h-4 w-4" />
-            {uploading ? "Đang upload…" : "Upload"}
+            {uploading ? t.uploading : t.upload}
           </Button>
         </form>
       </div>
@@ -683,14 +702,14 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       <>
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-          Danh sách tài liệu ({documents.length})
+          {t.documentList} ({documents.length})
         </h3>
         <button
           type="button"
           onClick={() => setShowDeleted(!showDeleted)}
           className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
         >
-          {showDeleted ? "Ẩn tài liệu đã xóa" : `Tài liệu đã xóa (${deleted.length})`}
+          {showDeleted ? t.hideDeleted : `${t.deletedDocuments} (${deleted.length})`}
         </button>
       </div>
 
@@ -699,9 +718,9 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
             <thead className="bg-zinc-50 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Tên / Tiêu đề</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Đã xóa lúc</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">Thao tác</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.nameTitle}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.deletedAt}</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -720,7 +739,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                       onClick={() => handleRestore(d.id)}
                     >
                       <RotateCcw className="mr-1 h-3 w-3" />
-                      Khôi phục
+                      {t.restore}
                     </Button>
                   </td>
                 </tr>
@@ -728,7 +747,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
             </tbody>
           </table>
           {deleted.length === 0 && (
-            <p className="px-4 py-6 text-center text-sm text-zinc-500">Chưa có tài liệu nào bị xóa.</p>
+            <p className="px-4 py-6 text-center text-sm text-zinc-500">{t.noDeletedDocuments}</p>
           )}
         </div>
       ) : (
@@ -736,12 +755,12 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
             <thead className="bg-zinc-50 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Tên / Tiêu đề</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Phạm vi</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.nameTitle}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.scope}</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">
                   {t.embeddingStatus}
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">Thao tác</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -751,7 +770,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                     {doc.documentTitle || doc.originalFileName}
                   </td>
                   <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
-                    {VISIBILITY_LABELS[doc.visibility]}
+                    {visibilityLabels[doc.visibility]}
                   </td>
                   <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
                     <div className="flex flex-col gap-0.5">
@@ -770,7 +789,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                         type="button"
                         onClick={() => void handleViewDetail(doc.id)}
                         className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                        title="Xem chi tiết"
+                        title={isEn ? "View details" : "Xem chi tiết"}
                       >
                         <Eye className="h-4 w-4" />
                       </button>
@@ -778,7 +797,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                         type="button"
                         onClick={() => loadVersions(doc.id)}
                         className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                        title="Lịch sử phiên bản"
+                        title={isEn ? "Version history" : "Lịch sử phiên bản"}
                       >
                         <History className="h-4 w-4" />
                       </button>
@@ -786,7 +805,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                         type="button"
                         onClick={() => setAccessDoc(doc)}
                         className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                        title="Cập nhật quyền truy cập"
+                        title={isEn ? "Update access" : "Cập nhật quyền truy cập"}
                       >
                         <Lock className="h-4 w-4" />
                       </button>
@@ -794,7 +813,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                         type="button"
                         onClick={() => setNewVersionDocId(doc.id)}
                         className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-                        title="Tải lên phiên bản mới"
+                        title={isEn ? "Upload new version" : "Tải lên phiên bản mới"}
                       >
                         <Upload className="h-4 w-4" />
                       </button>
@@ -802,7 +821,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                         type="button"
                         onClick={() => handleSoftDelete(doc.id)}
                         className="rounded p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                        title="Xóa mềm"
+                        title={isEn ? "Soft delete" : "Xóa mềm"}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -813,7 +832,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
             </tbody>
           </table>
           {documents.length === 0 && (
-            <p className="px-4 py-6 text-center text-sm text-zinc-500">Chưa có tài liệu nào. Hãy tải lên tệp phía trên.</p>
+            <p className="px-4 py-6 text-center text-sm text-zinc-500">{`${t.noDocuments} ${t.uploadFileAbove}`}</p>
           )}
         </div>
       )}
@@ -825,7 +844,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
           <div className="max-h-[85vh] w-full max-w-4xl overflow-auto rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                Chi tiết tài liệu
+                {isEn ? "Document details" : "Chi tiết tài liệu"}
               </h3>
               <button
                 type="button"
@@ -843,7 +862,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
             <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
               <div className="mb-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
-                  Thông tin tài liệu
+                  {isEn ? "Document information" : "Thông tin tài liệu"}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                   {detailDoc.documentTitle || detailDoc.originalFileName}
@@ -856,14 +875,14 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
                   <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  <span className="text-zinc-500 dark:text-zinc-400">Phạm vi:</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">{isEn ? "Scope:" : "Phạm vi:"}</span>
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                    {VISIBILITY_LABELS[detailDoc.visibility]}
+                    {visibilityLabels[detailDoc.visibility]}
                   </span>
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
                   <Files className="h-4 w-4 text-cyan-500" />
-                  <span className="text-zinc-500 dark:text-zinc-400">Chunks:</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">{isEn ? "Chunks:" : "Phân đoạn:"}</span>
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">
                     {detailDoc.chunkCount ?? 0}
                   </span>
@@ -1018,7 +1037,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[80vh] w-full max-w-lg overflow-auto rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Lịch sử phiên bản</h3>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t.versionHistory}</h3>
               <button type="button" onClick={() => setVersionDocId(null)} className="rounded p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                 <X className="h-5 w-5" />
               </button>
@@ -1026,7 +1045,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
             {versions.length > 0 && (
               <div className="mb-4">
                 <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                  Chọn phiên bản
+                  {isEn ? "Select version" : "Chọn phiên bản"}
                 </label>
                 <div className="relative">
                   <select
@@ -1036,7 +1055,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                   >
                     {versions.map((v) => (
                       <option key={v.versionId} value={v.versionId}>
-                        Phiên bản {v.versionNumber}{v.versionNote ? ` — ${v.versionNote}` : ""}
+                        {(isEn ? "Version" : "Phiên bản")} {v.versionNumber}{v.versionNote ? ` — ${v.versionNote}` : ""}
                       </option>
                     ))}
                   </select>
@@ -1066,7 +1085,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                     </span>
                     <div className="min-w-0">
                       <div className="font-medium text-zinc-900 dark:text-zinc-50">
-                        Phiên bản {v.versionNumber}
+                        {(isEn ? "Version" : "Phiên bản")} {v.versionNumber}
                       </div>
                       <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                         {v.versionNote || "—"}
@@ -1088,23 +1107,30 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Tải lên phiên bản mới</h3>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t.uploadNewVersion}</h3>
               <button type="button" onClick={() => setNewVersionDocId(null)} className="rounded p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleUploadNewVersion} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">File mới</label>
+                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">{isEn ? "New file" : "File mới"}</label>
                 <input name="versionFile" type="file" accept=".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv" className="block w-full rounded-lg border border-zinc-300 bg-white text-sm dark:border-zinc-700 dark:bg-zinc-900" required />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Ghi chú phiên bản</label>
-                <input name="versionNote" type="text" className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" placeholder="Tùy chọn" />
+                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">{isEn ? "Version note" : "Ghi chú phiên bản"}</label>
+                <input
+                  name="versionNote"
+                  type="text"
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                  placeholder={isEn ? "Optional" : "Tùy chọn"}
+                />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" variant="primary" size="md" disabled={uploading}>{uploading ? "Đang tải lên…" : "Tải lên phiên bản"}</Button>
-                <Button type="button" variant="outline" size="md" onClick={() => setNewVersionDocId(null)}>Hủy</Button>
+                <Button type="submit" variant="primary" size="md" disabled={uploading}>
+                  {uploading ? t.uploading : t.uploadNewVersion}
+                </Button>
+                <Button type="button" variant="outline" size="md" onClick={() => setNewVersionDocId(null)}>{t.cancel}</Button>
               </div>
             </form>
           </div>
@@ -1129,6 +1155,11 @@ function UpdateAccessModal({
   onClose: () => void;
   onSave: (body: UpdateDocumentAccessRequest) => void;
 }) {
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  const isEn = language === "en";
+  const visibilityLabels = getVisibilityLabels(language);
+
   const [visibility, setVisibility] = useState<DocumentVisibility>(doc.visibility);
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<number[]>(
     doc.accessibleDepartments ?? []
@@ -1183,7 +1214,7 @@ function UpdateAccessModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Cập nhật quyền truy cập</h3>
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{isEn ? "Update access" : "Cập nhật quyền truy cập"}</h3>
           <button type="button" onClick={onClose} className="rounded p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800">
             <X className="h-5 w-5" />
           </button>
@@ -1191,13 +1222,13 @@ function UpdateAccessModal({
         <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{doc.documentTitle || doc.originalFileName}</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Phạm vi</label>
+            <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">{t.scope}</label>
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as DocumentVisibility)}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
-              {Object.entries(VISIBILITY_LABELS).map(([v, l]) => (
+              {Object.entries(visibilityLabels).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
             </select>
@@ -1205,12 +1236,12 @@ function UpdateAccessModal({
           {(visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Chọn phòng ban
+                {isEn ? "Select departments" : "Chọn phòng ban"}
               </label>
               <div className="flex flex-wrap gap-2">
                 {availableDepartments.length === 0 ? (
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Không có dữ liệu phòng ban khả dụng.
+                    {isEn ? "No departments available." : "Không có dữ liệu phòng ban khả dụng."}
                   </p>
                 ) : (
                   availableDepartments.map((dept) => {
@@ -1226,7 +1257,7 @@ function UpdateAccessModal({
                             : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                         }`}
                       >
-                        {dept.name ?? `Department ${dept.id}`}
+                        {dept.name ?? (isEn ? `Department ${dept.id}` : `Phòng ban ${dept.id}`)}
                       </button>
                     );
                   })
@@ -1234,7 +1265,7 @@ function UpdateAccessModal({
               </div>
               {selectedDepartmentIds.length === 0 && (
                 <p className="mt-2 text-xs text-red-500">
-                  Vui lòng chọn ít nhất 1 phòng ban.
+                  {isEn ? "Please select at least one department." : "Vui lòng chọn ít nhất 1 phòng ban."}
                 </p>
               )}
             </div>
@@ -1242,12 +1273,12 @@ function UpdateAccessModal({
           {(visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Chọn vai trò
+                {isEn ? "Select roles" : "Chọn vai trò"}
               </label>
               <div className="flex flex-wrap gap-2">
                 {availableRoles.length === 0 ? (
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Không có dữ liệu vai trò khả dụng.
+                    {isEn ? "No roles available." : "Không có dữ liệu vai trò khả dụng."}
                   </p>
                 ) : (
                   availableRoles.map((role) => {
@@ -1264,7 +1295,7 @@ function UpdateAccessModal({
                             : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                         }`}
                       >
-                        {role.name ?? role.code ?? `Role ${roleId}`}
+                        {role.name ?? role.code ?? (isEn ? `Role ${roleId}` : `Vai trò ${roleId}`)}
                       </button>
                     );
                   })
@@ -1272,14 +1303,14 @@ function UpdateAccessModal({
               </div>
               {selectedRoleIds.length === 0 && (
                 <p className="mt-2 text-xs text-red-500">
-                  Vui lòng chọn ít nhất 1 vai trò.
+                  {isEn ? "Please select at least one role." : "Vui lòng chọn ít nhất 1 vai trò."}
                 </p>
               )}
             </div>
           )}
           <div className="flex gap-2">
-            <Button type="submit" variant="primary" size="md">Lưu</Button>
-            <Button type="button" variant="outline" size="md" onClick={onClose}>Hủy</Button>
+            <Button type="submit" variant="primary" size="md">{t.save}</Button>
+            <Button type="button" variant="outline" size="md" onClick={onClose}>{t.cancel}</Button>
           </div>
         </form>
       </div>
