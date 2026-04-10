@@ -71,6 +71,19 @@ export default function ChatbotNewPage() {
     if (query) setSearchQuery(query);
     setSearchNavKey((k) => k + 1);
     setActiveView("search");
+    setIsHistoryOpen(false);
+  }, []);
+
+  const handleChatNavClick = useCallback(() => {
+    setActiveView("chat");
+    setIsHistoryOpen((prev) => (activeView === "chat" ? !prev : true));
+  }, [activeView]);
+
+  const handleViewChange = useCallback((view: "chat" | "search" | "analytics") => {
+    setActiveView(view);
+    if (view !== "chat") {
+      setIsHistoryOpen(false);
+    }
   }, []);
 
   const loadOnboarding = useCallback(
@@ -129,12 +142,11 @@ export default function ChatbotNewPage() {
   );
 
   return (
-    <div className="flex h-dvh min-h-0 overflow-hidden bg-zinc-950">
+    <div className="flex h-dvh min-h-0 overflow-hidden bg-linear-to-br from-emerald-50 via-white to-cyan-50 dark:bg-none dark:bg-zinc-950">
       <NavigationSidebar
         activeView={activeView}
-        onViewChange={setActiveView}
-        historyOpen={isHistoryOpen}
-        onToggleHistory={() => setIsHistoryOpen((v) => !v)}
+        onViewChange={handleViewChange}
+        onToggleHistory={handleChatNavClick}
         showOnboardingShortcut={isEmployeeUser}
         onboardingLoading={isOnboardingLoading}
         onboardingTotal={onboardingSummary.total}

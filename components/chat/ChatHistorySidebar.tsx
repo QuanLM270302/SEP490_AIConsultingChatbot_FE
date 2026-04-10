@@ -14,6 +14,7 @@ interface ChatHistorySidebarProps {
   currentChatId: string | null;
   onNewChat: () => void;
   refreshTrigger?: number;
+  showToggleButton?: boolean;
 }
 
 export function ChatHistorySidebar({
@@ -23,6 +24,7 @@ export function ChatHistorySidebar({
   currentChatId,
   onNewChat,
   refreshTrigger = 0,
+  showToggleButton = true,
 }: ChatHistorySidebarProps) {
   const { language } = useLanguageStore();
   const isEn = language === "en";
@@ -88,14 +90,16 @@ export function ChatHistorySidebar({
     >
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-2 border-b border-zinc-200 px-3 py-3 dark:border-zinc-800">
-          <button
-            onClick={onToggle}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-700 transition hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            aria-label={isEn ? "Toggle sidebar" : "Bật/tắt thanh bên"}
-            type="button"
-          >
-            <PanelLeft className="h-4 w-4" />
-          </button>
+          {showToggleButton ? (
+            <button
+              onClick={onToggle}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-700 transition hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              aria-label={isEn ? "Toggle sidebar" : "Bật/tắt thanh bên"}
+              type="button"
+            >
+              <PanelLeft className="h-4 w-4" />
+            </button>
+          ) : null}
         </div>
 
         <div className="border-b border-zinc-200 p-2 dark:border-zinc-800">

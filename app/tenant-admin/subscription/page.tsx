@@ -29,6 +29,51 @@ const TIER_LABEL_EN: Record<SubscriptionTier, string> = {
   ENTERPRISE: "Enterprise",
 };
 
+const PLAN_FEATURES_VI: Record<Exclude<SubscriptionTier, "TRIAL">, string[]> = {
+  STARTER: [
+    "Phù hợp nhóm nhỏ bắt đầu triển khai AI nội bộ",
+    "Quản lý tài liệu và truy vấn chatbot cơ bản",
+    "Chi phí tối ưu cho giai đoạn khởi động",
+  ],
+  STANDARD: [
+    "Tối ưu cho doanh nghiệp đang mở rộng",
+    "Hiệu năng tốt hơn cho tần suất hỏi đáp cao",
+    "Cân bằng giữa chi phí và năng lực vận hành",
+  ],
+  ENTERPRISE: [
+    "Dành cho tổ chức lớn, yêu cầu cao",
+    "Ưu tiên khả năng mở rộng và mức sử dụng lớn",
+    "Phù hợp triển khai toàn diện nhiều phòng ban",
+  ],
+};
+
+const PLAN_FEATURES_EN: Record<Exclude<SubscriptionTier, "TRIAL">, string[]> = {
+  STARTER: [
+    "Best for small teams starting with internal AI",
+    "Core document management and chatbot usage",
+    "Cost-efficient for early rollout",
+  ],
+  STANDARD: [
+    "Ideal for growing organizations",
+    "Better capacity for frequent chatbot interactions",
+    "Balanced cost and operational capability",
+  ],
+  ENTERPRISE: [
+    "Built for large organizations with high demand",
+    "Prioritizes scale and higher usage limits",
+    "Great for company-wide multi-department rollout",
+  ],
+};
+
+const PLAN_ACCENT_CLASS: Record<Exclude<SubscriptionTier, "TRIAL">, string> = {
+  STARTER:
+    "border-emerald-300 bg-linear-to-br from-emerald-100/90 via-emerald-50 to-white shadow-emerald-200/60 dark:border-emerald-800 dark:from-emerald-950/30 dark:via-emerald-950/20 dark:to-zinc-950",
+  STANDARD:
+    "border-cyan-300 bg-linear-to-br from-cyan-100/90 via-cyan-50 to-white shadow-cyan-200/60 dark:border-cyan-800 dark:from-cyan-950/30 dark:via-cyan-950/20 dark:to-zinc-950",
+  ENTERPRISE:
+    "border-violet-300 bg-linear-to-br from-violet-100/90 via-violet-50 to-white shadow-violet-200/60 dark:border-violet-800 dark:from-violet-950/30 dark:via-violet-950/20 dark:to-zinc-950",
+};
+
 function tierDisplayName(tier: SubscriptionTier, lang: "vi" | "en"): string {
   return lang === "vi" ? TIER_LABEL_VI[tier] : TIER_LABEL_EN[tier];
 }
@@ -39,7 +84,7 @@ export default function TenantAdminSubscriptionPage() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [payments, setPayments] = useState<Awaited<ReturnType<typeof getPaymentHistory>>>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("TRIAL");
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("STARTER");
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("MONTHLY");
   const [paymentPending, setPaymentPending] = useState<SelectPlanResponse | null>(null);
   const [selectPlanLoading, setSelectPlanLoading] = useState(false);
@@ -102,6 +147,8 @@ export default function TenantAdminSubscriptionPage() {
     if (activeTab === "history") loadPayments();
   };
 
+  const planCards: Exclude<SubscriptionTier, "TRIAL">[] = ["STARTER", "STANDARD", "ENTERPRISE"];
+
   return (
     <TenantAdminLayout>
       <div className="space-y-6 text-zinc-900 dark:text-zinc-100">
@@ -120,14 +167,16 @@ export default function TenantAdminSubscriptionPage() {
 
         {activeTab === "plans" && (
           <>
-            <div className="mb-8 grid gap-8 lg:grid-cols-2">
+            <div className="mb-5 grid gap-4 lg:grid-cols-2">
               <SubscriptionInfo
                 subscription={subscription}
                 loading={subscriptionLoading}
                 onUpdated={handleSubscriptionUpdated}
               />
-              <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-                <h3 className="mb-2 font-semibold text-zinc-900 dark:text-white">{t.createPayment} {t.subscription}</h3>
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                <h3 className="mb-1 text-sm font-semibold text-zinc-900 dark:text-white">
+                  {t.createPayment} {t.subscription}
+                </h3>
               </div>
             </div>
             {paymentPending && (
@@ -137,27 +186,78 @@ export default function TenantAdminSubscriptionPage() {
                 onSuccess={handleSubscriptionUpdated}
               />
             )}
+            <div className="mb-5">
+              <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                {language === "en" ? "Select your plan" : "Chọn hạng gói phù hợp"}
+              </h3>
+              <div className="grid gap-4 lg:grid-cols-3">
+                {planCards.map((tier) => {
+                  const isSelected = selectedTier === tier;
+                  const features =
+                    language === "en" ? PLAN_FEATURES_EN[tier] : PLAN_FEATURES_VI[tier];
+                  return (
+                    <article
+                      key={tier}
+                      className={`rounded-2xl border p-6 shadow-lg transition-all duration-200 ${
+                        PLAN_ACCENT_CLASS[tier]
+                      } ${
+                        isSelected
+                          ? "scale-[1.01] ring-2 ring-emerald-400/80 shadow-2xl shadow-emerald-500/25"
+                          : "opacity-95 hover:opacity-100 hover:shadow-xl"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            {language === "en" ? "Plan" : "Hạng gói"}
+                          </p>
+                          <h4 className="mt-1 text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                            {tierDisplayName(tier, language === "en" ? "en" : "vi")}
+                          </h4>
+                        </div>
+                        {isSelected ? (
+                          <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-semibold text-white">
+                            {language === "en" ? "Selected" : "Đã chọn"}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <ul className="mt-4 min-h-[88px] space-y-2.5 text-xs text-zinc-700 dark:text-zinc-300">
+                        {features.map((feature) => (
+                          <li key={feature} className="flex items-start gap-2">
+                            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTier(tier)}
+                        className={`mt-5 inline-flex w-full items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                          isSelected
+                            ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/40"
+                            : "border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        }`}
+                      >
+                        {isSelected
+                          ? language === "en"
+                            ? "Current selection"
+                            : "Gói đang chọn"
+                          : language === "en"
+                            ? "Select this plan"
+                            : "Chọn gói này"}
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="mb-8 flex flex-wrap items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t.tier}:</span>
-              <select
-                value={selectedTier}
-                onChange={(e) => setSelectedTier(e.target.value as SubscriptionTier)}
-                className="rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-              >
-                <option value="TRIAL">
-                  {language === "vi" ? TIER_LABEL_VI.TRIAL : TIER_LABEL_EN.TRIAL}
-                </option>
-                <option value="STARTER">
-                  {language === "vi" ? TIER_LABEL_VI.STARTER : TIER_LABEL_EN.STARTER}
-                </option>
-                <option value="STANDARD">
-                  {language === "vi" ? TIER_LABEL_VI.STANDARD : TIER_LABEL_EN.STANDARD}
-                </option>
-                <option value="ENTERPRISE">
-                  {language === "vi" ? TIER_LABEL_VI.ENTERPRISE : TIER_LABEL_EN.ENTERPRISE}
-                </option>
-              </select>
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t.billingCycle}:</span>
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                {t.billingCycle}:
+              </span>
               <select
                 value={billingCycle}
                 onChange={(e) => setBillingCycle(e.target.value as BillingCycle)}
@@ -176,9 +276,16 @@ export default function TenantAdminSubscriptionPage() {
                 onClick={handleConfirmPay}
                 className="rounded-xl bg-green-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
               >
-                {selectPlanLoading ? t.processing : `${t.createPayment} (${selectedTier})`}
+                {selectPlanLoading
+                  ? t.processing
+                  : `${t.createPayment} (${tierDisplayName(
+                      selectedTier,
+                      language === "en" ? "en" : "vi"
+                    )})`}
               </button>
-              {selectPlanError && <p className="text-sm text-red-600 dark:text-red-400">{selectPlanError}</p>}
+              {selectPlanError && (
+                <p className="text-sm text-red-600 dark:text-red-400">{selectPlanError}</p>
+              )}
             </div>
             <section className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
               <p>

@@ -3,7 +3,7 @@
 import { TenantAdminSidebar } from "./TenantAdminSidebar";
 import { DashboardHeader } from "./DashboardHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AcademicCapIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { OnboardingModal } from "@/components/employee/OnboardingModal";
 import {
@@ -69,9 +69,13 @@ function applyOptimisticModuleComplete(
 
 export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const isDashboardTab = pathname === "/tenant-admin";
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [showSubscriptionRequiredModal, setShowSubscriptionRequiredModal] =
+    useState(false);
   const [onboardingOverview, setOnboardingOverview] =
     useState<OnboardingMyOverviewResponse | null>(null);
   const [isOnboardingLoading, setIsOnboardingLoading] = useState(true);
@@ -83,6 +87,12 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
   const isEn = language === "en";
 
   const autoOpenKey = "tenant-admin-onboarding-auto-opened";
+
+  useEffect(() => {
+    if (searchParams.get("subscriptionRequired") === "1") {
+      setShowSubscriptionRequiredModal(true);
+    }
+  }, [searchParams]);
 
   const loadOnboarding = useCallback(async (options: LoadOnboardingOptions = {}) => {
     const shouldShowLoading = options.showLoading ?? true;
@@ -282,6 +292,46 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
         onClose={() => setShowOnboardingModal(false)}
         onMarkCompleted={handleMarkModuleCompleted}
       />
+
+      {showSubscriptionRequiredModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-zinc-900/70" />
+          <div className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+              {isEn
+                ? "Subscription required"
+                : "Yêu cầu đăng ký gói"}
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+              {isEn
+                ? "You need an active subscription plan to access Chatbot and Documents."
+                : "Bạn cần có gói đăng ký đang hoạt động để truy cập AI Chatbot và Tài liệu."}
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSubscriptionRequiredModal(false);
+                  router.replace(pathname);
+                }}
+                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                {isEn ? "Close" : "Đóng"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSubscriptionRequiredModal(false);
+                  router.push("/tenant-admin/subscription");
+                }}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+              >
+                {isEn ? "Go to Subscription" : "Đi tới Gói đăng ký"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

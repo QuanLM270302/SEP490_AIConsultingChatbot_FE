@@ -162,10 +162,11 @@ export default function ChatPlatformPage() {
 
               <button
                 type="button"
-                onClick={() => setIsHistoryOpen(true)}
-                className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                onClick={() => setIsHistoryOpen((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
-                History
+                <MessageSquare className="h-4 w-4" />
+                Trò chuyện
               </button>
             </div>
           </div>
@@ -359,6 +360,7 @@ export default function ChatPlatformPage() {
           setCurrentChatId(null);
         }}
         currentChatId={currentChatId}
+        showToggleButton={false}
       />
     </div>
   );

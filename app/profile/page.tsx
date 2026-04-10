@@ -14,6 +14,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { getStoredUser } from "@/lib/auth-store";
+import { roleToPath } from "@/lib/auth-routes";
+import { useRouter } from "next/navigation";
 import {
   getProfile,
   updateProfile,
@@ -47,10 +49,42 @@ function formatDateTime(iso: string | null, locale: string): string {
   }
 }
 
+function onlyDigits(input: string): string {
+  return input.replace(/\D/g, "");
+}
+
+function toLocalPhoneDigits(raw: string | null | undefined): string {
+  const digits = onlyDigits(raw ?? "");
+  if (!digits) return "";
+  // Handle persisted +84xxxxxxxxx values from backend.
+  if (digits.startsWith("84")) {
+    return digits.slice(2).slice(0, 10);
+  }
+  return digits.slice(0, 10);
+}
+
+function normalizeVietnamPhoneFromInput(localDigits: string): string | null {
+  const digits = onlyDigits(localDigits);
+  if (!digits) return null;
+
+  // Accept:
+  // - 10 digits with leading 0 (e.g. 0383450153)
+  // - 9 digits without leading 0 (e.g. 383450153)
+  // - 10 digits without leading 0 (kept as-is)
+  if (digits.startsWith("0")) {
+    if (digits.length !== 10) return null;
+    return `+84${digits.slice(1)}`;
+  }
+  if (digits.length !== 9 && digits.length !== 10) return null;
+  return `+84${digits}`;
+}
+
 export default function ProfilePage() {
+  const router = useRouter();
   const { language } = useLanguageStore();
   const t = translations[language];
   const dateLocale = language === "vi" ? "vi-VN" : "en-US";
+  const currentUser = getStoredUser();
 
   const dobMessages: DobValidationMessages = useMemo(
     () => ({
@@ -91,7 +125,15 @@ export default function ProfilePage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const mustChangePassword = getStoredUser()?.mustChangePassword ?? false;
+  const [showFirstPasswordDonePrompt, setShowFirstPasswordDonePrompt] =
+    useState(false);
+  const mustChangePassword = currentUser?.mustChangePassword ?? false;
+  const isTenantAdmin = (currentUser?.roles ?? []).some((role) =>
+    role.includes("TENANT_ADMIN")
+  );
+  const isEmployee = (currentUser?.roles ?? []).some((role) =>
+    role.includes("EMPLOYEE")
+  );
 
   // Contact email update (OTP) state
   const [newContactEmail, setNewContactEmail] = useState("");
@@ -120,7 +162,7 @@ export default function ProfilePage() {
     getProfile()
       .then((data) => {
         setProfile(data);
-        setPhoneNumber(data.phoneNumber ?? "");
+        setPhoneNumber(toLocalPhoneDigits(data.phoneNumber));
         setDateOfBirthDisplay(isoDateToDdMmYyyy(data.dateOfBirth));
         setAddress(data.address ?? "");
       })
@@ -188,8 +230,18 @@ export default function ProfilePage() {
         setUpdateLoading(false);
         return;
       }
+      const normalizedPhone = normalizeVietnamPhoneFromInput(phoneNumber);
+      if (phoneNumber.trim() && !normalizedPhone) {
+        alert(
+          language === "en"
+            ? "Phone number is invalid. Suggested format: +84 0123456789 or +84 123456789."
+            : "Số điện thoại không hợp lệ. Gợi ý định dạng: +84 0123456789 hoặc +84 123456789."
+        );
+        setUpdateLoading(false);
+        return;
+      }
       const body: UpdateProfileRequest = {
-        phoneNumber: phoneNumber.trim() || null,
+        phoneNumber: normalizedPhone,
         dateOfBirth: dobCheck.iso,
         address: address.trim() || null,
       };
@@ -228,6 +280,9 @@ export default function ProfilePage() {
       setOldPassword("");
       setNewPassword("");
       setConfirmNew("");
+      if (mustChangePassword) {
+        setShowFirstPasswordDonePrompt(true);
+      }
     } catch (err) {
       setPasswordError(
         err instanceof Error ? err.message : t.profileChangePasswordFailed
@@ -416,7 +471,21 @@ export default function ProfilePage() {
                   <label htmlFor="phone" className={labelClass}>
                     {t.phone}
                   </label>
-                  <input id="phone" type="text" maxLength={20} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className={inputClass} />
+                  <div className="flex overflow-hidden rounded-xl border border-zinc-200 bg-white/80 shadow-sm dark:border-zinc-600 dark:bg-zinc-800/80">
+                    <span className="inline-flex items-center border-r border-zinc-200 bg-zinc-100 px-3 text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+                      +84
+                    </span>
+                    <input
+                      id="phone"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(onlyDigits(e.target.value).slice(0, 10))}
+                      placeholder="0123456789"
+                      className="block w-full border-0 bg-transparent px-3 py-2.5 text-sm text-zinc-900 outline-none dark:text-zinc-100"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label htmlFor="dob" className={labelClass}>
@@ -631,6 +700,67 @@ export default function ProfilePage() {
           </div>
         </div>
       </main>
+
+      {showFirstPasswordDonePrompt && (
+        <div className="fixed inset-0 z-70 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-zinc-900/70" />
+          <div className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+              {language === "en"
+                ? "Password updated successfully"
+                : "Đổi mật khẩu thành công"}
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+              {isTenantAdmin
+                ? language === "en"
+                  ? "You can now go to Tenant Admin dashboard to continue management."
+                  : "Bạn có thể quay về trang chủ Tenant Admin để tiếp tục quản trị."
+                : isEmployee
+                  ? language === "en"
+                    ? "You can now continue to the chatbot workspace."
+                    : "Bạn có thể tiếp tục sử dụng chatbot ngay bây giờ."
+                  : language === "en"
+                    ? "Choose where you want to continue."
+                    : "Chọn nơi bạn muốn tiếp tục."}
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFirstPasswordDonePrompt(false)}
+                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                {language === "en" ? "Stay here" : "Ở lại trang này"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFirstPasswordDonePrompt(false);
+                  const destination = isTenantAdmin
+                    ? "/tenant-admin"
+                    : isEmployee
+                      ? "/chatbot-new"
+                      : roleToPath(currentUser?.roles ?? []);
+                  router.push(destination);
+                  router.refresh();
+                }}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+              >
+                {isTenantAdmin
+                  ? language === "en"
+                    ? "Go to Tenant dashboard"
+                    : "Về trang chủ Tenant Admin"
+                  : isEmployee
+                    ? language === "en"
+                      ? "Go to Chatbot"
+                      : "Đi tới Chatbot"
+                    : language === "en"
+                      ? "Continue"
+                      : "Tiếp tục"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
