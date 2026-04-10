@@ -691,8 +691,8 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-zinc-950 text-zinc-100">
-      <div className="shrink-0 border-b border-zinc-800/90 bg-zinc-950 px-4 py-5 sm:px-6">
+    <div className="flex h-full flex-col overflow-hidden bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <div className="shrink-0 border-b border-zinc-200 bg-white px-4 py-5 dark:border-zinc-800/90 dark:bg-zinc-950 sm:px-6">
         <div className="mx-auto flex w-full max-w-6xl flex-col">
           <div className="flex w-full items-start justify-between gap-3">
             <div
@@ -737,7 +737,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t.searchPlaceholder}
                 autoComplete="off"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 py-3 pl-10 pr-4 text-sm text-white shadow-inner placeholder-zinc-500 outline-none ring-emerald-500/0 transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25"
+                className="w-full rounded-xl border border-zinc-300 bg-white py-3 pl-10 pr-4 text-sm text-zinc-900 shadow-inner placeholder-zinc-400 outline-none ring-emerald-500/0 transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500"
               />
             </div>
             <div className="flex w-full shrink-0 items-stretch gap-2 sm:w-[min(100%,220px)] sm:min-w-[200px]">
@@ -753,7 +753,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                   id="search-sort"
                   value={sortMode}
                   onChange={(e) => setSortMode(e.target.value as SortMode)}
-                  className="w-full cursor-pointer appearance-none rounded-xl border border-emerald-500/35 bg-zinc-900 py-3 pl-10 pr-9 text-sm text-zinc-100 shadow-inner outline-none ring-emerald-500/0 transition hover:border-emerald-500/55 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25"
+                  className="w-full cursor-pointer appearance-none rounded-xl border border-emerald-400 bg-white py-3 pl-10 pr-9 text-sm text-zinc-900 shadow-inner outline-none ring-emerald-500/0 transition hover:border-emerald-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-emerald-500/35 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-emerald-500/55"
                 >
                   <option value="newest">{t.sortNewest}</option>
                   <option value="title_az">{t.sortTitleAz}</option>
@@ -776,9 +776,9 @@ export function SearchView({ initialQuery }: SearchViewProps) {
           </div>
         ) : listMessage() ? (
           <div className="mx-auto flex max-w-lg justify-center px-2">
-            <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/60 px-6 py-10 text-center shadow-lg shadow-black/20">
-              <FileText className="mx-auto h-10 w-10 text-zinc-600" />
-              <p className="mt-4 text-sm leading-relaxed text-zinc-400">{listMessage()}</p>
+            <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-10 text-center shadow-lg dark:border-zinc-800 dark:bg-zinc-900/60 dark:shadow-black/20">
+              <FileText className="mx-auto h-10 w-10 text-zinc-400 dark:text-zinc-600" />
+              <p className="mt-4 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">{listMessage()}</p>
               {documentsErrorStatus === 403 ? (
                 <>
                   <p className="mt-3 text-xs leading-relaxed text-zinc-500">{t.permissionHint403}</p>
@@ -870,14 +870,14 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         ? createPortal(
             (
               <div
-                className="fixed inset-0 z-[110] overflow-y-auto overflow-x-hidden bg-black/65 backdrop-blur-[2px]"
+                className="fixed inset-0 z-[110] overflow-y-auto overflow-x-hidden bg-black/50 backdrop-blur-[2px] dark:bg-black/65"
                 role="dialog"
                 aria-modal
                 onClick={() => setSelected(null)}
               >
           <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
             <div
-              className="my-4 flex max-h-[min(92dvh,calc(100dvh-2rem))] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-700/80 bg-zinc-900 shadow-2xl shadow-black/50 ring-1 ring-white/[0.06] lg:max-h-[min(88dvh,calc(100dvh-2.5rem))] lg:flex-row"
+              className="my-4 flex max-h-[min(92dvh,calc(100dvh-2rem))] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-300 bg-white shadow-2xl ring-1 ring-black/5 dark:border-zinc-700/80 dark:bg-zinc-900 dark:shadow-black/50 dark:ring-white/[0.06] lg:max-h-[min(88dvh,calc(100dvh-2.5rem))] lg:flex-row"
               onClick={(e) => e.stopPropagation()}
               aria-labelledby="document-detail-title"
             >
@@ -887,7 +887,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                 <button
                   type="button"
                   onClick={() => setSelected(null)}
-                  className="relative mb-3 inline-flex items-center gap-1 rounded-lg border border-zinc-700/80 bg-zinc-900/65 px-2.5 py-1 text-xs font-medium text-zinc-200 hover:border-zinc-500 hover:bg-zinc-800/80"
+                  className="relative mb-3 inline-flex items-center gap-1 rounded-lg border border-zinc-300 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-700/80 dark:bg-zinc-900/65 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-800/80"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   {t.backToList}
@@ -939,36 +939,36 @@ export function SearchView({ initialQuery }: SearchViewProps) {
 
               <div className="scrollbar-chat-hidden flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
                 <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                  <div className="rounded-xl border border-white/[0.06] bg-zinc-950/50 p-3 shadow-inner">
-                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                      <FileType className="h-3 w-3 text-emerald-500/80" aria-hidden />
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/[0.06] dark:bg-zinc-950/50">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                      <FileType className="h-3 w-3 text-emerald-600 dark:text-emerald-500/80" aria-hidden />
                       {t.metaType}
                     </div>
                     <p className="mt-1.5 truncate text-sm font-medium text-zinc-100" title={displayDoc?.fileType}>
                       {(displayDoc?.fileType ?? "—").toUpperCase()}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-white/[0.06] bg-zinc-950/50 p-3 shadow-inner">
-                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                      <HardDrive className="h-3 w-3 text-emerald-500/80" aria-hidden />
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/[0.06] dark:bg-zinc-950/50">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                      <HardDrive className="h-3 w-3 text-emerald-600 dark:text-emerald-500/80" aria-hidden />
                       {t.metaSize}
                     </div>
                     <p className="mt-1.5 text-sm font-medium text-zinc-100">
                       {displayDoc != null ? formatFileSize(displayDoc.fileSize) : "—"}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-white/[0.06] bg-zinc-950/50 p-3 shadow-inner">
-                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                      <Shield className="h-3 w-3 text-emerald-500/80" aria-hidden />
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/[0.06] dark:bg-zinc-950/50">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                      <Shield className="h-3 w-3 text-emerald-600 dark:text-emerald-500/80" aria-hidden />
                       {t.metaVisibility}
                     </div>
                     <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-zinc-100">
                       {visibilityLabel(displayDoc?.visibility, language === "en")}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-white/[0.06] bg-zinc-950/50 p-3 shadow-inner">
-                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                      <Sparkles className="h-3 w-3 text-emerald-500/80" aria-hidden />
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/[0.06] dark:bg-zinc-950/50">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                      <Sparkles className="h-3 w-3 text-emerald-600 dark:text-emerald-500/80" aria-hidden />
                       {t.metaEmbedding}
                     </div>
                     <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-zinc-100">
@@ -976,9 +976,9 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     </p>
                   </div>
                   {displayDoc?.chunkCount != null ? (
-                    <div className="col-span-2 rounded-xl border border-white/[0.06] bg-zinc-950/50 p-3 shadow-inner">
-                      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                        <Layers className="h-3 w-3 text-emerald-500/80" aria-hidden />
+                    <div className="col-span-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/[0.06] dark:bg-zinc-950/50">
+                      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                        <Layers className="h-3 w-3 text-emerald-600 dark:text-emerald-500/80" aria-hidden />
                         {t.metaChunks}
                       </div>
                       <p className="mt-1.5 text-sm font-medium tabular-nums text-zinc-100">
@@ -1008,8 +1008,8 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                 ) : null}
 
                 {displayDoc?.description?.trim() ? (
-                  <section className="rounded-2xl border border-zinc-800/80 bg-zinc-950/40 p-3.5 sm:p-4">
-                    <h3 className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                  <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3.5 dark:border-zinc-800/80 dark:bg-zinc-950/40 sm:p-4">
+                    <h3 className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                       {t.aboutDoc}
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-zinc-400">{displayDoc.description}</p>
@@ -1045,9 +1045,9 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                 ) : null}
 
                 {versionsOpen ? (
-                  <div className="rounded-2xl border border-zinc-800/90 bg-zinc-950/60 p-3">
+                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800/90 dark:bg-zinc-950/60">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                         {t.versions}
                       </p>
                       {previewVersionId ? (
@@ -1075,8 +1075,8 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                                 key={v.versionId}
                                 className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 ${
                                   previewing
-                                    ? "border-emerald-500/45 bg-emerald-950/20"
-                                    : "border-white/[0.04] bg-zinc-900/80"
+                                    ? "border-emerald-500/45 bg-emerald-50 dark:bg-emerald-950/20"
+                                    : "border-zinc-200 bg-white dark:border-white/[0.04] dark:bg-zinc-900/80"
                                 }`}
                               >
                                 <span className="text-xs font-medium text-zinc-200">
@@ -1093,7 +1093,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                                     type="button"
                                     disabled={previewLoading}
                                     onClick={() => void handleVersionPreview(selected.id, v.versionId)}
-                                    className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-40"
+                                    className="shrink-0 rounded-lg border border-zinc-300 bg-zinc-50 px-2.5 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 disabled:pointer-events-none disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                                   >
                                     {t.previewVersionAction}
                                   </button>
@@ -1132,9 +1132,9 @@ export function SearchView({ initialQuery }: SearchViewProps) {
               </div>
             </div>
 
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-zinc-950/35">
-              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-800/80 px-4 py-3 sm:px-6">
-                <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-zinc-50 dark:bg-zinc-950/35">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800/80 sm:px-6">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                   <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20">
                     <Eye className="h-4 w-4" aria-hidden />
                   </span>
@@ -1161,7 +1161,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
               </div>
               <div className="scrollbar-chat-hidden flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-5">
                 {previewLoading ? (
-                  <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/50 py-16">
+                  <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 py-16 dark:border-zinc-800 dark:bg-zinc-950/50">
                     <Loader2 className="h-9 w-9 animate-spin text-emerald-500" />
                     <p className="text-xs text-zinc-500">{t.loading}</p>
                   </div>
@@ -1184,7 +1184,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                   </DocumentReadablePanel>
                 ) : preview?.kind === "pdf" ? (
                   <div className="flex min-h-0 flex-1 flex-col gap-3">
-                    <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 px-4 py-5 text-center text-sm text-zinc-400">
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-5 text-center text-sm text-zinc-500 dark:border-zinc-800/80 dark:bg-zinc-900/50 dark:text-zinc-400">
                       {language === "en"
                         ? "Text preview is preferred; this session still has a PDF blob. Open in a new tab or download."
                         : "Ưu tiên xem trước dạng văn bản; phiên bản này vẫn là blob PDF. Mở tab mới hoặc tải xuống."}
@@ -1199,18 +1199,18 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     </div>
                   </div>
                 ) : preview?.kind === "binary" ? (
-                  <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/40 px-6 py-12 text-center">
-                    <FileText className="h-10 w-10 text-zinc-600" />
-                    <p className="max-w-sm text-sm text-zinc-400">
+                  <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-12 text-center dark:border-zinc-800 dark:bg-zinc-950/40">
+                    <FileText className="h-10 w-10 text-zinc-400 dark:text-zinc-600" />
+                    <p className="max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
                       {language === "en"
                         ? `This file type (${preview.mime}) cannot be previewed here. Use Download to open it.`
                         : `Không xem trước được loại tệp (${preview.mime}). Hãy tải xuống để mở.`}
                     </p>
                   </div>
                 ) : (
-                  <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/40 px-6 py-14 text-center">
-                    <Eye className="h-10 w-10 text-zinc-600" />
-                    <p className="max-w-md text-sm leading-relaxed text-zinc-500">{t.previewHint}</p>
+                  <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-14 text-center dark:border-zinc-800 dark:bg-zinc-950/40">
+                    <Eye className="h-10 w-10 text-zinc-400 dark:text-zinc-600" />
+                    <p className="max-w-md text-sm leading-relaxed text-zinc-500 dark:text-zinc-500">{t.previewHint}</p>
                   </div>
                 )}
               </div>

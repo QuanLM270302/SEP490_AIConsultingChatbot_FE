@@ -14,9 +14,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguageStore } from "@/lib/language-store";
-import { clearAuth } from "@/lib/auth-store";
+import { clearAuth, getAccessToken, getStoredUser } from "@/lib/auth-store";
 import { logout } from "@/lib/api/auth";
-import { getAccessToken, getStoredUser } from "@/lib/auth-store";
 import { getProfile } from "@/lib/api/profile";
 import { useAppTheme } from "@/lib/use-app-theme";
 
@@ -72,27 +71,14 @@ export function NavigationSidebar({
     role.includes("TENANT_ADMIN")
   );
 
-  /** Chat → Tài liệu → Phân tích; mỗi mục: ô vuông icon + chú thích phía dưới */
   const navigation: {
     id: ChatbotNavView;
     icon: typeof MessageSquare;
     caption: string;
   }[] = [
-    {
-      id: "chat",
-      icon: MessageSquare,
-      caption: isEn ? "Chat" : "Trò chuyện",
-    },
-    {
-      id: "search",
-      icon: Search,
-      caption: isEn ? "Documents" : "Tài liệu",
-    },
-    {
-      id: "analytics",
-      icon: Users,
-      caption: isEn ? "Analytics" : "Phân tích",
-    },
+    { id: "chat", icon: MessageSquare, caption: isEn ? "Chat" : "Trò chuyện" },
+    { id: "search", icon: Search, caption: isEn ? "Documents" : "Tài liệu" },
+    { id: "analytics", icon: Users, caption: isEn ? "Analytics" : "Phân tích" },
   ];
 
   const handleLogout = async () => {
@@ -204,9 +190,7 @@ export function NavigationSidebar({
                     ? "Loading onboarding..."
                     : "Đang tải onboarding..."
                   : onboardingTotal > 0
-                    ? isEn
-                      ? `Onboarding ${onboardingCompleted}/${onboardingTotal}`
-                      : `Onboarding ${onboardingCompleted}/${onboardingTotal}`
+                    ? `Onboarding ${onboardingCompleted}/${onboardingTotal}`
                     : isEn
                       ? "Onboarding not configured"
                       : "Onboarding chưa cấu hình"
@@ -218,7 +202,7 @@ export function NavigationSidebar({
               ) : null}
             </button>
             <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
-              {isEn ? "Checklist" : "Checklist"}
+              Checklist
             </span>
           </div>
         ) : null}
@@ -228,7 +212,15 @@ export function NavigationSidebar({
             type="button"
             onClick={toggleTheme}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
-            title={theme === "dark" ? (isEn ? "Light mode" : "Chế độ sáng") : (isEn ? "Dark mode" : "Chế độ tối")}
+            title={
+              theme === "dark"
+                ? isEn
+                  ? "Light mode"
+                  : "Chế độ sáng"
+                : isEn
+                  ? "Dark mode"
+                  : "Chế độ tối"
+            }
           >
             {theme === "dark" ? (
               <Sun className="h-5 w-5" />

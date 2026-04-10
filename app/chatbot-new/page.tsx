@@ -142,7 +142,7 @@ export default function ChatbotNewPage() {
   );
 
   return (
-    <div className="flex h-dvh min-h-0 overflow-hidden bg-linear-to-br from-emerald-50 via-white to-cyan-50 dark:bg-none dark:bg-zinc-950">
+    <div className="flex h-dvh min-h-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
       <NavigationSidebar
         activeView={activeView}
         onViewChange={handleViewChange}

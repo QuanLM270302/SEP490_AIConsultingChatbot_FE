@@ -14,7 +14,8 @@ export function ChatbotNewHeader({ onSmartSearch }: ChatbotNewHeaderProps) {
   const isEn = language === "en";
 
   return (
-    <header className="relative z-20 shrink-0 bg-transparent px-4 pb-3 pt-4 dark:bg-zinc-950 sm:px-5">
+    
+    <header className="relative z-20 shrink-0 bg-zinc-50 px-4 pb-3 pt-4 dark:bg-zinc-950 sm:px-5">
       <div className="animate-gradient relative overflow-hidden rounded-2xl bg-[length:220%_220%] bg-gradient-to-r from-lime-400 via-fuchsia-500 via-emerald-400 to-violet-600 px-4 py-3.5 shadow-md shadow-fuchsia-500/15 dark:shadow-lg dark:shadow-emerald-500/25 sm:px-5 sm:py-4">
         <div className="pointer-events-none absolute inset-0 bg-black/20 dark:bg-black/10" />
         <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/15 blur-2xl" />

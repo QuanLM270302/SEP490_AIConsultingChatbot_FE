@@ -2,6 +2,7 @@ export const translations = {
   vi: {
     // Common
     settings: 'Cài đặt',
+    back: 'Quay lại',
     profile: 'Hồ sơ',
     logout: 'Đăng xuất',
     save: 'Lưu',
@@ -448,6 +449,7 @@ export const translations = {
   en: {
     // Common
     settings: 'Settings',
+    back: 'Back',
     profile: 'Profile',
     logout: 'Logout',
     save: 'Save',
