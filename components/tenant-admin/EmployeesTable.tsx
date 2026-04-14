@@ -56,7 +56,14 @@ export function EmployeesTable() {
     setLoading(true);
     setError(null);
     getTenantUsers(statusFilter)
-      .then(setUsers)
+      .then((data) => {
+        // Filter out Tenant Administrators from the list
+        const filtered = data.filter((u) => {
+          const roleName = (u.roleName ?? "").toLowerCase();
+          return !roleName.includes("tenant admin");
+        });
+        setUsers(filtered);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : t.errorLoadingData))
       .finally(() => setLoading(false));
   };
@@ -357,14 +364,6 @@ export function EmployeesTable() {
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 disabled:opacity-60 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               <Key className="h-4 w-4" /> {t.resetPassword}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleDelete(openMenuId)}
-              disabled={!!actionLoading}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
-            >
-              <Trash2 className="h-4 w-4" /> {t.deleteUser}
             </button>
           </div>
         </>

@@ -19,7 +19,7 @@ export function DepartmentsTable({
   filter,
 }: {
   refreshKey?: number;
-  filter: "all" | "active";
+  filter: "all" | "active" | "inactive";
 }) {
   const { language } = useLanguageStore();
   const t = translations[language];
@@ -38,8 +38,15 @@ export function DepartmentsTable({
     setError(null);
     const load = async () => {
       try {
-        const data =
-          filter === "active" ? await getTenantActiveDepartments() : await getTenantDepartments();
+        let data: DepartmentResponse[];
+        if (filter === "active") {
+          data = await getTenantActiveDepartments();
+        } else if (filter === "inactive") {
+          const all = await getTenantDepartments();
+          data = all.filter((d) => !d.isActive);
+        } else {
+          data = await getTenantDepartments();
+        }
         setDepartments(data);
       } catch (e) {
         setError(e instanceof Error ? e.message : t.errorLoadingData);
@@ -177,20 +184,37 @@ export function DepartmentsTable({
             <button
               type="button"
               onClick={async () => {
+                const dept = departments.find((d) => d.id === openMenuId);
+                if (!dept) return;
+                
+                const isCurrentlyActive = dept.isActive ?? (filter === "active");
                 const ok = await confirm({
-                  title: language === "en" ? "Delete department?" : "Xóa phòng ban?",
-                  description: t.confirmDeleteDepartment,
-                  confirmText: language === "en" ? "Delete" : "Xóa",
+                  title: isCurrentlyActive 
+                    ? (language === "en" ? "Deactivate department?" : "Vô hiệu hóa phòng ban?")
+                    : (language === "en" ? "Activate department?" : "Kích hoạt phòng ban?"),
+                  description: isCurrentlyActive
+                    ? (language === "en" ? "This department will be deactivated." : "Phòng ban này sẽ bị vô hiệu hóa.")
+                    : (language === "en" ? "This department will be activated." : "Phòng ban này sẽ được kích hoạt."),
+                  confirmText: isCurrentlyActive 
+                    ? (language === "en" ? "Deactivate" : "Vô hiệu hóa")
+                    : (language === "en" ? "Activate" : "Kích hoạt"),
                   cancelText: t.cancel,
-                  tone: "danger",
+                  tone: isCurrentlyActive ? "danger" : "default",
                 });
                 if (!ok) return;
 
                 setActionLoadingId(openMenuId);
-                deleteTenantDepartment(openMenuId)
+                updateTenantDepartment(openMenuId, { isActive: !isCurrentlyActive })
                   .then(async () => {
-                    const data =
-                      filter === "active" ? await getTenantActiveDepartments() : await getTenantDepartments();
+                    let data: DepartmentResponse[];
+                    if (filter === "active") {
+                      data = await getTenantActiveDepartments();
+                    } else if (filter === "inactive") {
+                      const all = await getTenantDepartments();
+                      data = all.filter((d) => !d.isActive);
+                    } else {
+                      data = await getTenantDepartments();
+                    }
                     setDepartments(data);
                     setOpenMenuId(null);
                     setMenuPos(null);
@@ -199,9 +223,19 @@ export function DepartmentsTable({
                   .finally(() => setActionLoadingId(null));
               }}
               disabled={actionLoadingId === openMenuId}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
+              className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm disabled:opacity-60 ${
+                (departments.find((d) => d.id === openMenuId)?.isActive ?? (filter === "active"))
+                  ? "text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                  : "text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+              }`}
             >
-              <Trash2 className="h-4 w-4" /> {actionLoadingId === openMenuId ? t.deleting : t.delete}
+              <Trash2 className="h-4 w-4" /> 
+              {actionLoadingId === openMenuId 
+                ? t.saving 
+                : (departments.find((d) => d.id === openMenuId)?.isActive ?? (filter === "active"))
+                  ? (language === "en" ? "Deactivate" : "Vô hiệu hóa")
+                  : (language === "en" ? "Activate" : "Kích hoạt")
+              }
             </button>
           </div>
         </>
@@ -215,8 +249,15 @@ export function DepartmentsTable({
             setEditLoading(true);
             try {
               await updateTenantDepartment(editDept.id, body);
-              const data =
-                filter === "active" ? await getTenantActiveDepartments() : await getTenantDepartments();
+              let data: DepartmentResponse[];
+              if (filter === "active") {
+                data = await getTenantActiveDepartments();
+              } else if (filter === "inactive") {
+                const all = await getTenantDepartments();
+                data = all.filter((d) => !d.isActive);
+              } else {
+                data = await getTenantDepartments();
+              }
               setDepartments(data);
               setEditDept(null);
             } finally {
