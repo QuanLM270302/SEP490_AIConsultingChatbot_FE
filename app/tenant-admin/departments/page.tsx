@@ -14,7 +14,7 @@ export default function DepartmentsPage() {
   const t = translations[language];
   const [createOpen, setCreateOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [filter, setFilter] = useState<"all" | "active">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
 
   return (
     <TenantAdminLayout>
@@ -60,6 +60,17 @@ export default function DepartmentsPage() {
             }`}
           >
             {t.activeDepartments}
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("inactive")}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+              filter === "inactive"
+                ? "bg-green-500 text-white"
+                : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }`}
+          >
+            {language === "en" ? "Inactive" : "Không hoạt động"}
           </button>
         </div>
 
