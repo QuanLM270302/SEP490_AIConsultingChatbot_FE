@@ -47,7 +47,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim() || !contactEmail.trim()) {
-      alert("Họ tên và thư điện tử không được để trống.");
+      alert("Họ tên và email không được để trống.");
       return;
     }
     if (roleId === "" || roleId === undefined) {
@@ -94,7 +94,7 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">Thư điện tử (liên hệ) *</label>
+            <label className="block text-xs font-medium text-zinc-500">Email liên hệ *</label>
             <input
               type="email"
               value={contactEmail}

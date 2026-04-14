@@ -1251,9 +1251,9 @@ function UpdateAccessModal({
                         key={dept.id}
                         type="button"
                         onClick={() => toggleDepartment(dept.id)}
-                        className={`rounded-full px-3 py-1.5 text-xs transition ${
+                        className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
                           active
-                            ? "bg-green-500 text-white"
+                            ? "bg-green-500 text-white shadow-sm"
                             : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                         }`}
                       >
@@ -1289,9 +1289,9 @@ function UpdateAccessModal({
                         key={roleId}
                         type="button"
                         onClick={() => toggleRole(roleId)}
-                        className={`rounded-full px-3 py-1.5 text-xs transition ${
+                        className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
                           active
-                            ? "bg-green-500 text-white"
+                            ? "bg-green-500 text-white shadow-sm"
                             : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                         }`}
                       >
