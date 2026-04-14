@@ -156,7 +156,7 @@ export default function StaffManagementPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
               <input
                 type="text"
-                placeholder={isEn ? "Search by name or email..." : "Tìm theo tên hoặc thư điện tử..."}
+                placeholder={isEn ? "Search by name or email..." : "Tìm theo tên hoặc email..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-lg border-0 bg-zinc-50 py-2 pl-10 pr-4 text-sm text-zinc-900 ring-1 ring-inset ring-zinc-200 focus:ring-2 focus:ring-green-500 dark:bg-zinc-900/50 dark:text-white dark:ring-zinc-800"
@@ -176,7 +176,7 @@ export default function StaffManagementPage() {
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="border-b border-zinc-200 bg-zinc-50/50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
                   <tr>
-                    <th className="px-6 py-4 font-medium">{isEn ? "Name / Email" : "Tên / thư điện tử"}</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Name / Email" : "Tên / Email"}</th>
                     <th className="px-6 py-4 font-medium">{isEn ? "Phone" : "SĐT"}</th>
                     <th className="px-6 py-4 font-medium">{isEn ? "Status" : "Trạng thái"}</th>
                     <th className="px-6 py-4 font-medium text-right">{isEn ? "Actions" : "Thao tác"}</th>

@@ -171,8 +171,8 @@ export interface SubscriptionPlanResponse {
 
 export interface CreateSubscriptionPlanRequest {
   planType: "TRIAL" | "STARTER" | "STANDARD" | "ENTERPRISE";
-  name?: string;
-  description?: string;
+  name: string;
+  description: string;
   monthlyPrice: number;
   quarterlyPrice: number;
   yearlyPrice: number;
@@ -185,13 +185,10 @@ export interface CreateSubscriptionPlanRequest {
   maxAiTokens: number;
   contextWindowTokens: number;
   ragChunkSize: number;
-  aiModel?: string;
-  embeddingModel?: string;
-  enableRag: boolean;
-  isTrial: boolean;
-  trialDays?: number;
+  aiModel: string;
+  embeddingModel: string;
   displayOrder: number;
-  features?: string;
+  features: string;
 }
 
 export interface SubscriptionPlanTypeOption {
@@ -216,7 +213,6 @@ export interface UpdateSubscriptionPlanRequest {
   ragChunkSize: number;
   aiModel?: string;
   embeddingModel?: string;
-  enableRag: boolean;
   isActive: boolean;
   displayOrder: number;
   features?: string;

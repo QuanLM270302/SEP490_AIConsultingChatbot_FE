@@ -101,7 +101,7 @@ export const translations = {
     rejected: 'Từ chối',
     suspended: 'Tạm ngưng',
     noTenants: 'Chưa có tổ chức nào.',
-    nameEmail: 'Tên / thư điện tử',
+    nameEmail: 'Tên / Email',
     status: 'Trạng thái',
     actions: 'Thao tác',
     viewDetail: 'Xem chi tiết',
@@ -120,7 +120,7 @@ export const translations = {
     deleting: 'Đang xóa...',
     tenantDetail: 'Chi tiết tổ chức',
     organizationName: 'Tên tổ chức',
-    contactEmail: 'Thư điện tử liên hệ',
+    contactEmail: 'Email liên hệ',
     companySize: 'Quy mô công ty',
     address: 'Địa chỉ',
     website: 'Trang web',
@@ -200,7 +200,7 @@ export const translations = {
     // Common Table & UI
     name: 'Tên',
     code: 'Mã',
-    email: 'Thư điện tử',
+    email: 'Email',
     department: 'Phòng ban',
     role: 'Vai trò',
     noDepartments: 'Chưa có phòng ban. Dữ liệu được tải từ máy chủ.',
@@ -246,7 +246,7 @@ export const translations = {
     selectPermissions: 'Chọn các quyền bổ sung cho người dùng.',
     noPermissions: 'Không có danh sách quyền.',
     confirmDeleteUser: 'Bạn có chắc muốn xóa người dùng này khỏi tổ chức? Hành động này không thể hoàn tác.',
-    passwordResetSent: 'Mật khẩu mới đã được gửi đến thư điện tử của người dùng.',
+    passwordResetSent: 'Mật khẩu mới đã được gửi đến email của người dùng.',
     
     // Department Table
     updateDepartment: 'Cập nhật phòng ban',
