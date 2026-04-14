@@ -404,14 +404,6 @@ export default function StaffManagementPage() {
                 <UserCheck className="h-4 w-4" /> {isEn ? "Activate" : "Kích hoạt"}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => void handleDelete(openMenuId)}
-              disabled={!!actionLoading}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
-            >
-              <Trash2 className="h-4 w-4" /> {isEn ? "Delete" : "Xóa"}
-            </button>
           </div>
         </>
       )}
