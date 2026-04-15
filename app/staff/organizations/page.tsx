@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Check,
   Loader2,
@@ -37,6 +37,7 @@ import {
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { requestStaffPortalStatsRefresh } from "@/lib/staff-portal-stats-refresh";
+import { getAccessToken, getRefreshToken, refreshAuth } from "@/lib/auth-store";
 
 const statusLabel: Record<TenantStatus, Record<'vi' | 'en', string>> = {
   PENDING: { vi: "Chờ duyệt", en: "Pending" },
@@ -51,6 +52,20 @@ const statusColor: Record<TenantStatus, string> = {
   REJECTED: "bg-red-500/20 text-red-700 dark:text-red-400",
   SUSPENDED: "bg-zinc-500/20 text-zinc-600 dark:text-zinc-400",
 };
+
+function isUnauthorizedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /(unauthorized|missing or invalid token|\b401\b)/i.test(message);
+}
+
+function getErrorMessage(error: unknown): string | null {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim().length > 0) return message;
+  }
+  return null;
+}
 
 export default function StaffOrganizationsPage() {
   const { language } = useLanguageStore();
@@ -70,14 +85,31 @@ export default function StaffOrganizationsPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTenantId, setDeleteTenantId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadTenants();
+  const ensureStaffAccessToken = useCallback(async (): Promise<boolean> => {
+    if (getAccessToken()) return true;
+    if (!getRefreshToken()) return false;
+    const ok = await refreshAuth();
+    return ok && !!getAccessToken();
   }, []);
 
-  const loadTenants = async () => {
+  const loadTenants = useCallback(async () => {
     try {
       setTenantsLoading(true);
-      const data = await getTenants();
+      setError(null);
+
+      await ensureStaffAccessToken();
+
+      let data: Tenant[];
+      try {
+        data = await getTenants();
+      } catch (e) {
+        if (isUnauthorizedError(e) && (await ensureStaffAccessToken())) {
+          data = await getTenants();
+        } else {
+          throw e;
+        }
+      }
+
       setTenants(data);
     } catch (e) {
       console.error("Failed to load tenants:", e);
@@ -85,7 +117,19 @@ export default function StaffOrganizationsPage() {
     } finally {
       setTenantsLoading(false);
     }
-  };
+  }, [ensureStaffAccessToken, language]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        void loadTenants();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadTenants]);
 
   const openRejectModal = (tenantId: string) => {
     setRejectTenantId(tenantId);
@@ -116,8 +160,8 @@ export default function StaffOrganizationsPage() {
       await approveTenant(tenantId);
       await loadTenants();
       requestStaffPortalStatsRefresh();
-    } catch (e: any) {
-      setError(e.message || (language === "en" ? "Cannot approve tenant" : "Không thể phê duyệt tenant"));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e) || (language === "en" ? "Cannot approve tenant" : "Không thể phê duyệt tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -134,8 +178,8 @@ export default function StaffOrganizationsPage() {
       setRejectModalOpen(false);
       setRejectTenantId(null);
       setRejectReason("");
-    } catch (e: any) {
-      setError(e.message || (language === "en" ? "Cannot reject tenant" : "Không thể từ chối tenant"));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e) || (language === "en" ? "Cannot reject tenant" : "Không thể từ chối tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -148,8 +192,8 @@ export default function StaffOrganizationsPage() {
       await suspendTenant(tenantId);
       await loadTenants();
       requestStaffPortalStatsRefresh();
-    } catch (e: any) {
-      setError(e.message || (language === "en" ? "Cannot suspend tenant" : "Không thể tạm ngưng tenant"));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e) || (language === "en" ? "Cannot suspend tenant" : "Không thể tạm ngưng tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -161,8 +205,8 @@ export default function StaffOrganizationsPage() {
       setError(null);
       await activateTenant(tenantId);
       await loadTenants();
-    } catch (e: any) {
-      setError(e.message || (language === "en" ? "Cannot reactivate tenant" : "Không thể kích hoạt lại tenant"));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e) || (language === "en" ? "Cannot reactivate tenant" : "Không thể kích hoạt lại tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -178,8 +222,8 @@ export default function StaffOrganizationsPage() {
       requestStaffPortalStatsRefresh();
       setDeleteModalOpen(false);
       setDeleteTenantId(null);
-    } catch (e: any) {
-      setError(e.message || (language === "en" ? "Cannot delete tenant" : "Không thể xóa tenant"));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e) || (language === "en" ? "Cannot delete tenant" : "Không thể xóa tenant"));
     } finally {
       setActionLoading(null);
     }
