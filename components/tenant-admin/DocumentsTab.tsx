@@ -15,6 +15,7 @@ import {
   restoreDocument,
   type UploadDocumentParams,
   type DocumentPreviewResponse,
+  type ListDocumentsParams,
 } from "@/lib/api/documents";
 import type {
   DocumentResponse,
@@ -168,6 +169,38 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   const [embeddingProgress, setEmbeddingProgress] = useState(10);
   const [embeddingCompletedAtByDocId, setEmbeddingCompletedAtByDocId] = useState<Record<string, string>>({});
   const previousEmbeddingStateRef = useRef<Record<string, EmbeddingState>>({});
+  
+  // Search and filter states
+  const [searchKeyword, setSearchKeyword] = useState<string>("");
+  const [filterCategoryId, setFilterCategoryId] = useState<string>("");
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterFromDate, setFilterFromDate] = useState<string>("");
+  const [filterToDate, setFilterToDate] = useState<string>("");
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  
+  // Use refs to store current filter values for API calls without causing re-renders
+  const currentFiltersRef = useRef({
+    searchKeyword: "",
+    filterCategoryId: "",
+    filterTagIds: [] as string[],
+    filterStatus: "",
+    filterFromDate: "",
+    filterToDate: "",
+  });
+  
+  // Update ref whenever filters change
+  useEffect(() => {
+    currentFiltersRef.current = {
+      searchKeyword,
+      filterCategoryId,
+      filterTagIds,
+      filterStatus,
+      filterFromDate,
+      filterToDate,
+    };
+  }, [searchKeyword, filterCategoryId, filterTagIds, filterStatus, filterFromDate, filterToDate]);
+  
   const { language } = useLanguageStore();
   const t = translations[language];
   const isEn = language === "en";
@@ -214,8 +247,18 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
     setLoading(true);
     setError(null);
     try {
+      const filters = currentFiltersRef.current;
+      const params: ListDocumentsParams = {};
+      if (filters.searchKeyword.trim()) params.keyword = filters.searchKeyword.trim();
+      if (filters.filterCategoryId) params.categoryId = filters.filterCategoryId;
+      if (filters.filterTagIds.length > 0) params.tagIds = filters.filterTagIds;
+      if (filters.filterStatus) params.status = filters.filterStatus;
+      // Convert date to LocalDateTime format (ISO 8601 with time)
+      if (filters.filterFromDate) params.fromDate = `${filters.filterFromDate}T00:00:00`;
+      if (filters.filterToDate) params.toDate = `${filters.filterToDate}T23:59:59`;
+      
       const [docs, cats, activeTags, depts, tenantRoles] = await Promise.all([
-        listDocuments(),
+        listDocuments(params),
         listCategoriesFlat(),
         listTagsActive(),
         getTenantActiveDepartments().catch(() => []),
@@ -234,11 +277,21 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
     } finally {
       setLoading(false);
     }
-  }, [updateEmbeddingCompletionTimestamps]);
+  }, [updateEmbeddingCompletionTimestamps, isEn]);
 
   const refreshDocumentsRealtime = useCallback(async () => {
     try {
-      const docs = await listDocuments();
+      const filters = currentFiltersRef.current;
+      const params: ListDocumentsParams = {};
+      if (filters.searchKeyword.trim()) params.keyword = filters.searchKeyword.trim();
+      if (filters.filterCategoryId) params.categoryId = filters.filterCategoryId;
+      if (filters.filterTagIds.length > 0) params.tagIds = filters.filterTagIds;
+      if (filters.filterStatus) params.status = filters.filterStatus;
+      // Convert date to LocalDateTime format (ISO 8601 with time)
+      if (filters.filterFromDate) params.fromDate = `${filters.filterFromDate}T00:00:00`;
+      if (filters.filterToDate) params.toDate = `${filters.filterToDate}T23:59:59`;
+      
+      const docs = await listDocuments(params);
       setDocuments(docs);
       updateEmbeddingCompletionTimestamps(docs);
     } catch {
@@ -700,6 +753,186 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
 
       {(mode === "all" || mode === "library") && (
       <>
+      {/* Modern Search Section */}
+      <div className="space-y-4">
+        {/* Prominent Search Bar */}
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+            <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={searchKeyword}
+            onChange={(e) => setSearchKeyword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void load();
+            }}
+            placeholder={isEn ? "Search documents by name or content..." : "Tìm kiếm tài liệu theo tên hoặc nội dung..."}
+            className="w-full rounded-xl border border-zinc-200 bg-white py-3.5 pl-11 pr-32 text-[15px] text-zinc-900 placeholder-zinc-400 shadow-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500 dark:focus:border-emerald-500"
+          />
+          <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-2">
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                showFilters || filterCategoryId || filterTagIds.length > 0 || filterStatus || filterFromDate || filterToDate
+                  ? "bg-emerald-500 text-white shadow-sm"
+                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              }`}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              {isEn ? "Filters" : "Bộ lọc"}
+            </button>
+          </div>
+        </div>
+
+        {/* Collapsible Advanced Filters */}
+        {showFilters && (
+          <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                {isEn ? "Advanced Filters" : "Bộ lọc nâng cao"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Filter Grid */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Category */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  {t.category}
+                </label>
+                <select
+                  value={filterCategoryId}
+                  onChange={(e) => setFilterCategoryId(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                >
+                  <option value="">{isEn ? "All" : "Tất cả"}</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  {isEn ? "Status" : "Trạng thái"}
+                </label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                >
+                  <option value="">{isEn ? "All" : "Tất cả"}</option>
+                  <option value="COMPLETED">{t.statusCompleted}</option>
+                  <option value="PENDING">{t.statusPending}</option>
+                  <option value="PROCESSING">{t.statusProcessing}</option>
+                  <option value="FAILED">{t.statusFailed}</option>
+                </select>
+              </div>
+
+              {/* From Date */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  {isEn ? "From" : "Từ ngày"}
+                </label>
+                <input
+                  type="date"
+                  value={filterFromDate}
+                  onChange={(e) => setFilterFromDate(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                />
+              </div>
+
+              {/* To Date */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  {isEn ? "To" : "Đến ngày"}
+                </label>
+                <input
+                  type="date"
+                  value={filterToDate}
+                  onChange={(e) => setFilterToDate(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                />
+              </div>
+            </div>
+
+            {/* Tags */}
+            {tags.length > 0 && (
+              <div className="mt-4">
+                <label className="mb-2 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  {isEn ? "Tags" : "Thẻ"}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => {
+                    const active = filterTagIds.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          setFilterTagIds((prev) =>
+                            prev.includes(tag.id) ? prev.filter((x) => x !== tag.id) : [...prev, tag.id]
+                          );
+                        }}
+                        className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                          active
+                            ? "bg-emerald-500 text-white shadow-sm"
+                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchKeyword("");
+                  setFilterCategoryId("");
+                  setFilterTagIds([]);
+                  setFilterStatus("");
+                  setFilterFromDate("");
+                  setFilterToDate("");
+                  void load();
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                {isEn ? "Reset" : "Đặt lại"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void load()}
+                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              >
+                {isEn ? "Apply Filters" : "Áp dụng"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
           {t.documentList} ({documents.length})
@@ -751,44 +984,91 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-          <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
-            <thead className="bg-zinc-50 dark:bg-zinc-900">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.nameTitle}</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.scope}</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">
+        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-zinc-200 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/50">
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  {t.nameTitle}
+                </th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  {t.scope}
+                </th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   {t.embeddingStatus}
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">{t.actions}</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  {t.actions}
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {documents.map((doc) => (
-                <tr key={doc.id}>
-                  <td className="px-4 py-3 text-sm text-zinc-900 dark:text-white">
-                    {doc.documentTitle || doc.originalFileName}
+                <tr
+                  key={doc.id}
+                  className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                >
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-[15px] font-semibold text-zinc-900 dark:text-white">
+                          {doc.documentTitle || doc.originalFileName}
+                        </p>
+                        <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                          {formatFileSize(doc.fileSize)}
+                        </p>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
-                    {visibilityLabels[doc.visibility]}
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      {visibilityLabels[doc.visibility]}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-300">
-                    <div className="flex flex-col gap-0.5">
-                      <span>{mapEmbeddingStatusLabel(doc.embeddingStatus, t)}</span>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      <span
+                        className={`inline-flex w-fit items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
+                          getEmbeddingState(doc.embeddingStatus) === "completed"
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
+                            : getEmbeddingState(doc.embeddingStatus) === "failed"
+                              ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400"
+                              : getEmbeddingState(doc.embeddingStatus) === "in-progress"
+                                ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+                                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                        }`}
+                      >
+                        {getEmbeddingState(doc.embeddingStatus) === "completed" && (
+                          <CircleCheckBig className="h-3.5 w-3.5" />
+                        )}
+                        {getEmbeddingState(doc.embeddingStatus) === "failed" && (
+                          <CircleAlert className="h-3.5 w-3.5" />
+                        )}
+                        {getEmbeddingState(doc.embeddingStatus) === "in-progress" && (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        )}
+                        {mapEmbeddingStatusLabel(doc.embeddingStatus, t)}
+                      </span>
                       {getEmbeddingState(doc.embeddingStatus) === "completed" &&
                       embeddingCompletedAtByDocId[doc.id] ? (
                         <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                          {language === "en" ? "Updated" : "Cập nhật"}: {new Date(embeddingCompletedAtByDocId[doc.id]).toLocaleString(language === "en" ? "en-US" : "vi-VN")}
+                          {new Date(embeddingCompletedAtByDocId[doc.id]).toLocaleString(
+                            language === "en" ? "en-US" : "vi-VN"
+                          )}
                         </span>
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-6 py-4">
+                    <div className="flex justify-end gap-1">
                       <button
                         type="button"
                         onClick={() => void handleViewDetail(doc.id)}
-                        className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                         title={isEn ? "View details" : "Xem chi tiết"}
                       >
                         <Eye className="h-4 w-4" />
@@ -796,7 +1076,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                       <button
                         type="button"
                         onClick={() => loadVersions(doc.id)}
-                        className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                         title={isEn ? "Version history" : "Lịch sử phiên bản"}
                       >
                         <History className="h-4 w-4" />
@@ -804,7 +1084,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                       <button
                         type="button"
                         onClick={() => setAccessDoc(doc)}
-                        className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                         title={isEn ? "Update access" : "Cập nhật quyền truy cập"}
                       >
                         <Lock className="h-4 w-4" />
@@ -812,7 +1092,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                       <button
                         type="button"
                         onClick={() => setNewVersionDocId(doc.id)}
-                        className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                         title={isEn ? "Upload new version" : "Tải lên phiên bản mới"}
                       >
                         <Upload className="h-4 w-4" />
@@ -820,7 +1100,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                       <button
                         type="button"
                         onClick={() => handleSoftDelete(doc.id)}
-                        className="rounded p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                         title={isEn ? "Soft delete" : "Xóa mềm"}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -832,7 +1112,17 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
             </tbody>
           </table>
           {documents.length === 0 && (
-            <p className="px-4 py-6 text-center text-sm text-zinc-500">{`${t.noDocuments} ${t.uploadFileAbove}`}</p>
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <FileText className="h-8 w-8 text-zinc-400" />
+              </div>
+              <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                {isEn ? "No documents found" : "Không tìm thấy tài liệu"}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                {isEn ? "Upload a document to get started" : "Tải lên tài liệu để bắt đầu"}
+              </p>
+            </div>
           )}
         </div>
       )}
