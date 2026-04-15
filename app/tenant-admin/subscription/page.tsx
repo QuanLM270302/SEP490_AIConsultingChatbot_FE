@@ -20,7 +20,9 @@ import type {
   SubscriptionTier,
   TenantSubscriptionPlanResponse,
 } from "@/lib/api/subscription";
+import { getStoredUser } from "@/lib/auth-store";
 import { useLanguageStore } from "@/lib/language-store";
+import { notifyTenantSubscriptionUpdated } from "@/lib/subscription-sync";
 import { translations } from "@/lib/translations";
 
 type TabId = "plans" | "billing" | "history";
@@ -193,12 +195,19 @@ export default function TenantAdminSubscriptionPage() {
 
   const loadSubscription = useCallback((options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
+    const tenantId = getStoredUser()?.tenantId ?? null;
     if (!silent) {
       setSubscriptionLoading(true);
     }
     getMySubscription()
-      .then(setSubscription)
-      .catch(() => setSubscription(null)) // 404 or error = no subscription
+      .then((data) => {
+        setSubscription(data);
+        notifyTenantSubscriptionUpdated(tenantId, data);
+      })
+      .catch(() => {
+        setSubscription(null); // 404 or error = no subscription
+        notifyTenantSubscriptionUpdated(tenantId, null);
+      })
       .finally(() => {
         if (!silent) {
           setSubscriptionLoading(false);
