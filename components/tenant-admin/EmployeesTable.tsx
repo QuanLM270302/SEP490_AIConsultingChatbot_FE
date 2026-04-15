@@ -365,6 +365,14 @@ export function EmployeesTable() {
             >
               <Key className="h-4 w-4" /> {t.resetPassword}
             </button>
+            <button
+              type="button"
+              onClick={() => void handleDelete(openMenuId)}
+              disabled={!!actionLoading}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/30"
+            >
+              <Trash2 className="h-4 w-4" /> {t.deleteUser}
+            </button>
           </div>
         </>
       )}

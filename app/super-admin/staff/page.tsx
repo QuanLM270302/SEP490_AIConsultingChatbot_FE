@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   getStaffList,
   getStaffById,
@@ -29,18 +29,35 @@ export default function StaffManagementPage() {
   const [search, setSearch] = useState("");
   const { confirm, confirmDialog } = useConfirmDialog();
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
     getStaffList()
       .then(setList)
       .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load list" : "Lỗi tải danh sách"))
       .finally(() => setLoading(false));
-  };
+  }, [isEn]);
 
   useEffect(() => {
-    load();
-  }, []);
+    let alive = true;
+    getStaffList()
+      .then((data) => {
+        if (!alive) return;
+        setList(data);
+        setError(null);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        setError(e instanceof Error ? e.message : isEn ? "Failed to load list" : "Lỗi tải danh sách");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [isEn]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -404,6 +421,14 @@ export default function StaffManagementPage() {
                 <UserCheck className="h-4 w-4" /> {isEn ? "Activate" : "Kích hoạt"}
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => void handleDelete(openMenuId)}
+              disabled={!!actionLoading}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/30"
+            >
+              <Trash2 className="h-4 w-4" /> {isEn ? "Delete" : "Xóa"}
+            </button>
           </div>
         </>
       )}

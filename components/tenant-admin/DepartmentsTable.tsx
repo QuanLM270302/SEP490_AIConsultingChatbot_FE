@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Pencil, Trash2, MoreVertical } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Pencil, Trash2, MoreVertical, Power } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui";
 import {
   getTenantDepartments,
@@ -33,29 +33,29 @@ export function DepartmentsTable({
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const { confirm, confirmDialog } = useConfirmDialog();
 
+  const loadDepartments = useCallback(async () => {
+    try {
+      let data: DepartmentResponse[];
+      if (filter === "active") {
+        data = await getTenantActiveDepartments();
+      } else if (filter === "inactive") {
+        const all = await getTenantDepartments();
+        data = all.filter((d) => !d.isActive);
+      } else {
+        data = await getTenantDepartments();
+      }
+      setDepartments(data);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorLoadingData);
+    }
+  }, [filter, t.errorLoadingData]);
+
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const load = async () => {
-      try {
-        let data: DepartmentResponse[];
-        if (filter === "active") {
-          data = await getTenantActiveDepartments();
-        } else if (filter === "inactive") {
-          const all = await getTenantDepartments();
-          data = all.filter((d) => !d.isActive);
-        } else {
-          data = await getTenantDepartments();
-        }
-        setDepartments(data);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : t.errorLoadingData);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [refreshKey, filter, t.errorLoadingData]);
+    loadDepartments().finally(() => setLoading(false));
+  }, [refreshKey, loadDepartments]);
 
   useEffect(() => {
     if (openMenuId == null) return;
@@ -86,6 +86,79 @@ export function DepartmentsTable({
     );
     setMenuPos({ top: rect.bottom + 6, left });
     setOpenMenuId(deptId);
+  };
+
+  const selectedDept = openMenuId == null
+    ? null
+    : departments.find((d) => d.id === openMenuId) ?? null;
+  const selectedDeptActive = selectedDept?.isActive ?? false;
+
+  const handleToggleActive = async () => {
+    if (!selectedDept || openMenuId == null) return;
+
+    const isCurrentlyActive = selectedDeptActive;
+    const ok = await confirm({
+      title: isCurrentlyActive
+        ? language === "en"
+          ? "Deactivate department?"
+          : "Vô hiệu hóa phòng ban?"
+        : language === "en"
+          ? "Activate department?"
+          : "Kích hoạt phòng ban?",
+      description: isCurrentlyActive
+        ? language === "en"
+          ? "This department will be marked as inactive."
+          : "Phòng ban này sẽ được chuyển sang trạng thái không hoạt động."
+        : language === "en"
+          ? "This department will be marked as active."
+          : "Phòng ban này sẽ được chuyển sang trạng thái hoạt động.",
+      confirmText: isCurrentlyActive
+        ? t.deactivate
+        : t.activate,
+      cancelText: t.cancel,
+      tone: isCurrentlyActive ? "danger" : "default",
+    });
+    if (!ok) return;
+
+    setActionLoadingId(openMenuId);
+    try {
+      await updateTenantDepartment(openMenuId, { isActive: !isCurrentlyActive });
+      await loadDepartments();
+      setOpenMenuId(null);
+      setMenuPos(null);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t.error);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleDeleteDepartment = async () => {
+    if (!selectedDept || openMenuId == null) return;
+
+    const ok = await confirm({
+      title: language === "en" ? "Delete department?" : "Xóa phòng ban?",
+      description:
+        language === "en"
+          ? "Delete action is separate from activate/deactivate. The backend currently performs soft delete for departments."
+          : "Thao tác xóa tách biệt với kích hoạt/vô hiệu hóa. Hiện backend đang thực hiện xóa mềm cho phòng ban.",
+      confirmText: t.delete,
+      cancelText: t.cancel,
+      tone: "danger",
+    });
+    if (!ok) return;
+
+    setActionLoadingId(openMenuId);
+    try {
+      await deleteTenantDepartment(openMenuId);
+      await loadDepartments();
+      setOpenMenuId(null);
+      setMenuPos(null);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t.error);
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
   if (loading) {
@@ -183,59 +256,30 @@ export function DepartmentsTable({
             </button>
             <button
               type="button"
-              onClick={async () => {
-                const dept = departments.find((d) => d.id === openMenuId);
-                if (!dept) return;
-                
-                const isCurrentlyActive = dept.isActive ?? (filter === "active");
-                const ok = await confirm({
-                  title: isCurrentlyActive 
-                    ? (language === "en" ? "Deactivate department?" : "Vô hiệu hóa phòng ban?")
-                    : (language === "en" ? "Activate department?" : "Kích hoạt phòng ban?"),
-                  description: isCurrentlyActive
-                    ? (language === "en" ? "This department will be deactivated." : "Phòng ban này sẽ bị vô hiệu hóa.")
-                    : (language === "en" ? "This department will be activated." : "Phòng ban này sẽ được kích hoạt."),
-                  confirmText: isCurrentlyActive 
-                    ? (language === "en" ? "Deactivate" : "Vô hiệu hóa")
-                    : (language === "en" ? "Activate" : "Kích hoạt"),
-                  cancelText: t.cancel,
-                  tone: isCurrentlyActive ? "danger" : "default",
-                });
-                if (!ok) return;
-
-                setActionLoadingId(openMenuId);
-                updateTenantDepartment(openMenuId, { isActive: !isCurrentlyActive })
-                  .then(async () => {
-                    let data: DepartmentResponse[];
-                    if (filter === "active") {
-                      data = await getTenantActiveDepartments();
-                    } else if (filter === "inactive") {
-                      const all = await getTenantDepartments();
-                      data = all.filter((d) => !d.isActive);
-                    } else {
-                      data = await getTenantDepartments();
-                    }
-                    setDepartments(data);
-                    setOpenMenuId(null);
-                    setMenuPos(null);
-                  })
-                  .catch((e) => alert(e instanceof Error ? e.message : t.error))
-                  .finally(() => setActionLoadingId(null));
-              }}
+              onClick={() => void handleToggleActive()}
               disabled={actionLoadingId === openMenuId}
               className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm disabled:opacity-60 ${
-                (departments.find((d) => d.id === openMenuId)?.isActive ?? (filter === "active"))
+                selectedDeptActive
                   ? "text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
                   : "text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
               }`}
             >
-              <Trash2 className="h-4 w-4" /> 
+              <Power className="h-4 w-4" />
               {actionLoadingId === openMenuId 
                 ? t.saving 
-                : (departments.find((d) => d.id === openMenuId)?.isActive ?? (filter === "active"))
-                  ? (language === "en" ? "Deactivate" : "Vô hiệu hóa")
-                  : (language === "en" ? "Activate" : "Kích hoạt")
+                : selectedDeptActive
+                  ? t.deactivate
+                  : t.activate
               }
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDeleteDepartment()}
+              disabled={actionLoadingId === openMenuId}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/30"
+            >
+              <Trash2 className="h-4 w-4" />
+              {actionLoadingId === openMenuId ? t.saving : t.delete}
             </button>
           </div>
         </>
