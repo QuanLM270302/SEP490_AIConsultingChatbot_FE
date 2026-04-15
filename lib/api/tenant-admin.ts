@@ -51,6 +51,7 @@ export interface UserResponse {
   email?: string;
   contactEmail?: string;
   fullName?: string;
+  emailSent?: boolean;
   departmentId?: number;
   departmentName?: string;
   /** Trùng `roles.id` / `role_id` trong DB (một user — một role). */

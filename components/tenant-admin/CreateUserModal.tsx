@@ -7,7 +7,7 @@ import { getTenantRoles, getTenantDepartments, createTenantUser, type CreateUser
 interface CreateUserModalProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (emailSent?: boolean) => void;
 }
 
 const SYSTEM_ROLES_TO_EXCLUDE = ['TENANT_ADMIN', 'SUPER_ADMIN', 'STAFF'];
@@ -64,8 +64,8 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
       };
       if (cleanPhone.trim()) body.phoneNumber = cleanPhone.trim();
       if (departmentId !== "") body.departmentId = Number(departmentId);
-      await createTenantUser(body);
-      onSuccess();
+      const createdUser = await createTenantUser(body);
+      onSuccess(createdUser.emailSent);
       onClose();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Tạo người dùng thất bại");
