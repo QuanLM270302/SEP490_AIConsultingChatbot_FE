@@ -29,6 +29,8 @@ import {
 
 type FilterMode = "all" | "custom" | "fixed";
 
+const TAB_EASE = [0.22, 1, 0.36, 1] as const;
+
 function isUnauthorizedError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? "");
   return /(unauthorized|missing or invalid token|\b401\b)/i.test(message);
@@ -233,7 +235,7 @@ export default function TenantAdminRolesPage() {
             <motion.button
               key={f}
               type="button"
-              whileTap={{ scale: 0.97 }}
+              whileTap={{ scale: 0.985 }}
               onClick={() => {
                 if (f === filter) return;
                 startFilterTransition(() => setFilter(f));
@@ -248,7 +250,7 @@ export default function TenantAdminRolesPage() {
                 <motion.span
                   layoutId="roles-filter-pill"
                   className="absolute inset-0 rounded-xl bg-green-500"
-                  transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.8 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 28, mass: 0.95 }}
                 />
               ) : null}
               <span className="relative z-10">
@@ -266,10 +268,10 @@ export default function TenantAdminRolesPage() {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={filter}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            initial={{ opacity: 0, y: 16, scale: 0.996, filter: "blur(2px)" }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -12, scale: 0.994, filter: "blur(1px)" }}
+            transition={{ duration: 0.36, ease: TAB_EASE }}
             className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
           >
             {loading ? (
@@ -304,9 +306,13 @@ export default function TenantAdminRolesPage() {
                         return (
                           <motion.tr
                             key={role.id}
-                            initial={{ opacity: 0, y: 6 }}
+                            initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.18, delay: Math.min(index * 0.02, 0.12) }}
+                            transition={{
+                              duration: 0.28,
+                              delay: Math.min(index * 0.03, 0.24),
+                              ease: TAB_EASE,
+                            }}
                             className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
                           >
                             <td className="px-6 py-4">
