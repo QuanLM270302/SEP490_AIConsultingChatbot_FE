@@ -19,7 +19,7 @@ import {
 import { Eye, Loader2, MoreVertical, Pencil, Plus, Shield, Trash2 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
-import { getStoredUser } from "@/lib/auth-store";
+import { getAccessToken, getRefreshToken, getStoredUser, refreshAuth } from "@/lib/auth-store";
 import {
   mergeRolesWithCache,
   readTenantRolesCache,
@@ -27,6 +27,11 @@ import {
 } from "@/lib/tenant-roles-cache";
 
 type FilterMode = "all" | "custom" | "fixed";
+
+function isUnauthorizedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /(unauthorized|missing or invalid token|\b401\b)/i.test(message);
+}
 
 export default function TenantAdminRolesPage() {
   const { language } = useLanguageStore();
@@ -45,6 +50,13 @@ export default function TenantAdminRolesPage() {
   const { confirm, confirmDialog } = useConfirmDialog();
 
   const fixedCodes = useMemo(() => new Set(["TENANT_ADMIN", "EMPLOYEE"]), []);
+
+  const ensureAccessToken = useCallback(async (): Promise<boolean> => {
+    if (getAccessToken()) return true;
+    if (!getRefreshToken()) return false;
+    const ok = await refreshAuth();
+    return ok && !!getAccessToken();
+  }, []);
 
   /** Lưu snapshot đầy đủ (tab “Tất cả”) để sau đăng xuất vẫn khôi phục hiển thị. */
   const persistFullCatalog = useCallback(async () => {
@@ -65,7 +77,8 @@ export default function TenantAdminRolesPage() {
     setError(null);
     const tenantId = getStoredUser()?.tenantId ?? null;
     const cached = readTenantRolesCache(tenantId);
-    try {
+
+    const fetchRolesAndPermissions = async () => {
       const [list, perms] = await Promise.all([
         filter === "custom"
           ? getTenantCustomRoles()
@@ -74,6 +87,24 @@ export default function TenantAdminRolesPage() {
             : getTenantRoles(),
         getTenantAvailablePermissions().catch(() => []),
       ]);
+      return { list, perms };
+    };
+
+    try {
+      await ensureAccessToken();
+
+      let result: { list: RoleResponse[]; perms: { code: string; name?: string }[] };
+      try {
+        result = await fetchRolesAndPermissions();
+      } catch (e) {
+        if (isUnauthorizedError(e) && (await ensureAccessToken())) {
+          result = await fetchRolesAndPermissions();
+        } else {
+          throw e;
+        }
+      }
+
+      const { list, perms } = result;
       const merged = mergeRolesWithCache(list, cached, filter);
       setRoles(merged);
       if (tenantId && filter === "all") {
@@ -100,7 +131,7 @@ export default function TenantAdminRolesPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, language, fixedCodes]);
+  }, [filter, language, fixedCodes, ensureAccessToken]);
 
   useEffect(() => {
     void load();
@@ -687,7 +718,7 @@ function EditRoleModal({
     return () => {
       cancelled = true;
     };
-  }, [role.id]);
+  }, [role.id, role.permissions]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
