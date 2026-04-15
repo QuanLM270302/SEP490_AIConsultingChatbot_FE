@@ -2,6 +2,46 @@ import { fetchWithAuth } from "@/lib/api/fetchWithAuth";
 import { CHATBOT_BASE } from "@/lib/api/config";
 import type { ChatRequest, ChatResponse, ConversationSummary, ChatHistoryResponse } from "@/types/chatbot";
 
+export class ChatApiError extends Error {
+  readonly status: number;
+  readonly data: unknown;
+
+  constructor(message: string, status: number, data: unknown) {
+    super(message);
+    this.name = "ChatApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
+function parseBody(rawBody: string): unknown {
+  const trimmed = rawBody.trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return trimmed;
+  }
+}
+
+function extractErrorMessage(body: unknown): string | null {
+  if (!body) return null;
+  if (typeof body === "string") {
+    const message = body.trim();
+    return message.length > 0 ? message : null;
+  }
+  if (typeof body !== "object") return null;
+
+  const record = body as Record<string, unknown>;
+  const candidates = [record.message, record.error, record.answer, record.detail];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+  return null;
+}
+
 export async function chat(request: ChatRequest): Promise<ChatResponse> {
   const body: Record<string, unknown> = {
     message: request.message,
@@ -15,8 +55,23 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text().catch(() => "Chat request failed"));
-  return res.json();
+
+  const rawBody = await res.text().catch(() => "");
+  const parsedBody = parseBody(rawBody);
+
+  if (!res.ok) {
+    throw new ChatApiError(
+      extractErrorMessage(parsedBody) ?? "Chat request failed",
+      res.status,
+      parsedBody
+    );
+  }
+
+  if (parsedBody && typeof parsedBody === "object") {
+    return parsedBody as ChatResponse;
+  }
+
+  throw new Error("Invalid chat response");
 }
 
 export async function chatbotHealth(): Promise<string> {

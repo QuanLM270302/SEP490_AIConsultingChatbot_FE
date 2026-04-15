@@ -15,9 +15,23 @@ import { useLanguageStore } from "@/lib/language-store";
 import { ChatHistorySidebarNew } from "./ChatHistorySidebarNew";
 import { getStoredUser } from "@/lib/auth-store";
 import { getProfile } from "@/lib/api/profile";
-import { chat, getConversationHistory } from "@/lib/api/chatbot";
+import { chat, ChatApiError, getConversationHistory } from "@/lib/api/chatbot";
 import { listTagsActive } from "@/lib/api/tags";
 import type { DocumentTagResponse } from "@/types/knowledge";
+
+const INPUT_CHAR_LIMIT = 500;
+const INPUT_WARNING_THRESHOLD = 450;
+
+function extractAnswerFromApiError(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const answer = (data as { answer?: unknown }).answer;
+  return typeof answer === "string" ? answer : "";
+}
+
+function looksLikeTooLongError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return normalized.includes("quá dài") || normalized.includes("too long");
+}
 
 interface Message {
   id: string;
@@ -197,7 +211,27 @@ export function ChatView({
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMessage]);
-    } catch {
+    } catch (err) {
+      if (err instanceof ChatApiError) {
+        const apiAnswer = extractAnswerFromApiError(err.data) || err.message;
+        if (err.status === 429) {
+          setError(
+            isEn
+              ? "You have reached today's message limit. Please try again tomorrow."
+              : "Bạn đã đạt giới hạn tin nhắn hôm nay. Vui lòng thử lại vào ngày mai."
+          );
+          return;
+        }
+        if (err.status === 400 && looksLikeTooLongError(apiAnswer)) {
+          setError(
+            isEn
+              ? "Your message is too long. Please shorten it."
+              : "Tin nhắn quá dài. Vui lòng rút ngắn nội dung."
+          );
+          return;
+        }
+      }
+
       setError(isEn ? "Failed to get a response from the chatbot." : "Không thể nhận phản hồi từ chatbot.");
       const fallback: Message = {
         id: (Date.now() + 1).toString(),
@@ -413,6 +447,7 @@ export function ChatView({
                         isEn ? "Ask about policies, HR, IT…" : "Hỏi về chính sách, HR, IT…"
                       }
                       rows={1}
+                      maxLength={INPUT_CHAR_LIMIT}
                       className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent text-[15px] text-zinc-900 placeholder-zinc-500 outline-none dark:text-white dark:placeholder-zinc-400"
                     />
                     <button
@@ -424,13 +459,26 @@ export function ChatView({
                     </button>
                   </div>
                 </form>
-                {conversationId ? (
-                  <div className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                    <span>🧠</span>
-                    <span>{isEn ? "Conversation memory active" : "Đang nhớ hội thoại"}</span>
-                  </div>
-                ) : null}
-                <p className="mt-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
+                <div className="mt-2 flex min-h-[18px] items-center justify-between gap-3">
+                  {conversationId ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                      <span>🧠</span>
+                      <span>{isEn ? "Conversation memory active" : "Đang nhớ hội thoại"}</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs text-transparent">memory</span>
+                  )}
+                  <span
+                    className={`text-xs ${
+                      input.length > INPUT_WARNING_THRESHOLD
+                        ? "text-red-500 dark:text-red-400"
+                        : "text-zinc-500 dark:text-zinc-400"
+                    }`}
+                  >
+                    {input.length}/{INPUT_CHAR_LIMIT}
+                  </span>
+                </div>
+                <p className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-400">
                   {isEn
                     ? "AI can make mistakes. Verify important information."
                     : "AI có thể mắc lỗi. Hãy xác minh thông tin quan trọng."}
