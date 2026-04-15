@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { User, Settings, LogOut, Globe, Moon, Sun, X, Menu } from "lucide-react";
+import { User, Settings, LogOut, Globe, Sun, X, Menu } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { getStoredUser, clearAuth } from "@/lib/auth-store";
@@ -15,18 +15,23 @@ export function UserMenu() {
   const t = translations[language];
   const [isOpen, setIsOpen] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "light";
+    const savedTheme = localStorage.getItem("theme") as Theme | null;
+    return savedTheme ?? "light";
+  });
   const menuRef = useRef<HTMLDivElement>(null);
   const user = getStoredUser();
+  const userDisplayName = user?.email?.split("@")[0] || "User";
+
+  const applyTheme = (newTheme: Theme) => {
+    const root = document.documentElement;
+    root.classList.toggle("dark", newTheme === "dark");
+  };
 
   useEffect(() => {
-    // Load theme from localStorage
-    const savedTheme = localStorage.getItem("theme") as Theme | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      applyTheme(savedTheme);
-    }
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -43,11 +48,6 @@ export function UserMenu() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
-
-  const applyTheme = (newTheme: Theme) => {
-    const root = document.documentElement;
-    root.classList.toggle("dark", newTheme === "dark");
-  };
 
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
@@ -92,7 +92,7 @@ export function UserMenu() {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
-        title={user?.fullName || "User Menu"}
+        title={userDisplayName || "User Menu"}
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -105,12 +105,12 @@ export function UserMenu() {
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
                 <span className="text-sm font-semibold">
-                  {getInitials(user?.fullName)}
+                  {getInitials(userDisplayName)}
                 </span>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">
-                  {user?.fullName || "User"}
+                  {userDisplayName}
                 </p>
                 <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                   {user?.email || ""}
