@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { getPermissionLabel } from "@/lib/permission-labels";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { useConfirmDialog } from "@/components/ui";
@@ -47,6 +48,7 @@ export default function TenantAdminRolesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [detail, setDetail] = useState<RoleResponse | null>(null);
   const [editRole, setEditRole] = useState<RoleResponse | null>(null);
+  const [isFilterPending, startFilterTransition] = useTransition();
   const { confirm, confirmDialog } = useConfirmDialog();
 
   const fixedCodes = useMemo(() => new Set(["TENANT_ADMIN", "EMPLOYEE"]), []);
@@ -228,94 +230,127 @@ export default function TenantAdminRolesPage() {
 
         <div className="flex flex-wrap gap-2">
           {(["all", "custom", "fixed"] as FilterMode[]).map((f) => (
-            <button
+            <motion.button
               key={f}
               type="button"
-              onClick={() => setFilter(f)}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                if (f === filter) return;
+                startFilterTransition(() => setFilter(f));
+              }}
+              className={`relative overflow-hidden rounded-xl px-4 py-2 text-sm font-medium transition ${
                 filter === f
-                  ? "bg-green-500 text-white"
+                  ? "text-white"
                   : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               }`}
             >
-              {f === "all" ? t.all : f === "custom" ? t.customRoles : t.fixedRoles}
-            </button>
+              {filter === f ? (
+                <motion.span
+                  layoutId="roles-filter-pill"
+                  className="absolute inset-0 rounded-xl bg-green-500"
+                  transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.8 }}
+                />
+              ) : null}
+              <span className="relative z-10">
+                {f === "all" ? t.all : f === "custom" ? t.customRoles : t.fixedRoles}
+              </span>
+            </motion.button>
           ))}
+          {isFilterPending ? (
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+              {language === "en" ? "Switching..." : "Đang chuyển tab..."}
+            </span>
+          ) : null}
         </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-green-500" />
-              <span className="text-sm text-zinc-500">{t.loading}…</span>
-            </div>
-          ) : error ? (
-            <div className="p-5 text-sm text-red-600 dark:text-red-400">{error}</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="border-b border-zinc-200 bg-zinc-50/60 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
-                  <tr>
-                    <th className="px-6 py-4 font-medium">{t.roleLabel}</th>
-                    <th className="px-6 py-4 font-medium">{t.codeLabel}</th>
-                    <th className="px-6 py-4 font-medium">{t.usersCount}</th>
-                    <th className="px-6 py-4 font-medium">{t.typeLabel}</th>
-                    <th className="px-6 py-4 font-medium text-right">{t.thaoTac}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {roles.length === 0 ? (
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={filter}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+          >
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-green-500" />
+                <span className="text-sm text-zinc-500">{t.loading}…</span>
+              </div>
+            ) : error ? (
+              <div className="p-5 text-sm text-red-600 dark:text-red-400">{error}</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead className="border-b border-zinc-200 bg-zinc-50/60 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
                     <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
-                        {t.noData}
-                      </td>
+                      <th className="px-6 py-4 font-medium">{t.roleLabel}</th>
+                      <th className="px-6 py-4 font-medium">{t.codeLabel}</th>
+                      <th className="px-6 py-4 font-medium">{t.usersCount}</th>
+                      <th className="px-6 py-4 font-medium">{t.typeLabel}</th>
+                      <th className="px-6 py-4 font-medium text-right">{t.thaoTac}</th>
                     </tr>
-                  ) : (
-                    roles.map((role) => {
-                      const fixed = isFixedRole(role);
-                      return (
-                        <tr key={role.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                          <td className="px-6 py-4">
-                            <p className="font-medium text-zinc-900 dark:text-white">{role.name ?? "—"}</p>
-                            <p className="text-xs text-zinc-500">{role.description ?? (language === "vi" ? "Không có mô tả" : "No description")}</p>
-                          </td>
-                          <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.code ?? "—"}</td>
-                          <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.usersCount ?? 0}</td>
-                          <td className="px-6 py-4">
-                            {fixed ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700 ring-1 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-300">
-                                <Shield className="h-3 w-3" />
-                                {t.fixed}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700 ring-1 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-300">
-                                {t.custom}
-                              </span>
-                            )}
-                          </td>
-                          <td className="relative px-6 py-4 text-right">
-                            <button
-                              type="button"
-                              onClick={(e) => toggleMenu(role.id, e.currentTarget)}
-                              className="rounded-full p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-                            >
-                              <MoreVertical className="h-5 w-5" />
-                            </button>
-                            {actionLoadingId === role.id ? (
-                              <span className="absolute right-10 top-1/2 -translate-y-1/2">
-                                <Loader2 className="h-4 w-4 animate-spin text-green-500" />
-                              </span>
-                            ) : null}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                    {roles.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
+                          {t.noData}
+                        </td>
+                      </tr>
+                    ) : (
+                      roles.map((role, index) => {
+                        const fixed = isFixedRole(role);
+                        return (
+                          <motion.tr
+                            key={role.id}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.18, delay: Math.min(index * 0.02, 0.12) }}
+                            className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
+                          >
+                            <td className="px-6 py-4">
+                              <p className="font-medium text-zinc-900 dark:text-white">{role.name ?? "—"}</p>
+                              <p className="text-xs text-zinc-500">{role.description ?? (language === "vi" ? "Không có mô tả" : "No description")}</p>
+                            </td>
+                            <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.code ?? "—"}</td>
+                            <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.usersCount ?? 0}</td>
+                            <td className="px-6 py-4">
+                              {fixed ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700 ring-1 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-300">
+                                  <Shield className="h-3 w-3" />
+                                  {t.fixed}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700 ring-1 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-300">
+                                  {t.custom}
+                                </span>
+                              )}
+                            </td>
+                            <td className="relative px-6 py-4 text-right">
+                              <button
+                                type="button"
+                                onClick={(e) => toggleMenu(role.id, e.currentTarget)}
+                                className="rounded-full p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                              >
+                                <MoreVertical className="h-5 w-5" />
+                              </button>
+                              {actionLoadingId === role.id ? (
+                                <span className="absolute right-10 top-1/2 -translate-y-1/2">
+                                  <Loader2 className="h-4 w-4 animate-spin text-green-500" />
+                                </span>
+                              ) : null}
+                            </td>
+                          </motion.tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {openMenuId && menuPos && (
