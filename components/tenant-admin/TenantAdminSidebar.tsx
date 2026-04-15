@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -26,6 +26,7 @@ interface TenantAdminSidebarProps {
 
 export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { language } = useLanguageStore();
   const t = translations[language];
   const [subscription, setSubscription] = useState<MySubscriptionResponse | null>(
@@ -46,7 +47,6 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
 
   useEffect(() => {
     let mounted = true;
-    setSubscriptionLoading(true);
     getMySubscription()
       .then((data) => {
         if (mounted) setSubscription(data);
@@ -61,6 +61,10 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    router.prefetch("/tenant-admin/documents");
+  }, [router]);
 
   const tierVi: Record<string, string> = {
     TRIAL: "Dùng thử",
@@ -135,6 +139,8 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
                   <Link
                     key={item.name}
                     href={item.href}
+                    onMouseEnter={() => router.prefetch(item.href)}
+                    onFocus={() => router.prefetch(item.href)}
                     className={cn(
                       "flex w-full items-center justify-between rounded-2xl px-3.5 py-3 font-medium transition",
                       isActive

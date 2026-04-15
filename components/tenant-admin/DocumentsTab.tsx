@@ -204,6 +204,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   const { language } = useLanguageStore();
   const t = translations[language];
   const isEn = language === "en";
+  const shouldLoadLibrary = mode === "all" || mode === "library";
   const visibilityLabels = getVisibilityLabels(language);
   const { confirm, confirmDialog } = useConfirmDialog();
 
@@ -256,30 +257,49 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       // Convert date to LocalDateTime format (ISO 8601 with time)
       if (filters.filterFromDate) params.fromDate = `${filters.filterFromDate}T00:00:00`;
       if (filters.filterToDate) params.toDate = `${filters.filterToDate}T23:59:59`;
-      
-      const [docs, cats, activeTags, depts, tenantRoles] = await Promise.all([
-        listDocuments(params),
+      const docsPromise: Promise<DocumentResponse[]> = shouldLoadLibrary
+        ? listDocuments(params)
+        : Promise.resolve([]);
+      const deletedPromise: Promise<DeletedDocumentResponse[]> = shouldLoadLibrary
+        ? listDeletedDocuments()
+        : Promise.resolve([]);
+
+      const [docs, cats, activeTags, depts, tenantRoles, del] = await Promise.all([
+        docsPromise,
         listCategoriesFlat(),
         listTagsActive(),
         getTenantActiveDepartments().catch(() => []),
         getTenantRoles().catch(() => []),
+        deletedPromise,
       ]);
-      setDocuments(docs);
-      updateEmbeddingCompletionTimestamps(docs);
+
+      if (shouldLoadLibrary) {
+        setDocuments(docs);
+        updateEmbeddingCompletionTimestamps(docs);
+      } else {
+        setDocuments([]);
+        updateEmbeddingCompletionTimestamps([]);
+      }
+
       setCategories(cats);
       setTags(activeTags);
       setDepartments(depts);
       setRoles(tenantRoles);
-      const del = await listDeletedDocuments();
-      setDeleted(del);
+
+      if (shouldLoadLibrary) {
+        setDeleted(del);
+      } else {
+        setDeleted([]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : isEn ? "Failed to load data" : "Lỗi tải dữ liệu");
     } finally {
       setLoading(false);
     }
-  }, [updateEmbeddingCompletionTimestamps, isEn]);
+  }, [updateEmbeddingCompletionTimestamps, isEn, shouldLoadLibrary]);
 
   const refreshDocumentsRealtime = useCallback(async () => {
+    if (!shouldLoadLibrary) return;
     try {
       const filters = currentFiltersRef.current;
       const params: ListDocumentsParams = {};
@@ -297,7 +317,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
     } catch {
       // Ignore transient polling errors and keep current UI state.
     }
-  }, [updateEmbeddingCompletionTimestamps]);
+  }, [updateEmbeddingCompletionTimestamps, shouldLoadLibrary]);
 
   const hasInProgressEmbedding = useMemo(
     () => documents.some((d) => getEmbeddingState(d.embeddingStatus) === "in-progress"),
