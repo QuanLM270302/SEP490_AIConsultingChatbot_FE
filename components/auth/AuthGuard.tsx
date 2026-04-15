@@ -19,11 +19,19 @@ import {
 import { getMySubscription } from "@/lib/api/subscription";
 
 const REFRESH_TIMEOUT_MS = 12_000;
+const SUBSCRIPTION_CACHE_KEY = "tenant-subscription-status-cache-v1";
+const SUBSCRIPTION_CACHE_TTL_MS = 60_000;
 const SUBSCRIPTION_REQUIRED_PATHS = [
   "/chatbot",
   "/chatbot-new",
   "/tenant-admin/documents",
 ];
+
+type SubscriptionStatusCache = {
+  tenantId: string;
+  status: string;
+  checkedAt: number;
+};
 
 function needsActiveSubscription(pathname: string): boolean {
   return SUBSCRIPTION_REQUIRED_PATHS.some(
@@ -34,6 +42,31 @@ function needsActiveSubscription(pathname: string): boolean {
 function hasUsableSubscriptionStatus(status?: string): boolean {
   const normalized = (status ?? "").toUpperCase();
   return normalized === "ACTIVE" || normalized === "TRIAL";
+}
+
+function readCachedSubscriptionStatus(tenantId?: string): string | null {
+  if (typeof window === "undefined" || !tenantId) return null;
+  try {
+    const raw = sessionStorage.getItem(SUBSCRIPTION_CACHE_KEY);
+    if (!raw) return null;
+    const cache = JSON.parse(raw) as SubscriptionStatusCache;
+    if (!cache?.tenantId || !cache?.status || !cache?.checkedAt) return null;
+    if (cache.tenantId !== tenantId) return null;
+    if (Date.now() - cache.checkedAt > SUBSCRIPTION_CACHE_TTL_MS) return null;
+    return cache.status;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedSubscriptionStatus(tenantId: string, status?: string): void {
+  if (typeof window === "undefined" || !tenantId || !status) return;
+  const cache: SubscriptionStatusCache = {
+    tenantId,
+    status,
+    checkedAt: Date.now(),
+  };
+  sessionStorage.setItem(SUBSCRIPTION_CACHE_KEY, JSON.stringify(cache));
 }
 
 function refreshAuthWithTimeout(): Promise<boolean> {
@@ -49,6 +82,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [checked, setChecked] = useState(false);
+  const [hasCheckedOnce, setHasCheckedOnce] = useState(false);
 
   useEffect(() => {
     if (!pathname) return;
@@ -64,8 +98,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       }
       return;
     }
-
-    setChecked(false);
 
     async function finishCheck() {
       try {
@@ -84,19 +116,29 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
         const isTenantAdmin = user.roles.some((role) => role.includes("TENANT_ADMIN"));
         if (isTenantAdmin && needsActiveSubscription(pathname)) {
-          try {
-            const subscription = await getMySubscription();
-            if (!hasUsableSubscriptionStatus(subscription.status)) {
+          const cachedStatus = readCachedSubscriptionStatus(user.tenantId);
+          if (cachedStatus) {
+            if (!hasUsableSubscriptionStatus(cachedStatus)) {
               router.replace("/tenant-admin?subscriptionRequired=1");
               return;
             }
-          } catch {
-            router.replace("/tenant-admin?subscriptionRequired=1");
-            return;
+          } else {
+            try {
+              const subscription = await getMySubscription();
+              writeCachedSubscriptionStatus(user.tenantId, subscription.status);
+              if (!hasUsableSubscriptionStatus(subscription.status)) {
+                router.replace("/tenant-admin?subscriptionRequired=1");
+                return;
+              }
+            } catch {
+              router.replace("/tenant-admin?subscriptionRequired=1");
+              return;
+            }
           }
         }
 
         setChecked(true);
+        setHasCheckedOnce(true);
       } catch {
         clearAuth();
         router.replace("/login");
@@ -126,10 +168,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   if (!pathname) return null;
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   if (isPublic) return <>{children}</>;
-  if (!checked) {
+  if (!checked && !hasCheckedOnce) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-        <p className="text-sm text-zinc-500">Đang xác thực…</p>
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-emerald-500/40 border-t-emerald-500" />
       </div>
     );
   }

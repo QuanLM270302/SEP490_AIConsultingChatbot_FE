@@ -1,8 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState, useTransition } from "react";
+import { motion } from "framer-motion";
+import { useEffect, useState, useTransition } from "react";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { FileText, FolderTree, Tag, Upload } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
@@ -38,6 +38,12 @@ const TagsTab = dynamic(
 
 export default function DocumentsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("upload");
+  const [mountedTabs, setMountedTabs] = useState<Record<TabId, boolean>>({
+    upload: true,
+    documents: false,
+    categories: false,
+    tags: false,
+  });
   const [isTabPending, startTabTransition] = useTransition();
   const { language } = useLanguageStore();
   const t = translations[language];
@@ -50,12 +56,21 @@ export default function DocumentsPage() {
     { id: "tags", label: t.tags, icon: Tag },
   ];
 
-  const activeTabContent = useMemo(() => {
-    if (activeTab === "upload") return <DocumentsTab mode="upload" />;
-    if (activeTab === "documents") return <DocumentsTab mode="library" />;
-    if (activeTab === "categories") return <CategoriesTab />;
+  useEffect(() => {
+    const warmupId = window.setTimeout(() => {
+      setMountedTabs((prev) =>
+        prev.documents ? prev : { ...prev, documents: true }
+      );
+    }, 420);
+    return () => window.clearTimeout(warmupId);
+  }, []);
+
+  const renderTabContent = (tab: TabId) => {
+    if (tab === "upload") return <DocumentsTab mode="upload" />;
+    if (tab === "documents") return <DocumentsTab mode="library" />;
+    if (tab === "categories") return <CategoriesTab />;
     return <TagsTab />;
-  }, [activeTab]);
+  };
 
   return (
     <TenantAdminLayout>
@@ -78,6 +93,9 @@ export default function DocumentsPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => {
+                  setMountedTabs((prev) =>
+                    prev[tab.id] ? prev : { ...prev, [tab.id]: true }
+                  );
                   startTabTransition(() => setActiveTab(tab.id));
                 }}
                 className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-semibold transition ${
@@ -100,17 +118,32 @@ export default function DocumentsPage() {
             </div>
           ) : null}
 
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-            >
-              {activeTabContent}
-            </motion.div>
-          </AnimatePresence>
+          <div className="relative">
+            {tabs.map((tab) => {
+              if (!mountedTabs[tab.id]) return null;
+              const isActive = activeTab === tab.id;
+              return (
+                <motion.div
+                  key={tab.id}
+                  initial={false}
+                  animate={
+                    isActive
+                      ? { opacity: 1, y: 0, scale: 1 }
+                      : { opacity: 0, y: 8, scale: 0.995 }
+                  }
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className={
+                    isActive
+                      ? "relative"
+                      : "pointer-events-none absolute inset-0 overflow-hidden"
+                  }
+                  style={{ visibility: isActive ? "visible" : "hidden" }}
+                >
+                  {renderTabContent(tab.id)}
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </TenantAdminLayout>
