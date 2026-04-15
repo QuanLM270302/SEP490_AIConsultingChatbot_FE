@@ -11,6 +11,20 @@ interface CreateUserModalProps {
 }
 
 const SYSTEM_ROLES_TO_EXCLUDE = ['TENANT_ADMIN', 'SUPER_ADMIN', 'STAFF'];
+const USER_LIMIT_ERROR_KEYWORD = "giới hạn số lượng người dùng";
+const USER_LIMIT_WARNING_MESSAGE =
+  "Bạn đã đạt giới hạn người dùng theo gói hiện tại. Vui lòng liên hệ quản trị để nâng cấp.";
+
+function normalizeErrorText(value: string): string {
+  return value
+    .toLocaleLowerCase("vi-VN")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function containsMessage(source: string, keyword: string): boolean {
+  return normalizeErrorText(source).includes(normalizeErrorText(keyword));
+}
 
 export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalProps) {
   const [fullName, setFullName] = useState("");
@@ -22,6 +36,8 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadOptions, setLoadOptions] = useState(true);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitErrorTone, setSubmitErrorTone] = useState<"warning" | "error">("error");
 
   useEffect(() => {
     if (!open) return;
@@ -31,6 +47,8 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
     setRoleId("");
     setDepartmentId("");
     setLoadOptions(true);
+    setSubmitError(null);
+    setSubmitErrorTone("error");
   }, [open]);
 
   useEffect(() => {
@@ -55,6 +73,8 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
       return;
     }
     setLoading(true);
+    setSubmitError(null);
+    setSubmitErrorTone("error");
     try {
       const cleanPhone = phoneNumber.replace(/-/g, '');
       const body: CreateUserRequest = {
@@ -68,7 +88,14 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
       onSuccess(createdUser.emailSent);
       onClose();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Tạo người dùng thất bại");
+      const raw = e instanceof Error ? e.message : "Tạo người dùng thất bại";
+      if (containsMessage(raw, USER_LIMIT_ERROR_KEYWORD)) {
+        setSubmitError(USER_LIMIT_WARNING_MESSAGE);
+        setSubmitErrorTone("warning");
+      } else {
+        setSubmitError(raw);
+        setSubmitErrorTone("error");
+      }
     } finally {
       setLoading(false);
     }
@@ -82,6 +109,17 @@ export function CreateUserModal({ open, onClose, onSuccess }: CreateUserModalPro
       <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tạo user mới</h3>
         <p className="mt-1 text-xs text-zinc-500">Thêm nhân viên mới vào tổ chức và gán phòng ban/vai trò.</p>
+        {submitError && (
+          <div
+            className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
+              submitErrorTone === "warning"
+                ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200"
+                : "border-red-300 bg-red-50 text-red-900 dark:border-red-700/60 dark:bg-red-950/30 dark:text-red-200"
+            }`}
+          >
+            {submitError}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>
             <label className="block text-xs font-medium text-zinc-500">Họ tên *</label>

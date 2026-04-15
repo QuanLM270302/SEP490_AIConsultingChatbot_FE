@@ -50,6 +50,28 @@ import {
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
+const DOCUMENT_LIMIT_ERROR_KEYWORD = "giới hạn số lượng tài liệu";
+const DOCUMENT_LIMIT_WARNING_MESSAGE =
+  "Bạn đã đạt giới hạn tài liệu theo gói hiện tại. Vui lòng liên hệ quản trị để nâng cấp.";
+
+function normalizeErrorText(value: string): string {
+  return value
+    .toLocaleLowerCase("vi-VN")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function containsMessage(source: string, keyword: string): boolean {
+  return normalizeErrorText(source).includes(normalizeErrorText(keyword));
+}
+
+function isDocumentLimitWarning(message: string): boolean {
+  return (
+    containsMessage(message, DOCUMENT_LIMIT_ERROR_KEYWORD) ||
+    message === DOCUMENT_LIMIT_WARNING_MESSAGE
+  );
+}
+
 function getVisibilityLabels(language: "vi" | "en"): Record<DocumentVisibility, string> {
   if (language === "en") {
     return {
@@ -323,6 +345,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
     () => documents.some((d) => getEmbeddingState(d.embeddingStatus) === "in-progress"),
     [documents]
   );
+  const isWarningError = !!error && isDocumentLimitWarning(error);
 
   useEffect(() => {
     void load();
@@ -408,7 +431,12 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
       setEmbeddingModalOpen(true);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : isEn ? "Upload failed" : "Tải lên thất bại");
+      const raw = e instanceof Error ? e.message : isEn ? "Upload failed" : "Tải lên thất bại";
+      if (containsMessage(raw, DOCUMENT_LIMIT_ERROR_KEYWORD)) {
+        setError(DOCUMENT_LIMIT_WARNING_MESSAGE);
+      } else {
+        setError(raw);
+      }
     } finally {
       setUploading(false);
     }
@@ -582,7 +610,13 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-950/50 dark:text-red-200">
+        <div
+          className={`rounded-xl px-4 py-3 text-sm ${
+            isWarningError
+              ? "border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200"
+              : "bg-red-50 text-red-800 dark:bg-red-950/50 dark:text-red-200"
+          }`}
+        >
           {error}
         </div>
       )}
