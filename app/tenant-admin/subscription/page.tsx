@@ -184,7 +184,7 @@ export default function TenantAdminSubscriptionPage() {
   const [pressedTier, setPressedTier] = useState<SubscriptionTier | null>(null);
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [planModalTier, setPlanModalTier] = useState<SubscriptionTier | null>(null);
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>("MONTHLY");
+  const [modalBillingCycle, setModalBillingCycle] = useState<BillingCycle>("MONTHLY");
   const [paymentPending, setPaymentPending] = useState<SelectPlanResponse | null>(null);
   const [selectPlanLoading, setSelectPlanLoading] = useState(false);
   const [selectPlanError, setSelectPlanError] = useState<string | null>(null);
@@ -264,7 +264,7 @@ export default function TenantAdminSubscriptionPage() {
     if (parsed.length > 0) return parsed;
     return language === "en" ? PLAN_FEATURES_EN[planModalTier] : PLAN_FEATURES_VI[planModalTier];
   }, [language, modalPlanData?.features, planModalTier]);
-  const modalAmount = planModalTier === "TRIAL" ? 0 : getTierAmount(modalPlanData, billingCycle);
+  const modalAmount = planModalTier === "TRIAL" ? 0 : getTierAmount(modalPlanData, modalBillingCycle);
 
   useEffect(() => {
     loadSubscription();
@@ -280,7 +280,7 @@ export default function TenantAdminSubscriptionPage() {
     setSelectPlanLoading(true);
     try {
       if (!planModalTier) throw new Error("Chọn gói trước khi thanh toán");
-      const data = await selectPlan(planModalTier, billingCycle);
+      const data = await selectPlan(planModalTier, modalBillingCycle);
       if ("payment_id" in data && data.payment_id) {
         setPaymentPending(data);
       } else {
@@ -309,9 +309,7 @@ export default function TenantAdminSubscriptionPage() {
   const handleSelectTier = (tier: SubscriptionTier) => {
     setPressedTier(tier);
     setPlanModalTier(tier);
-    if (tier === "TRIAL") {
-      setBillingCycle("MONTHLY");
-    }
+    setModalBillingCycle("MONTHLY");
     setPlanModalOpen(true);
     setPaymentPending(null);
     setSelectPlanError(null);
@@ -378,18 +376,7 @@ export default function TenantAdminSubscriptionPage() {
                   const fallbackFeatures =
                     language === "en" ? PLAN_FEATURES_EN[tier] : PLAN_FEATURES_VI[tier];
                   const features = apiFeatures.length > 0 ? apiFeatures : fallbackFeatures;
-                  const cycleLabel =
-                    billingCycle === "YEARLY"
-                      ? language === "en"
-                        ? "year"
-                        : "năm"
-                      : billingCycle === "QUARTERLY"
-                        ? language === "en"
-                          ? "quarter"
-                          : "quý"
-                        : language === "en"
-                          ? "month"
-                          : "tháng";
+                  const cycleLabel = language === "en" ? "month" : "tháng";
                   return (
                     <article
                       key={tier}
@@ -439,7 +426,7 @@ export default function TenantAdminSubscriptionPage() {
                         ) : (
                           <>
                             <p className="mt-3 text-[3.05rem] leading-none font-extrabold text-zinc-50">
-                              {formatTierPrice(planData, billingCycle, language === "en" ? "en" : "vi")}
+                              {formatTierPrice(planData, "MONTHLY", language === "en" ? "en" : "vi")}
                             </p>
                             <p className="mt-1 text-xs font-medium text-zinc-500">/{cycleLabel}</p>
                           </>
@@ -495,9 +482,9 @@ export default function TenantAdminSubscriptionPage() {
                 tier={planModalTier}
                 planData={modalPlanData}
                 features={modalFeatures}
-                billingCycle={billingCycle}
+                billingCycle={modalBillingCycle}
                 totalAmount={modalAmount}
-                onBillingCycleChange={setBillingCycle}
+                onBillingCycleChange={setModalBillingCycle}
                 onClose={handleClosePlanModal}
                 onConfirm={handleConfirmPay}
                 confirmLoading={selectPlanLoading}

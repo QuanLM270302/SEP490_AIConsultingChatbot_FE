@@ -29,10 +29,12 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
   const router = useRouter();
   const { language } = useLanguageStore();
   const t = translations[language];
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<MySubscriptionResponse | null>(
     null
   );
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const isRouteTransitioning = !!pendingHref && pendingHref !== pathname;
   
   const navigation = [
     { name: t.dashboard, href: "/tenant-admin", icon: LayoutDashboard },
@@ -107,10 +109,27 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
+        <div className="pointer-events-none absolute inset-x-5 top-2 z-10 h-0.5 overflow-hidden rounded-full bg-zinc-200/70 dark:bg-zinc-800/80">
+          <span
+            className={`block h-full origin-left bg-linear-to-r from-emerald-400 via-cyan-400 to-emerald-300 transition-all duration-500 ease-out ${
+              isRouteTransitioning ? "scale-x-100 opacity-100" : "scale-x-0 opacity-0"
+            }`}
+          />
+        </div>
+
         <div className="flex h-full flex-col justify-between gap-6">
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <Link href="/tenant-admin" className="flex items-center gap-2">
+              <Link
+                href="/tenant-admin"
+                onClick={() => {
+                  if (pathname !== "/tenant-admin") {
+                    setPendingHref("/tenant-admin");
+                  }
+                  setOpen(false);
+                }}
+                className="flex items-center gap-2"
+              >
                 <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-purple-400 to-purple-600 text-white shadow-lg shadow-purple-500/30">
                   <Building className="h-5 w-5" />
                 </div>
@@ -139,6 +158,12 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
                   <Link
                     key={item.name}
                     href={item.href}
+                    onClick={() => {
+                      if (item.href !== pathname) {
+                        setPendingHref(item.href);
+                      }
+                      setOpen(false);
+                    }}
                     onMouseEnter={() => router.prefetch(item.href)}
                     onFocus={() => router.prefetch(item.href)}
                     className={cn(
