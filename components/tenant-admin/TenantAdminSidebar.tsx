@@ -18,10 +18,65 @@ import {
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { getMySubscription, type MySubscriptionResponse } from "@/lib/api/subscription";
+import { getStoredUser } from "@/lib/auth-store";
 
 interface TenantAdminSidebarProps {
   open: boolean;
   setOpen: (open: boolean) => void;
+}
+
+const SIDEBAR_SUBSCRIPTION_CACHE_KEY = "tenant-admin-sidebar-subscription-cache-v1";
+const SIDEBAR_SUBSCRIPTION_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type SidebarSubscriptionCache = {
+  tenantId: string | null;
+  data: MySubscriptionResponse | null;
+  fetchedAt: number;
+};
+
+let sidebarSubscriptionMemoryCache: SidebarSubscriptionCache | null = null;
+
+function isFreshSidebarSubscriptionCache(
+  cache: SidebarSubscriptionCache | null,
+  tenantId: string | null
+): cache is SidebarSubscriptionCache {
+  if (!cache) return false;
+  if (cache.tenantId !== tenantId) return false;
+  if (!Number.isFinite(cache.fetchedAt)) return false;
+  return Date.now() - cache.fetchedAt <= SIDEBAR_SUBSCRIPTION_CACHE_TTL_MS;
+}
+
+function readSidebarSubscriptionCache(
+  tenantId: string | null
+): SidebarSubscriptionCache | null {
+  if (isFreshSidebarSubscriptionCache(sidebarSubscriptionMemoryCache, tenantId)) {
+    return sidebarSubscriptionMemoryCache;
+  }
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(SIDEBAR_SUBSCRIPTION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SidebarSubscriptionCache;
+    if (!isFreshSidebarSubscriptionCache(parsed, tenantId)) return null;
+    sidebarSubscriptionMemoryCache = parsed;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeSidebarSubscriptionCache(
+  tenantId: string | null,
+  data: MySubscriptionResponse | null
+): void {
+  if (typeof window === "undefined") return;
+  const next: SidebarSubscriptionCache = {
+    tenantId,
+    data,
+    fetchedAt: Date.now(),
+  };
+  sidebarSubscriptionMemoryCache = next;
+  sessionStorage.setItem(SIDEBAR_SUBSCRIPTION_CACHE_KEY, JSON.stringify(next));
 }
 
 export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
@@ -29,10 +84,19 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
   const router = useRouter();
   const { language } = useLanguageStore();
   const t = translations[language];
+  const [bootState] = useState(() => {
+    const tenantId = getStoredUser()?.tenantId ?? null;
+    const cache = readSidebarSubscriptionCache(tenantId);
+    return { tenantId, cache };
+  });
+  const tenantId = bootState.tenantId;
+  const initialSubscriptionCache = bootState.cache;
   const [subscription, setSubscription] = useState<MySubscriptionResponse | null>(
-    null
+    () => initialSubscriptionCache?.data ?? null
   );
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(
+    () => !initialSubscriptionCache
+  );
   
   const navigation = [
     { name: t.dashboard, href: "/tenant-admin", icon: LayoutDashboard },
@@ -47,20 +111,38 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
 
   useEffect(() => {
     let mounted = true;
+    const cacheIsFresh =
+      !!initialSubscriptionCache &&
+      Date.now() - initialSubscriptionCache.fetchedAt <=
+        SIDEBAR_SUBSCRIPTION_CACHE_TTL_MS;
+
+    if (cacheIsFresh) {
+      return () => {
+        mounted = false;
+      };
+    }
+
     getMySubscription()
       .then((data) => {
-        if (mounted) setSubscription(data);
+        if (!mounted) return;
+        setSubscription(data);
+        writeSidebarSubscriptionCache(tenantId, data);
       })
       .catch(() => {
-        if (mounted) setSubscription(null);
+        if (!mounted) return;
+        if (!initialSubscriptionCache) {
+          setSubscription(null);
+          writeSidebarSubscriptionCache(tenantId, null);
+        }
       })
       .finally(() => {
-        if (mounted) setSubscriptionLoading(false);
+        if (!mounted) return;
+        setSubscriptionLoading(false);
       });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initialSubscriptionCache, tenantId]);
 
   useEffect(() => {
     router.prefetch("/tenant-admin/documents");
