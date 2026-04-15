@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { OrganizationStats } from "@/components/tenant-admin/OrganizationStats";
 import { AIUsageChart } from "@/components/tenant-admin/AIUsageChart";
@@ -9,10 +10,34 @@ import Link from "next/link";
 import { Users, Building, Shield, CreditCard, FileText, Bot } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { getTenantLlmUsage, type TenantLlmUsageResponse } from "@/lib/api/tenant-admin";
 
 export default function TenantAdminPage() {
   const { language } = useLanguageStore();
   const t = translations[language];
+  const [llmUsage, setLlmUsage] = useState<TenantLlmUsageResponse | null>(null);
+  const [llmLoading, setLlmLoading] = useState(true);
+  const [llmError, setLlmError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getTenantLlmUsage()
+      .then((data) => {
+        if (cancelled) return;
+        setLlmUsage(data);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setLlmUsage(null);
+        setLlmError(e instanceof Error ? e.message : "Failed to load AI usage");
+      })
+      .finally(() => {
+        if (!cancelled) setLlmLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const quickLinks = [
     {
@@ -76,7 +101,7 @@ export default function TenantAdminPage() {
         <OrganizationStats />
 
         {/* AI Usage Chart */}
-        <AIUsageChart />
+        <AIUsageChart data={llmUsage} loading={llmLoading} error={llmError} />
 
         {/* Quick Links */}
         <div>
