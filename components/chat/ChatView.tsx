@@ -424,6 +424,12 @@ export function ChatView({
                     </button>
                   </div>
                 </form>
+                {conversationId ? (
+                  <div className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                    <span>🧠</span>
+                    <span>{isEn ? "Conversation memory active" : "Đang nhớ hội thoại"}</span>
+                  </div>
+                ) : null}
                 <p className="mt-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
                   {isEn
                     ? "AI can make mistakes. Verify important information."
