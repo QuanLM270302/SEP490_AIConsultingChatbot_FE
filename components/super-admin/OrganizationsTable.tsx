@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { ErrorNotice } from "@/components/ui";
 import { useLanguageStore } from "@/lib/language-store";
 import { getAdminTenants, type AdminTenantSummary } from "@/lib/api/admin";
 
@@ -67,7 +68,7 @@ export function OrganizationsTable() {
   if (error) {
     return (
       <div className="rounded-3xl bg-white p-6 text-center dark:bg-zinc-950">
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <ErrorNotice message={error} />
       </div>
     );
   }

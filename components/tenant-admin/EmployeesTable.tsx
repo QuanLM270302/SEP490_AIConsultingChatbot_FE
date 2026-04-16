@@ -25,7 +25,7 @@ import { translations } from "@/lib/translations";
 import { getStoredUser } from "@/lib/auth-store";
 import { mergeRolesWithCache, readTenantRolesCache } from "@/lib/tenant-roles-cache";
 import { getPermissionLabel } from "@/lib/permission-labels";
-import { AnimatedSegmentedControl, useConfirmDialog } from "@/components/ui";
+import { AnimatedSegmentedControl, ErrorNotice, useConfirmDialog } from "@/components/ui";
 
 /** Không gán user thường làm admin nền tảng / tenant admin / staff */
 const ROLE_CODES_EXCLUDED_FROM_USER_ASSIGNMENT = new Set(["TENANT_ADMIN", "SUPER_ADMIN", "STAFF"]);
@@ -216,7 +216,7 @@ export function EmployeesTable() {
   if (error) {
     return (
       <div className="overflow-hidden rounded-3xl bg-white p-8 shadow-lg dark:bg-zinc-950">
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <ErrorNotice message={error} />
       </div>
     );
   }

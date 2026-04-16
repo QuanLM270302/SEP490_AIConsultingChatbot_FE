@@ -27,6 +27,7 @@ import {
   formatCompactInt,
   formatUptimeSeconds,
 } from "@/components/super-admin/dashboard-chart-utils";
+import { ErrorNotice } from "@/components/ui";
 
 export default function StaffDashboardPage() {
   const { language } = useLanguageStore();
@@ -196,9 +197,7 @@ export default function StaffDashboardPage() {
             <span className="text-sm text-zinc-500">{t.loading}…</span>
           </div>
         ) : !parsed ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-            {error || t.noData}
-          </div>
+          <ErrorNotice message={error || t.noData} />
         ) : (
           <>
             <div className="grid gap-8 lg:grid-cols-2">

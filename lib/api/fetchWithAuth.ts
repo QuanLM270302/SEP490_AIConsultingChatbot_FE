@@ -136,6 +136,25 @@ async function handleFinalUnauthorizedResponse(
   });
 }
 
+async function normalizeErrorResponseBody(response: Response): Promise<Response> {
+  if (response.ok) return response;
+
+  const raw = await response.clone().text().catch(() => "");
+  if (!raw.trim()) return response;
+
+  const normalized = parseApiErrorMessage(raw);
+  if (!normalized || normalized === raw.trim()) return response;
+
+  const headers = new Headers(response.headers);
+  headers.set("content-type", "text/plain; charset=utf-8");
+
+  return new Response(normalized, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export async function fetchWithAuth(
   input: RequestInfo | URL,
   init?: RequestInit
@@ -175,6 +194,7 @@ export async function fetchWithAuth(
     }
   }
 
+  res = await normalizeErrorResponseBody(res);
   await handleFinalUnauthorizedResponse(res, url, method);
   return res;
 }

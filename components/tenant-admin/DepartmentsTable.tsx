@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Pencil, Trash2, MoreVertical, Power } from "lucide-react";
-import { useConfirmDialog } from "@/components/ui";
+import { ErrorNotice, useConfirmDialog } from "@/components/ui";
 import {
   getTenantDepartments,
   getTenantActiveDepartments,
@@ -172,7 +172,7 @@ export function DepartmentsTable({
   if (error) {
     return (
       <div className="overflow-hidden rounded-3xl bg-white p-8 shadow-lg dark:bg-zinc-950">
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <ErrorNotice message={error} />
       </div>
     );
   }

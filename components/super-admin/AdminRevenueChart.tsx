@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DollarSign, TrendingUp } from "lucide-react";
+import { ErrorNotice } from "@/components/ui";
 import { useLanguageStore } from "@/lib/language-store";
 import { fetchAdminRevenue, type RevenueSeriesItem } from "@/lib/api/admin-analytics";
 
@@ -12,7 +13,6 @@ export function AdminRevenueChart() {
   const { language } = useLanguageStore();
   const isEn = language === "en";
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [currency, setCurrency] = useState("VND");
   const [series, setSeries] = useState<RevenueSeriesItem[]>([]);
@@ -70,12 +70,11 @@ export function AdminRevenueChart() {
     return `${monthNamesEn[monthNum - 1]}-${year}`;
   };
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
     void fetchAdminRevenue({ bucket: "month", timezone: "UTC", currency: "VND" })
       .then(({ ok, status, data }) => {
-        setStatus(status);
         if (!ok || !data) {
           if (status === 401) {
             setError(isEn ? "Session expired. Please login again." : "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
@@ -103,11 +102,14 @@ export function AdminRevenueChart() {
         setSeries([]);
       })
       .finally(() => setLoading(false));
-  };
+  }, [isEn]);
 
   useEffect(() => {
-    load();
-  }, [isEn]);
+    const frame = window.requestAnimationFrame(() => {
+      load();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [load]);
 
   const maxValue = useMemo(() => Math.max(...series.map((d) => Number(d.revenue || 0)), 1), [series]);
 
@@ -136,8 +138,8 @@ export function AdminRevenueChart() {
       </div>
 
       {error ? (
-        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm dark:border-red-900/50 dark:bg-red-950/30">
-          <p className="font-medium text-red-700 dark:text-red-200">{error}</p>
+        <div className="mb-6">
+          <ErrorNotice message={error} />
           <button
             type="button"
             onClick={load}

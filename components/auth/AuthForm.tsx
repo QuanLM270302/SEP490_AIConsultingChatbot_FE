@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { login } from "@/lib/api/auth";
 import { setAuth } from "@/lib/auth-store";
 import { roleToPath } from "@/lib/auth-routes";
+import { toUiErrorMessage } from "@/lib/api/parseApiError";
 import { AuthHomePlainLink } from "@/components/auth/AuthHomePlainLink";
+import { ErrorNotice } from "@/components/ui";
 
 type AuthMode = "login";
 
@@ -52,7 +54,7 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
           router.refresh();
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Login failed");
+        setError(toUiErrorMessage(err, "Login failed"));
       } finally {
         setLoading(false);
       }
@@ -74,12 +76,7 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div
-              role="alert"
-              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200"
-            >
-              {error}
-            </div>
+            <ErrorNotice message={error} />
           )}
           {showRoleSelector && (
             <div className="space-y-1.5 text-left">
