@@ -13,6 +13,7 @@ import {
   X,
   Users,
   CreditCard,
+  ChartBar,
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
@@ -128,6 +129,7 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
     { name: t.staff, href: "/super-admin/staff", icon: Users },
     { name: t.pricing, href: "/super-admin/pricing", icon: CreditCard },
     { name: t.subscriptions, href: "/super-admin/subscriptions", icon: CreditCard },
+    { name: t.aiInsights, href: "/super-admin/ai-insights", icon: ChartBar },
   ];
 
   return (
