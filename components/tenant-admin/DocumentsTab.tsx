@@ -86,7 +86,7 @@ function getVisibilityLabels(language: "vi" | "en"): Record<DocumentVisibility, 
     COMPANY_WIDE: "Toàn công ty",
     SPECIFIC_DEPARTMENTS: "Theo phòng ban",
     SPECIFIC_ROLES: "Theo vai trò",
-    SPECIFIC_DEPARTMENTS_AND_ROLES: "Theo phòng ban VÀ vai trò",
+    SPECIFIC_DEPARTMENTS_AND_ROLES: "Theo phòng ban và vai trò",
   };
 }
 
@@ -1514,6 +1514,12 @@ function UpdateAccessModal({
   const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>(
     doc.accessibleRoles ?? []
   );
+  const requiresDepartments =
+    visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES";
+  const requiresRoles =
+    visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES";
+  const departmentSelectionInvalid = requiresDepartments && selectedDepartmentIds.length === 0;
+  const roleSelectionInvalid = requiresRoles && selectedRoleIds.length === 0;
 
   const toggleDepartment = (departmentId: number) => {
     setSelectedDepartmentIds((prev) =>
@@ -1531,16 +1537,10 @@ function UpdateAccessModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      (visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
-      selectedDepartmentIds.length === 0
-    ) {
+    if (departmentSelectionInvalid) {
       return;
     }
-    if (
-      (visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
-      selectedRoleIds.length === 0
-    ) {
+    if (roleSelectionInvalid) {
       return;
     }
     const body: UpdateDocumentAccessRequest = {
@@ -1559,105 +1559,151 @@ function UpdateAccessModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{isEn ? "Update access" : "Cập nhật quyền truy cập"}</h3>
-          <button type="button" onClick={onClose} className="rounded p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+      <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+              {isEn ? "Update access" : "Cập nhật quyền truy cập"}
+            </h3>
+            <p className="mt-1 truncate text-sm text-zinc-600 dark:text-zinc-400">
+              {doc.documentTitle || doc.originalFileName}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
-        <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{doc.documentTitle || doc.originalFileName}</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">{t.scope}</label>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
+            <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              {t.scope}
+            </label>
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as DocumentVisibility)}
-              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
               {Object.entries(visibilityLabels).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
+                <option key={v} value={v}>
+                  {l}
+                </option>
               ))}
             </select>
           </div>
-          {(visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                {isEn ? "Select departments" : "Chọn phòng ban"}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {availableDepartments.length === 0 ? (
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {isEn ? "No departments available." : "Không có dữ liệu phòng ban khả dụng."}
-                  </p>
-                ) : (
-                  availableDepartments.map((dept) => {
-                    const active = selectedDepartmentIds.includes(dept.id);
-                    return (
-                      <button
-                        key={dept.id}
-                        type="button"
-                        onClick={() => toggleDepartment(dept.id)}
-                        className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                          active
-                            ? "bg-green-500 text-white shadow-sm"
-                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                        }`}
-                      >
-                        {dept.name ?? (isEn ? `Department ${dept.id}` : `Phòng ban ${dept.id}`)}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-              {selectedDepartmentIds.length === 0 && (
-                <p className="mt-2 text-xs text-red-500">
-                  {isEn ? "Please select at least one department." : "Vui lòng chọn ít nhất 1 phòng ban."}
-                </p>
+
+          {(requiresDepartments || requiresRoles) && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {requiresDepartments && (
+                <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/40">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      {isEn ? "Select departments" : "Chọn phòng ban"}
+                    </label>
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                      {selectedDepartmentIds.length}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {availableDepartments.length === 0 ? (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {isEn ? "No departments available." : "Không có dữ liệu phòng ban khả dụng."}
+                      </p>
+                    ) : (
+                      availableDepartments.map((dept) => {
+                        const active = selectedDepartmentIds.includes(dept.id);
+                        return (
+                          <button
+                            key={dept.id}
+                            type="button"
+                            onClick={() => toggleDepartment(dept.id)}
+                            className={`min-h-11 rounded-xl border px-4 py-3 text-left text-sm font-medium transition-transform duration-150 hover:scale-[1.03] ${
+                              active
+                                ? "border-emerald-500 bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                                : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                            }`}
+                          >
+                            {dept.name ?? (isEn ? `Department ${dept.id}` : `Phòng ban ${dept.id}`)}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                  {departmentSelectionInvalid && (
+                    <p className="mt-2 text-xs text-red-500">
+                      {isEn ? "Please select at least one department." : "Vui lòng chọn ít nhất 1 phòng ban."}
+                    </p>
+                  )}
+                </section>
+              )}
+
+              {requiresRoles && (
+                <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/40">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      {isEn ? "Select roles" : "Chọn vai trò"}
+                    </label>
+                    <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-300">
+                      {selectedRoleIds.length}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {availableRoles.length === 0 ? (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {isEn ? "No roles available." : "Không có dữ liệu vai trò khả dụng."}
+                      </p>
+                    ) : (
+                      availableRoles.map((role) => {
+                        const active = selectedRoleIds.includes(role.id);
+                        return (
+                          <button
+                            key={role.id}
+                            type="button"
+                            onClick={() => toggleRole(role.id)}
+                            className={`min-h-11 rounded-xl border px-4 py-3 text-left text-sm font-medium transition-transform duration-150 hover:scale-[1.03] ${
+                              active
+                                ? "border-emerald-500 bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                                : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                            }`}
+                          >
+                            {role.name ?? role.code ?? (isEn ? `Role ${role.id}` : `Vai trò ${role.id}`)}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                  {roleSelectionInvalid && (
+                    <p className="mt-2 text-xs text-red-500">
+                      {isEn ? "Please select at least one role." : "Vui lòng chọn ít nhất 1 vai trò."}
+                    </p>
+                  )}
+                </section>
               )}
             </div>
           )}
-          {(visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") && (
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                {isEn ? "Select roles" : "Chọn vai trò"}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {availableRoles.length === 0 ? (
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {isEn ? "No roles available." : "Không có dữ liệu vai trò khả dụng."}
-                  </p>
-                ) : (
-                  availableRoles.map((role) => {
-                    const roleId = role.id;
-                    const active = selectedRoleIds.includes(roleId);
-                    return (
-                      <button
-                        key={roleId}
-                        type="button"
-                        onClick={() => toggleRole(roleId)}
-                        className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                          active
-                            ? "bg-green-500 text-white shadow-sm"
-                            : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                        }`}
-                      >
-                        {role.name ?? role.code ?? (isEn ? `Role ${roleId}` : `Vai trò ${roleId}`)}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-              {selectedRoleIds.length === 0 && (
-                <p className="mt-2 text-xs text-red-500">
-                  {isEn ? "Please select at least one role." : "Vui lòng chọn ít nhất 1 vai trò."}
-                </p>
-              )}
-            </div>
-          )}
-          <div className="flex gap-2">
-            <Button type="submit" variant="primary" size="md">{t.save}</Button>
-            <Button type="button" variant="outline" size="md" onClick={onClose}>{t.cancel}</Button>
+
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              className="min-w-24 justify-center rounded-xl px-4 shadow-md shadow-emerald-500/20 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/25"
+            >
+              {t.save}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="min-w-24 justify-center rounded-xl border-zinc-300 bg-white px-4 transition-transform duration-200 hover:-translate-y-0.5 hover:border-zinc-400 hover:bg-zinc-50 dark:bg-zinc-900"
+            >
+              {t.cancel}
+            </Button>
           </div>
         </form>
       </div>
