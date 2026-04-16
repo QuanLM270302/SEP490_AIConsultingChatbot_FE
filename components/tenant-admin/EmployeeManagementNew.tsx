@@ -35,7 +35,7 @@ import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { getStoredUser } from "@/lib/auth-store";
 import { mergeRolesWithCache, readTenantRolesCache } from "@/lib/tenant-roles-cache";
-import { useConfirmDialog } from "@/components/ui";
+import { AnimatedSegmentedControl, useConfirmDialog } from "@/components/ui";
 
 const ROLE_CODES_EXCLUDED_FROM_USER_ASSIGNMENT = new Set(["TENANT_ADMIN", "SUPER_ADMIN", "STAFF"]);
 
@@ -267,26 +267,17 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
               <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
                 {isEn ? "Status:" : "Trạng thái:"}
               </label>
-              <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-700 dark:bg-zinc-800">
-                {(["ACTIVE", "INACTIVE", "ALL"] as const).map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => setStatusFilter(status)}
-                    className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                      statusFilter === status
-                        ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
-                        : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
-                    }`}
-                  >
-                    {status === "ACTIVE"
-                      ? isEn ? "Active" : "Hoạt động"
-                      : status === "INACTIVE"
-                        ? isEn ? "Inactive" : "Không hoạt động"
-                        : isEn ? "All" : "Tất cả"}
-                  </button>
-                ))}
-              </div>
+              <AnimatedSegmentedControl
+                value={statusFilter}
+                onChange={setStatusFilter}
+                layoutId="employee-management-status-pill"
+                size="sm"
+                options={[
+                  { value: "ACTIVE", label: isEn ? "Active" : "Hoạt động" },
+                  { value: "INACTIVE", label: isEn ? "Inactive" : "Không hoạt động" },
+                  { value: "ALL", label: isEn ? "All" : "Tất cả" },
+                ]}
+              />
             </div>
 
             {/* Role Filter */}

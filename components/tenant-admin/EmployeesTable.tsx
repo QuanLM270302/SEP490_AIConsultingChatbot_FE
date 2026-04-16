@@ -25,7 +25,7 @@ import { translations } from "@/lib/translations";
 import { getStoredUser } from "@/lib/auth-store";
 import { mergeRolesWithCache, readTenantRolesCache } from "@/lib/tenant-roles-cache";
 import { getPermissionLabel } from "@/lib/permission-labels";
-import { useConfirmDialog } from "@/components/ui";
+import { AnimatedSegmentedControl, useConfirmDialog } from "@/components/ui";
 
 /** Không gán user thường làm admin nền tảng / tenant admin / staff */
 const ROLE_CODES_EXCLUDED_FROM_USER_ASSIGNMENT = new Set(["TENANT_ADMIN", "SUPER_ADMIN", "STAFF"]);
@@ -223,21 +223,17 @@ export function EmployeesTable() {
 
   return (
     <>
-      <div className="flex flex-wrap gap-2 mb-4">
-        {(["ACTIVE", "INACTIVE", "ALL"] as const).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setStatusFilter(s)}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-              statusFilter === s
-                ? "bg-emerald-500 text-white"
-                : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            }`}
-          >
-            {s === "ALL" ? t.all : s === "ACTIVE" ? t.active : t.inactive}
-          </button>
-        ))}
+      <div className="mb-4">
+        <AnimatedSegmentedControl
+          value={statusFilter}
+          onChange={setStatusFilter}
+          layoutId="employees-status-pill"
+          options={[
+            { value: "ACTIVE", label: t.active },
+            { value: "INACTIVE", label: t.inactive },
+            { value: "ALL", label: t.all },
+          ]}
+        />
       </div>
 
       <div className="overflow-hidden rounded-3xl bg-white shadow-lg shadow-purple-100/60 dark:bg-zinc-950 dark:shadow-black/40">
