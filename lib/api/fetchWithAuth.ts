@@ -3,9 +3,22 @@
  * On 403, tries tryRefreshAuth() then retries once. Invalid refresh (4xx/5xx) clears storage;
  * pure network errors keep the session. Use in client code only (reads localStorage).
  */
-import { getAccessToken, getRefreshToken, refreshAuth, tryRefreshAuth } from "@/lib/auth-store";
+import {
+  clearAuth,
+  getAccessToken,
+  getRefreshToken,
+  refreshAuth,
+  tryRefreshAuth,
+} from "@/lib/auth-store";
+import { parseApiErrorMessage } from "@/lib/api/parseApiError";
+import {
+  notifyAuthSessionExpired,
+} from "@/lib/auth-session-events";
 
 type RequestAttempt = "initial" | "retry-401-refresh" | "retry-403-refresh";
+const SESSION_EXPIRED_NOTIFY_DEBOUNCE_MS = 1_500;
+
+let lastSessionExpiredNotificationAt = 0;
 
 function isRequestObject(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
@@ -78,6 +91,40 @@ function logApiResponse(url: string, method: string, res: Response, attempt: Req
   });
 }
 
+async function readErrorMessage(response: Response): Promise<string | undefined> {
+  try {
+    const raw = await response.clone().text();
+    if (!raw || !raw.trim()) return undefined;
+    return parseApiErrorMessage(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+async function handleFinalUnauthorizedResponse(
+  response: Response,
+  url: string,
+  method: string
+): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (response.status !== 401) return;
+
+  const now = Date.now();
+  if (now - lastSessionExpiredNotificationAt < SESSION_EXPIRED_NOTIFY_DEBOUNCE_MS) {
+    return;
+  }
+
+  const message = await readErrorMessage(response);
+  clearAuth();
+  lastSessionExpiredNotificationAt = now;
+  notifyAuthSessionExpired({
+    status: 401,
+    message,
+    sourceUrl: url,
+    method,
+  });
+}
+
 export async function fetchWithAuth(
   input: RequestInfo | URL,
   init?: RequestInit
@@ -116,5 +163,7 @@ export async function fetchWithAuth(
       if (token) res = await doFetch(token, "retry-403-refresh");
     }
   }
+
+  await handleFinalUnauthorizedResponse(res, url, method);
   return res;
 }

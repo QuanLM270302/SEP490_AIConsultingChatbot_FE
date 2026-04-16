@@ -11,6 +11,7 @@ import { Users, Building, Shield, CreditCard, FileText, Bot } from "lucide-react
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { getTenantLlmUsage, type TenantLlmUsageResponse } from "@/lib/api/tenant-admin";
+import { isAuthExpiredErrorMessage } from "@/lib/auth-session-events";
 
 export default function TenantAdminPage() {
   const { language } = useLanguageStore();
@@ -29,7 +30,8 @@ export default function TenantAdminPage() {
       .catch((e) => {
         if (cancelled) return;
         setLlmUsage(null);
-        setLlmError(e instanceof Error ? e.message : "Failed to load AI usage");
+        const message = e instanceof Error ? e.message : "Failed to load AI usage";
+        setLlmError(isAuthExpiredErrorMessage(message) ? null : message);
       })
       .finally(() => {
         if (!cancelled) setLlmLoading(false);
