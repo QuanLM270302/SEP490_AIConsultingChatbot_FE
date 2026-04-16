@@ -7,6 +7,7 @@ import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { FileText, FolderTree, Tag, Upload } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { AnimatedSegmentedControl } from "@/components/ui";
 
 type TabId = "upload" | "documents" | "categories" | "tags";
 
@@ -89,31 +90,18 @@ export default function DocumentsPage() {
           </p>
         </div>
 
-        <div className="flex gap-2 border-b border-zinc-200 dark:border-zinc-800">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  setMountedTabs((prev) =>
-                    prev[tab.id] ? prev : { ...prev, [tab.id]: true }
-                  );
-                  startTabTransition(() => setActiveTab(tab.id));
-                }}
-                className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-semibold transition ${
-                  isActive
-                    ? "border-green-500 text-green-600 dark:text-green-400"
-                    : "border-transparent text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap items-center gap-2">
+          <AnimatedSegmentedControl
+            value={activeTab}
+            onChange={(next) => {
+              setMountedTabs((prev) =>
+                prev[next] ? prev : { ...prev, [next]: true }
+              );
+              startTabTransition(() => setActiveTab(next));
+            }}
+            layoutId="documents-tab-pill"
+            options={tabs.map((tab) => ({ value: tab.id, label: tab.label }))}
+          />
         </div>
 
         <div className="relative">

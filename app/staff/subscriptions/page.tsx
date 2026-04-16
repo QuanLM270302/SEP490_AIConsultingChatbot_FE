@@ -18,6 +18,7 @@ import {
 } from "@/lib/api/staff";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { AnimatedSegmentedControl } from "@/components/ui";
 
 const statusLabel: Record<StaffSubscriptionStatus, Record<"vi" | "en", string>> = {
   PENDING: { vi: "Chờ xử lý", en: "Pending" },
@@ -130,30 +131,17 @@ export default function StaffSubscriptionsPage() {
                   </span>
                   <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{language === "en" ? "Filter" : "Lọc"}</span>
                 </div>
-                <div className="flex items-center gap-2 rounded-full bg-zinc-100/80 p-1 dark:bg-zinc-800/80">
-                  <button
-                    type="button"
-                    onClick={() => setStatusFilter("all")}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                      statusFilter === "all"
-                        ? "bg-white text-green-700 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:text-green-400 dark:ring-zinc-700"
-                        : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
-                    }`}
-                  >
-                    {language === "en" ? "All" : "Tất cả"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatusFilter("active")}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                      statusFilter === "active"
-                        ? "bg-white text-green-700 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:text-green-400 dark:ring-zinc-700"
-                        : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
-                    }`}
-                  >
-                    {language === "en" ? "Active" : "Đang active"}
-                  </button>
-                </div>
+                <AnimatedSegmentedControl
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  layoutId="staff-subscriptions-status-pill"
+                  size="sm"
+                  className="rounded-full bg-zinc-100/80 p-1 dark:bg-zinc-800/80"
+                  options={[
+                    { value: "all", label: language === "en" ? "All" : "Tất cả" },
+                    { value: "active", label: language === "en" ? "Active" : "Đang active" },
+                  ]}
+                />
               </div>
             </div>
             <div className="overflow-x-auto">

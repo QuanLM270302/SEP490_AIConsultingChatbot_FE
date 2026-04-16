@@ -38,6 +38,7 @@ import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { requestStaffPortalStatsRefresh } from "@/lib/staff-portal-stats-refresh";
 import { getAccessToken, getRefreshToken, refreshAuth } from "@/lib/auth-store";
+import { AnimatedSegmentedControl } from "@/components/ui";
 
 const statusLabel: Record<TenantStatus, Record<'vi' | 'en', string>> = {
   PENDING: { vi: "Chờ duyệt", en: "Pending" },
@@ -270,22 +271,20 @@ export default function StaffOrganizationsPage() {
                   </span>
                   <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{language === "en" ? "Filter" : "Lọc"}</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 rounded-full bg-zinc-100/80 p-1 dark:bg-zinc-800/80">
-                  {(["ALL", "PENDING", "ACTIVE", "REJECTED", "SUSPENDED"] as const).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setStatusFilter(s)}
-                      className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                        statusFilter === s
-                          ? "bg-white text-green-700 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:text-green-400 dark:ring-zinc-700"
-                          : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
-                      }`}
-                    >
-                      {s === "ALL" ? t.all : statusLabel[s][language]}
-                    </button>
-                  ))}
-                </div>
+                <AnimatedSegmentedControl
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  layoutId="staff-organizations-status-pill"
+                  size="sm"
+                  className="rounded-full bg-zinc-100/80 p-1 dark:bg-zinc-800/80"
+                  options={[
+                    { value: "ALL", label: t.all },
+                    { value: "PENDING", label: statusLabel.PENDING[language] },
+                    { value: "ACTIVE", label: statusLabel.ACTIVE[language] },
+                    { value: "REJECTED", label: statusLabel.REJECTED[language] },
+                    { value: "SUSPENDED", label: statusLabel.SUSPENDED[language] },
+                  ]}
+                />
               </div>
             </div>
             <div className="overflow-x-auto">

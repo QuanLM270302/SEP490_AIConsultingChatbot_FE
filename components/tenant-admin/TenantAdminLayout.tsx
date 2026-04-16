@@ -205,16 +205,16 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
   }, [onboardingOverview]);
 
   return (
-    <div className="flex min-h-screen flex-1 bg-linear-to-br from-zinc-100 via-white to-zinc-100 px-4 py-6 dark:from-black dark:via-black dark:to-black sm:px-6 lg:px-10">
+    <div className="flex min-h-screen w-full min-w-0 flex-1 bg-linear-to-br from-zinc-100 via-white to-zinc-100 px-3 py-4 dark:from-black dark:via-black dark:to-black sm:px-5 sm:py-5 lg:px-8 lg:py-6">
       <TenantAdminSidebar open={sidebarOpen} setOpen={setSidebarOpen} />
       
-      <main className="flex-1 px-0 py-2 sm:px-4 lg:px-6 lg:pl-72">
+      <main className="min-w-0 flex-1 px-0 py-2 sm:px-3 lg:px-4 lg:pl-72 xl:pl-72">
         <DashboardHeader 
           title={t.tenantAdmin}
           onMenuClick={() => setSidebarOpen(true)} 
         />
         
-        <div className="mx-auto mt-6 max-w-7xl">
+        <div className="mx-auto mt-5 w-full min-w-0 max-w-[min(100%,88rem)] lg:mt-6">
           {isDashboardTab &&
             !isOnboardingLoading &&
             onboardingSummary.total > 0 &&
@@ -294,7 +294,7 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
       />
 
       {showSubscriptionRequiredModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-80 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-zinc-900/70" />
           <div className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
             <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">

@@ -16,16 +16,16 @@ export function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const t = translations[language];
 
   return (
-    <div className="flex min-h-dvh bg-linear-to-br from-zinc-100 via-white to-zinc-100 px-4 py-6 dark:from-zinc-900 dark:via-black dark:to-zinc-900 sm:px-6 lg:px-10">
+    <div className="flex min-h-dvh w-full min-w-0 bg-linear-to-br from-zinc-100 via-white to-zinc-100 px-3 py-4 dark:from-zinc-900 dark:via-black dark:to-zinc-900 sm:px-5 sm:py-5 lg:px-8 lg:py-6">
       <SuperAdminSidebar open={sidebarOpen} setOpen={setSidebarOpen} />
       
-      <main className="flex-1 px-0 py-2 sm:px-4 lg:px-6 lg:pl-72">
+      <main className="min-w-0 flex-1 px-0 py-2 sm:px-3 lg:px-4 lg:pl-72 xl:pl-72">
         <DashboardHeader 
           title={t.superAdmin}
           onMenuClick={() => setSidebarOpen(true)} 
         />
         
-        <div className="mx-auto mt-6 max-w-7xl">
+        <div className="mx-auto mt-5 w-full min-w-0 max-w-[min(100%,88rem)] lg:mt-6">
           {children}
         </div>
       </main>

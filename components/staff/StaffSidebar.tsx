@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
 import {
   LayoutDashboard,
@@ -87,13 +88,20 @@ export function StaffSidebar({ open, setOpen }: StaffSidebarProps) {
                     key={item.name}
                     href={item.href}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-2xl px-3.5 py-3 font-medium transition",
+                      "relative flex w-full items-center justify-between overflow-hidden rounded-2xl px-3.5 py-3 font-medium transition",
                       isActive
-                        ? "bg-blue-500 text-white shadow-sm shadow-blue-400/60"
+                        ? "text-white shadow-sm shadow-blue-400/60"
                         : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
                     )}
                   >
-                    <span className="flex items-center gap-3">
+                    {isActive ? (
+                      <motion.span
+                        layoutId="staff-sidebar-active-pill"
+                        className="absolute inset-0 rounded-2xl bg-blue-500"
+                        transition={{ type: "spring", stiffness: 280, damping: 30, mass: 0.9 }}
+                      />
+                    ) : null}
+                    <span className="relative z-10 flex items-center gap-3">
                       <span className={cn(
                         "flex h-9 w-9 items-center justify-center rounded-2xl text-sm",
                         isActive ? "bg-white/20" : "bg-zinc-100 dark:bg-zinc-900"
@@ -102,7 +110,7 @@ export function StaffSidebar({ open, setOpen }: StaffSidebarProps) {
                       </span>
                       {item.name}
                     </span>
-                    {isActive && <span className="h-8 w-1.5 rounded-full bg-white/70" />}
+                    {isActive && <span className="relative z-10 h-8 w-1.5 rounded-full bg-white/70" />}
                   </Link>
                 );
               })}

@@ -508,11 +508,6 @@ export default function TenantAdminSubscriptionPage() {
                 }}
               />
             )}
-            <section className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
-              <p>
-                Thay đổi gói đăng ký sẽ áp dụng cho toàn bộ nhân viên trong tổ chức. Hãy đảm bảo bạn đã trao đổi với các bên liên quan trước khi xác nhận nâng cấp hoặc hạ cấp gói.
-              </p>
-            </section>
           </>
         )}
 

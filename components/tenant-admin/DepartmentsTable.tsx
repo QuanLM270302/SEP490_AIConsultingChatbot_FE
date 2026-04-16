@@ -178,19 +178,19 @@ export function DepartmentsTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-white shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-zinc-100 dark:divide-zinc-900">
-          <thead className="bg-zinc-50 dark:bg-zinc-900">
+    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="table-scroll-container">
+        <table className="min-w-176 table-auto divide-y divide-zinc-100 dark:divide-zinc-900 lg:min-w-full">
+          <thead className="bg-zinc-50/50 dark:bg-zinc-900/50">
             <tr>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.department}</th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.code}</th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.employees}</th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.status}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.department}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.code}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.employees}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.status}</th>
               <th className="relative px-6 py-4"><span className="sr-only">{t.actions}</span></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-900 dark:bg-zinc-950">
+          <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
             {departments.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
@@ -199,11 +199,15 @@ export function DepartmentsTable({
               </tr>
             ) : (
               departments.map((dept) => (
-                <tr key={dept.id} className="transition hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-zinc-900 dark:text-white">{dept.name ?? "—"}</td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-600 dark:text-zinc-400">{dept.code ?? "—"}</td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">{dept.employeeCount ?? "—"}</td>
-                  <td className="whitespace-nowrap px-6 py-4">
+                <tr key={dept.id} className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                  <td className="px-4 py-4 align-top text-sm font-medium text-zinc-900 dark:text-white sm:px-6">
+                    <div className="max-w-56 whitespace-normal wrap-break-word">{dept.name ?? "—"}</div>
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-400 sm:px-6">
+                    <div className="max-w-40 whitespace-normal wrap-break-word">{dept.code ?? "—"}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4 align-top text-sm text-zinc-900 dark:text-white sm:px-6">{dept.employeeCount ?? "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-4 align-top sm:px-6">
                     <span
                       className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
                         (dept.isActive ?? (filter === "active")) ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-500/20 text-red-600 dark:text-red-400"
@@ -212,12 +216,12 @@ export function DepartmentsTable({
                       {(dept.isActive ?? (filter === "active")) ? t.active : t.inactive}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right">
+                  <td className="whitespace-nowrap px-4 py-4 text-right align-top sm:px-6">
                     <button
                       type="button"
                       aria-label="Thao tác"
                       onClick={(e) => toggleMenu(dept.id, e.currentTarget)}
-                      className="rounded-full p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-500 dark:hover:bg-zinc-900"
+                      className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>
