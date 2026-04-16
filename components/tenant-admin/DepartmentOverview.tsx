@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getTenantDepartments } from "@/lib/api/tenant-admin";
+import { isAuthExpiredErrorMessage } from "@/lib/auth-session-events";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
@@ -19,7 +20,10 @@ export function DepartmentOverview() {
           list.map((d) => ({ name: d.name ?? "—", count: d.employeeCount ?? 0 }))
         )
       )
-      .catch((e) => setError(e instanceof Error ? e.message : t.error))
+      .catch((e) => {
+        const message = e instanceof Error ? e.message : t.error;
+        setError(isAuthExpiredErrorMessage(message) ? null : message);
+      })
       .finally(() => setLoading(false));
   }, [t.error]);
 

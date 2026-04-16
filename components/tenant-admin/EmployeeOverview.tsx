@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getTenantAnalytics } from "@/lib/api/tenant-admin";
+import { isAuthExpiredErrorMessage } from "@/lib/auth-session-events";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
@@ -15,7 +16,10 @@ export function EmployeeOverview() {
   useEffect(() => {
     getTenantAnalytics()
       .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : t.error))
+      .catch((e) => {
+        const message = e instanceof Error ? e.message : t.error;
+        setError(isAuthExpiredErrorMessage(message) ? null : message);
+      })
       .finally(() => setLoading(false));
   }, [t.error]);
 

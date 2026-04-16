@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Users, Building, Shield, TrendingUp } from "lucide-react";
 import { getTenantDashboard, getTenantDepartments, getTenantRoles } from "@/lib/api/tenant-admin";
+import { isAuthExpiredErrorMessage } from "@/lib/auth-session-events";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
@@ -24,8 +25,13 @@ export function OrganizationStats() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+
+    const frame = window.requestAnimationFrame(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setError(null);
+    });
+
     Promise.all([
       getTenantDashboard(),
       getTenantDepartments(),
@@ -38,12 +44,18 @@ export function OrganizationStats() {
         setRoleCount(roles?.length ?? null);
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : t.errorLoadingData);
+        if (cancelled) return;
+        const message = e instanceof Error ? e.message : t.errorLoadingData;
+        setError(isAuthExpiredErrorMessage(message) ? null : message);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
   }, [t.errorLoadingData]);
 
   const display = (key: string) => {
