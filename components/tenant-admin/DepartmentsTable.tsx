@@ -179,8 +179,8 @@ export function DepartmentsTable({
 
   return (
     <div className="overflow-hidden rounded-3xl bg-white shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-zinc-100 dark:divide-zinc-900">
+      <div className="table-scroll-container">
+        <table className="min-w-176 table-auto divide-y divide-zinc-100 dark:divide-zinc-900 lg:min-w-full">
           <thead className="bg-zinc-50 dark:bg-zinc-900">
             <tr>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.department}</th>
@@ -200,10 +200,14 @@ export function DepartmentsTable({
             ) : (
               departments.map((dept) => (
                 <tr key={dept.id} className="transition hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-zinc-900 dark:text-white">{dept.name ?? "—"}</td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-600 dark:text-zinc-400">{dept.code ?? "—"}</td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">{dept.employeeCount ?? "—"}</td>
-                  <td className="whitespace-nowrap px-6 py-4">
+                  <td className="px-4 py-4 align-top text-sm font-medium text-zinc-900 dark:text-white sm:px-6">
+                    <div className="max-w-56 whitespace-normal wrap-break-word">{dept.name ?? "—"}</div>
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-400 sm:px-6">
+                    <div className="max-w-40 whitespace-normal wrap-break-word">{dept.code ?? "—"}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4 align-top text-sm text-zinc-900 dark:text-white sm:px-6">{dept.employeeCount ?? "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-4 align-top sm:px-6">
                     <span
                       className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
                         (dept.isActive ?? (filter === "active")) ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-500/20 text-red-600 dark:text-red-400"
@@ -212,7 +216,7 @@ export function DepartmentsTable({
                       {(dept.isActive ?? (filter === "active")) ? t.active : t.inactive}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right">
+                  <td className="whitespace-nowrap px-4 py-4 text-right align-top sm:px-6">
                     <button
                       type="button"
                       aria-label="Thao tác"

@@ -74,8 +74,8 @@ export function OrganizationsTable() {
 
   return (
     <div className="overflow-hidden rounded-3xl bg-white shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-zinc-100 dark:divide-zinc-900">
+      <div className="table-scroll-container">
+        <table className="min-w-xl table-auto divide-y divide-zinc-100 dark:divide-zinc-900 lg:min-w-full">
           <thead className="bg-zinc-50 dark:bg-zinc-900">
             <tr>
               <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
@@ -99,17 +99,17 @@ export function OrganizationsTable() {
             ) : null}
             {organizations.map((org) => (
               <tr key={org.id} className="transition hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                <td className="whitespace-nowrap px-6 py-4">
-                  <div className="text-sm font-medium text-zinc-900 dark:text-white">
+                <td className="px-4 py-4 align-top sm:px-6">
+                  <div className="max-w-64 whitespace-normal wrap-break-word text-sm font-medium text-zinc-900 dark:text-white">
                     {org.name}
                   </div>
                 </td>
-                <td className="max-w-[260px] whitespace-nowrap px-6 py-4">
-                  <div className="truncate text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                <td className="px-4 py-4 align-top sm:px-6">
+                  <div className="max-w-64 break-all text-xs font-mono text-zinc-600 dark:text-zinc-400">
                     {org.id}
                   </div>
                 </td>
-                <td className="whitespace-nowrap px-6 py-4">
+                <td className="whitespace-nowrap px-4 py-4 align-top sm:px-6">
                   <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${getStatusColor(org.status ?? "")}`}>
                     {getStatusLabel(org.status ?? "UNKNOWN")}
                   </span>
