@@ -26,6 +26,11 @@ const DocumentsTab = dynamic(
   { loading: () => <TabPanelSkeleton /> }
 );
 
+const DocumentUploadCard = dynamic(
+  () => import("@/components/tenant-admin/DocumentUploadSection").then((m) => m.DocumentUploadSection),
+  { loading: () => <TabPanelSkeleton /> }
+);
+
 const CategoriesTab = dynamic(
   () => import("@/components/tenant-admin/CategoriesTab").then((m) => m.CategoriesTab),
   { loading: () => <TabPanelSkeleton /> }
@@ -37,10 +42,10 @@ const TagsTab = dynamic(
 );
 
 export default function DocumentsPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("upload");
+  const [activeTab, setActiveTab] = useState<TabId>("documents");
   const [mountedTabs, setMountedTabs] = useState<Record<TabId, boolean>>({
-    upload: true,
-    documents: false,
+    upload: false,
+    documents: true,
     categories: false,
     tags: false,
   });
@@ -50,8 +55,8 @@ export default function DocumentsPage() {
   const isEn = language === "en";
 
   const tabs: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: "upload", label: language === "en" ? "Upload documents" : "Đăng tải tài liệu", icon: Upload },
     { id: "documents", label: t.documents, icon: FileText },
+    { id: "upload", label: language === "en" ? "Upload documents" : "Đăng tải tài liệu", icon: Upload },
     { id: "categories", label: t.categories, icon: FolderTree },
     { id: "tags", label: t.tags, icon: Tag },
   ];
@@ -59,14 +64,14 @@ export default function DocumentsPage() {
   useEffect(() => {
     const warmupId = window.setTimeout(() => {
       setMountedTabs((prev) =>
-        prev.documents ? prev : { ...prev, documents: true }
+        prev.upload ? prev : { ...prev, upload: true }
       );
     }, 420);
     return () => window.clearTimeout(warmupId);
   }, []);
 
   const renderTabContent = (tab: TabId) => {
-    if (tab === "upload") return <DocumentsTab mode="upload" />;
+    if (tab === "upload") return <DocumentUploadCard />;
     if (tab === "documents") return <DocumentsTab mode="library" />;
     if (tab === "categories") return <CategoriesTab />;
     return <TagsTab />;

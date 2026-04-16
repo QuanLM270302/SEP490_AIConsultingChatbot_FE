@@ -278,54 +278,6 @@ export function ChatView({
                 </div>
               ) : null}
 
-              <details className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
-                <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400">
-                  <span className="inline-flex items-center gap-2">
-                    {isEn ? "RAG filters" : "Bộ lọc RAG"}
-                    <ChevronDown className="h-4 w-4 opacity-70" />
-                  </span>
-                </summary>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">Top K</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={topK}
-                      onChange={(e) =>
-                        setTopK(Math.min(20, Math.max(1, Number(e.target.value) || 5)))
-                      }
-                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">
-                      {isEn ? "Tags" : "Thẻ"}
-                    </label>
-                    <div className="scrollbar-chat-hidden flex max-h-24 flex-wrap gap-2 overflow-y-auto">
-                      {tags.slice(0, 16).map((tg) => {
-                        const active = selectedTagIds.includes(tg.id);
-                        return (
-                          <button
-                            key={tg.id}
-                            type="button"
-                            onClick={() => toggleTag(tg.id)}
-                            className={`rounded-full px-2.5 py-1 text-xs transition ${
-                              active
-                                ? "bg-emerald-600 text-white"
-                                : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                            }`}
-                          >
-                            {tg.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </details>
-
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-emerald-600 shadow-lg shadow-emerald-500/30">

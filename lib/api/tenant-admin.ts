@@ -194,8 +194,19 @@ export async function getTenantUsers(
   }
   const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/users?${params.toString()}`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load users"));
-  const raw: unknown = await res.json();
-  return normalizeUserList(raw);
+  const data: unknown = await res.json();
+  
+  // Handle paginated response
+  if (data && typeof data === "object" && "content" in data && Array.isArray(data.content)) {
+    return data.content as UserResponse[];
+  }
+  
+  // Handle direct array response
+  if (Array.isArray(data)) {
+    return data as UserResponse[];
+  }
+  
+  return [];
 }
 
 export async function getTenantDepartments(): Promise<DepartmentResponse[]> {
