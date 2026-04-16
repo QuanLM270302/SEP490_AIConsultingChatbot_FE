@@ -6,7 +6,7 @@ import { AIBoxSidebar } from "@/components/chat/AIBoxSidebar";
 import { ChatHistorySidebar } from "@/components/chat/ChatHistorySidebar";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, ThumbsUp, ThumbsDown, FileText, MessageSquare } from "lucide-react";
-import { chat, chatbotHealth, getConversationHistory } from "@/lib/api/chatbot";
+import { chat, chatbotHealth, getConversationHistory, rateMessage } from "@/lib/api/chatbot";
 
 export default function ChatPlatformPage() {
   const router = useRouter();
@@ -99,10 +99,15 @@ export default function ChatPlatformPage() {
     }
   };
 
-  const handleRate = (messageId: string, rating: "helpful" | "not-helpful") => {
+  const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
     setMessages((prev) =>
       prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
     );
+    try {
+      await rateMessage(messageId, rating);
+    } catch (e) {
+      console.warn("Rating submission failed:", e);
+    }
   };
 
   return (

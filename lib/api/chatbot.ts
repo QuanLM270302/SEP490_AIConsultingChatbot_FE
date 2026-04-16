@@ -74,6 +74,24 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
   throw new Error("Invalid chat response");
 }
 
+export async function rateMessage(
+  messageId: string,
+  rating: "helpful" | "not-helpful"
+): Promise<void> {
+  const numericRating = rating === "helpful" ? 5 : 1;
+  const res = await fetchWithAuth(
+    `${CHATBOT_BASE}/messages/${messageId}/rate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating: numericRating }),
+    }
+  );
+  if (!res.ok) {
+    console.warn("Failed to submit rating:", await res.text().catch(() => ""));
+  }
+}
+
 export async function chatbotHealth(): Promise<string> {
   const res = await fetchWithAuth(`${CHATBOT_BASE}/health`);
   if (!res.ok) throw new Error("Chatbot health check failed");
