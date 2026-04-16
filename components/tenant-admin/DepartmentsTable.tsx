@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Pencil, Trash2, MoreVertical, Power } from "lucide-react";
+import { Pencil, MoreVertical, Power } from "lucide-react";
 import { ErrorNotice, useConfirmDialog } from "@/components/ui";
 import {
   getTenantDepartments,
   getTenantActiveDepartments,
   updateTenantDepartment,
-  deleteTenantDepartment,
   type DepartmentResponse,
   type UpdateDepartmentRequest,
 } from "@/lib/api/tenant-admin";
@@ -133,34 +132,6 @@ export function DepartmentsTable({
     }
   };
 
-  const handleDeleteDepartment = async () => {
-    if (!selectedDept || openMenuId == null) return;
-
-    const ok = await confirm({
-      title: language === "en" ? "Delete department?" : "Xóa phòng ban?",
-      description:
-        language === "en"
-          ? "Delete action is separate from activate/deactivate. The backend currently performs soft delete for departments."
-          : "Thao tác xóa tách biệt với kích hoạt/vô hiệu hóa. Hiện backend đang thực hiện xóa mềm cho phòng ban.",
-      confirmText: t.delete,
-      cancelText: t.cancel,
-      tone: "danger",
-    });
-    if (!ok) return;
-
-    setActionLoadingId(openMenuId);
-    try {
-      await deleteTenantDepartment(openMenuId);
-      await loadDepartments();
-      setOpenMenuId(null);
-      setMenuPos(null);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : t.error);
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
   if (loading) {
     return (
       <div className="overflow-hidden rounded-3xl bg-white p-8 shadow-lg dark:bg-zinc-950">
@@ -275,15 +246,6 @@ export function DepartmentsTable({
                   ? t.deactivate
                   : t.activate
               }
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleDeleteDepartment()}
-              disabled={actionLoadingId === openMenuId}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/30"
-            >
-              <Trash2 className="h-4 w-4" />
-              {actionLoadingId === openMenuId ? t.saving : t.delete}
             </button>
           </div>
         </>

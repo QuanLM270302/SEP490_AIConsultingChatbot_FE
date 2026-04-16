@@ -15,6 +15,10 @@ import {
   isAuthExpiredErrorMessage,
   notifyAuthSessionExpired,
 } from "@/lib/auth-session-events";
+import {
+  isSubscriptionExpiredError,
+  showSubscriptionExpiredModal,
+} from "@/lib/subscription-expired-modal";
 
 type RequestAttempt = "initial" | "retry-401-refresh" | "retry-403-refresh";
 const SESSION_EXPIRED_NOTIFY_DEBOUNCE_MS = 1_500;
@@ -116,6 +120,12 @@ async function handleFinalUnauthorizedResponse(
   }
 
   const message = await readErrorMessage(response);
+
+  // Check for subscription expired (grace period) - show modal instead of clearing auth
+  if (response.status === 403 && message && isSubscriptionExpiredError(message)) {
+    showSubscriptionExpiredModal({ message });
+    return;
+  }
 
   const shouldNotifyByStatus = response.status === 401;
   const shouldNotifyByMessage =

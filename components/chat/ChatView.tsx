@@ -76,7 +76,6 @@ export function ChatView({
   } | null>(null);
   const [tags, setTags] = useState<DocumentTagResponse[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [topK, setTopK] = useState(5);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -178,7 +177,6 @@ export function ChatView({
       const response = await chat({
         message: text,
         conversationId: conversationId ?? undefined,
-        topK,
         tagIds: selectedTagIds.length ? selectedTagIds : undefined,
       });
 
@@ -415,32 +413,32 @@ export function ChatView({
                     />
                     <button
                       type="submit"
-                      disabled={!input.trim() || isLoading}
+                      disabled={!input.trim() || isLoading || input.length > INPUT_CHAR_LIMIT}
                       className="rounded-lg bg-emerald-600 p-2.5 text-white transition hover:bg-emerald-700 disabled:opacity-50"
                     >
                       <Send className="h-5 w-5" />
                     </button>
                   </div>
-                </form>
-                <div className="mt-2 flex min-h-[18px] items-center justify-between gap-3">
-                  {conversationId ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
-                      <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      <span>{isEn ? "Memory active" : "Đã bật bộ nhớ hội thoại"}</span>
+                  <div className="mt-2 flex min-h-[18px] items-center justify-between gap-3">
+                    {conversationId ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                        <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        <span>{isEn ? "Memory active" : "Đã bật bộ nhớ hội thoại"}</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-transparent">memory</span>
+                    )}
+                    <span
+                      className={`text-xs ${
+                        input.length > INPUT_WARNING_THRESHOLD
+                          ? "text-red-500 dark:text-red-400"
+                          : "text-zinc-500 dark:text-zinc-400"
+                      }`}
+                    >
+                      {input.length}/{INPUT_CHAR_LIMIT}
                     </span>
-                  ) : (
-                    <span className="text-xs text-transparent">memory</span>
-                  )}
-                  <span
-                    className={`text-xs ${
-                      input.length > INPUT_WARNING_THRESHOLD
-                        ? "text-red-500 dark:text-red-400"
-                        : "text-zinc-500 dark:text-zinc-400"
-                    }`}
-                  >
-                    {input.length}/{INPUT_CHAR_LIMIT}
-                  </span>
-                </div>
+                  </div>
+                </form>
                 <p className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-400">
                   {isEn
                     ? "AI can make mistakes. Verify important information."

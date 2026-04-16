@@ -16,7 +16,11 @@ import {
   Mail,
   Building,
   Calendar,
-  Info
+  Info,
+  Key,
+  Shield,
+  MoreVertical,
+  Trash2
 } from "lucide-react";
 import { 
   getTenantUsers, 
@@ -26,6 +30,10 @@ import {
   updateTenantUser,
   activateTenantUser,
   deactivateTenantUser,
+  resetTenantUserPassword,
+  updateTenantUserPermissions,
+  getTenantAvailablePermissions,
+  deleteTenantUser,
   type UserResponse, 
   type RoleResponse,
   type DepartmentResponse,
@@ -35,7 +43,8 @@ import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { getStoredUser } from "@/lib/auth-store";
 import { mergeRolesWithCache, readTenantRolesCache } from "@/lib/tenant-roles-cache";
-import { AnimatedSegmentedControl, useConfirmDialog } from "@/components/ui";
+import { useConfirmDialog } from "@/components/ui";
+import { getPermissionLabel } from "@/lib/permission-labels";
 
 const ROLE_CODES_EXCLUDED_FROM_USER_ASSIGNMENT = new Set(["TENANT_ADMIN", "SUPER_ADMIN", "STAFF"]);
 
@@ -69,7 +78,15 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
   // Modal states
   const [detailUser, setDetailUser] = useState<UserResponse | null>(null);
   const [editUser, setEditUser] = useState<UserResponse | null>(null);
+  const [permissionUser, setPermissionUser] = useState<UserResponse | null>(null);
+  const [availablePermissions, setAvailablePermissions] = useState<{ code: string; name?: string }[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [permissionMetaLoading, setPermissionMetaLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Menu states
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
 
   // Load data
   useEffect(() => {
@@ -110,6 +127,21 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
     setCurrentPage(1);
   }, [statusFilter, roleFilter]);
 
+  // Close menu on scroll/resize
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [openMenuId]);
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -125,8 +157,27 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
       : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400";
   };
 
+  const toggleMenu = (userId: string, anchor: HTMLElement) => {
+    if (openMenuId === userId) {
+      setOpenMenuId(null);
+      setMenuPos(null);
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const menuWidth = 208;
+    const margin = 12;
+    const left = Math.min(
+      Math.max(rect.right - menuWidth, margin),
+      window.innerWidth - margin - menuWidth
+    );
+    setMenuPos({ top: rect.bottom + 6, left });
+    setOpenMenuId(userId);
+  };
+
   // Action handlers
   const handleViewDetail = async (userId: string) => {
+    setOpenMenuId(null);
+    setMenuPos(null);
     try {
       const user = await getTenantUserById(userId);
       setDetailUser(user);
@@ -136,6 +187,8 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
   };
 
   const handleEdit = (user: UserResponse) => {
+    setOpenMenuId(null);
+    setMenuPos(null);
     setEditUser(user);
   };
 
@@ -151,6 +204,8 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
     });
     if (!ok) return;
 
+    setOpenMenuId(null);
+    setMenuPos(null);
     setActionLoading(userId);
     try {
       await activateTenantUser(userId);
@@ -181,6 +236,8 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
     });
     if (!ok) return;
 
+    setOpenMenuId(null);
+    setMenuPos(null);
     setActionLoading(userId);
     try {
       await deactivateTenantUser(userId);
@@ -214,6 +271,105 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
       setEmployees(filtered);
     } catch (e) {
       onActionError?.(e instanceof Error ? e.message : (isEn ? "Failed to update user" : "Không thể cập nhật người dùng"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    const ok = await confirm({
+      title: isEn ? "Reset password?" : "Đặt lại mật khẩu?",
+      description: isEn 
+        ? "A password reset email will be sent to this employee." 
+        : "Email đặt lại mật khẩu sẽ được gửi đến nhân viên này.",
+      confirmText: isEn ? "Send Reset Email" : "Gửi Email",
+      cancelText: t.cancel,
+      tone: "default",
+    });
+    if (!ok) return;
+
+    setOpenMenuId(null);
+    setMenuPos(null);
+    setActionLoading(userId);
+    try {
+      await resetTenantUserPassword(userId);
+      onActionSuccess?.(isEn ? "Password reset email sent successfully" : "Đã gửi email đặt lại mật khẩu thành công");
+    } catch (e) {
+      onActionError?.(e instanceof Error ? e.message : (isEn ? "Failed to send reset email" : "Không thể gửi email đặt lại mật khẩu"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleOpenPermissionEditor = async (userId: string) => {
+    setOpenMenuId(null);
+    setMenuPos(null);
+    setPermissionMetaLoading(true);
+    try {
+      const [userDetail, permissions] = await Promise.all([
+        getTenantUserById(userId),
+        getTenantAvailablePermissions(),
+      ]);
+      const currentPermissions =
+        ((userDetail as unknown as { permissions?: string[] }).permissions ?? []).filter(Boolean);
+      setPermissionUser(userDetail);
+      setAvailablePermissions(permissions);
+      setSelectedPermissions(currentPermissions);
+    } catch (e) {
+      onActionError?.(e instanceof Error ? e.message : (isEn ? "Failed to load permissions" : "Không thể tải quyền"));
+    } finally {
+      setPermissionMetaLoading(false);
+    }
+  };
+
+  const handleDelete = async (userId: string) => {
+    const ok = await confirm({
+      title: isEn ? "Remove employee from organization?" : "Xóa nhân viên khỏi tổ chức?",
+      description: isEn 
+        ? "This action cannot be undone. The employee will be permanently removed from your organization." 
+        : "Hành động này không thể hoàn tác. Nhân viên sẽ bị xóa vĩnh viễn khỏi tổ chức của bạn.",
+      confirmText: isEn ? "Remove" : "Xóa",
+      cancelText: t.cancel,
+      tone: "danger",
+    });
+    if (!ok) return;
+
+    setOpenMenuId(null);
+    setMenuPos(null);
+    setActionLoading(userId);
+    try {
+      await deleteTenantUser(userId);
+      onActionSuccess?.(isEn ? "Employee removed successfully" : "Đã xóa nhân viên thành công");
+      // Reload data
+      const usersData = await getTenantUsers(statusFilter, roleFilter ? { roleId: roleFilter } : undefined);
+      const filtered = usersData.filter((u) => {
+        const roleName = (u.roleName ?? "").toLowerCase();
+        return !roleName.includes("tenant admin");
+      });
+      setEmployees(filtered);
+    } catch (e) {
+      onActionError?.(e instanceof Error ? e.message : (isEn ? "Failed to remove employee" : "Không thể xóa nhân viên"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSavePermissions = async () => {
+    if (!permissionUser) return;
+    setActionLoading(permissionUser.id);
+    try {
+      await updateTenantUserPermissions(permissionUser.id, selectedPermissions);
+      setPermissionUser(null);
+      onActionSuccess?.(isEn ? "Permissions updated successfully" : "Cập nhật quyền thành công");
+      // Reload data
+      const usersData = await getTenantUsers(statusFilter, roleFilter ? { roleId: roleFilter } : undefined);
+      const filtered = usersData.filter((u) => {
+        const roleName = (u.roleName ?? "").toLowerCase();
+        return !roleName.includes("tenant admin");
+      });
+      setEmployees(filtered);
+    } catch (e) {
+      onActionError?.(e instanceof Error ? e.message : (isEn ? "Failed to update permissions" : "Không thể cập nhật quyền"));
     } finally {
       setActionLoading(null);
     }
@@ -267,17 +423,26 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
               <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
                 {isEn ? "Status:" : "Trạng thái:"}
               </label>
-              <AnimatedSegmentedControl
-                value={statusFilter}
-                onChange={setStatusFilter}
-                layoutId="employee-management-status-pill"
-                size="sm"
-                options={[
-                  { value: "ACTIVE", label: isEn ? "Active" : "Hoạt động" },
-                  { value: "INACTIVE", label: isEn ? "Inactive" : "Không hoạt động" },
-                  { value: "ALL", label: isEn ? "All" : "Tất cả" },
-                ]}
-              />
+              <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-700 dark:bg-zinc-800">
+                {(["ACTIVE", "INACTIVE", "ALL"] as const).map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setStatusFilter(status)}
+                    className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                      statusFilter === status
+                        ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
+                        : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    }`}
+                  >
+                    {status === "ACTIVE"
+                      ? isEn ? "Active" : "Hoạt động"
+                      : status === "INACTIVE"
+                        ? isEn ? "Inactive" : "Không hoạt động"
+                        : isEn ? "All" : "Tất cả"}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Role Filter */}
@@ -405,49 +570,20 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
                     </td>
 
                     {/* Actions */}
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-1">
+                    <td className="relative px-6 py-4">
+                      <div className="flex justify-end">
                         <button
                           type="button"
-                          onClick={() => handleViewDetail(employee.id)}
-                          disabled={!!actionLoading}
-                          className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-50 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                          title={isEn ? "View details" : "Xem chi tiết"}
+                          onClick={(e) => toggleMenu(employee.id, e.currentTarget)}
+                          className="rounded-full p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-500 dark:hover:bg-zinc-800"
                         >
-                          <Eye className="h-4 w-4" />
+                          <MoreVertical className="h-4 w-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(employee)}
-                          disabled={!!actionLoading}
-                          className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-50 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                          title={isEn ? "Edit" : "Chỉnh sửa"}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => employee.isActive ? handleDeactivate(employee.id) : handleActivate(employee.id)}
-                          disabled={!!actionLoading}
-                          className={`rounded-lg p-2 transition-colors disabled:opacity-50 ${
-                            employee.isActive
-                              ? "text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
-                              : "text-zinc-400 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400"
-                          }`}
-                          title={
-                            employee.isActive
-                              ? isEn ? "Deactivate" : "Vô hiệu hóa"
-                              : isEn ? "Activate" : "Kích hoạt"
-                          }
-                        >
-                          {actionLoading === employee.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : employee.isActive ? (
-                            <UserX className="h-4 w-4" />
-                          ) : (
-                            <UserCheck className="h-4 w-4" />
-                          )}
-                        </button>
+                        {actionLoading === employee.id && (
+                          <span className="absolute right-14 top-1/2 -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                          </span>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -501,6 +637,83 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
         )}
       </div>
 
+      {/* Dropdown Menu */}
+      {openMenuId && menuPos && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => {
+              setOpenMenuId(null);
+              setMenuPos(null);
+            }}
+          />
+          <div
+            className="fixed z-50 w-52 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <button
+              type="button"
+              onClick={() => handleViewDetail(openMenuId)}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Eye className="h-4 w-4" /> {t.viewDetail}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const selected = employees.find((u) => u.id === openMenuId);
+                if (selected) handleEdit(selected);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Pencil className="h-4 w-4" /> {t.updateUserInfo}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleOpenPermissionEditor(openMenuId)}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Key className="h-4 w-4" /> {t.updateUserPermissions}
+            </button>
+            {employees.find((u) => u.id === openMenuId)?.isActive ? (
+              <button
+                type="button"
+                onClick={() => handleDeactivate(openMenuId)}
+                disabled={!!actionLoading}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-60 dark:text-amber-400 dark:hover:bg-amber-950/30"
+              >
+                <UserX className="h-4 w-4" /> {t.deactivate}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleActivate(openMenuId)}
+                disabled={!!actionLoading}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+              >
+                <UserCheck className="h-4 w-4" /> {t.activate}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleResetPassword(openMenuId)}
+              disabled={!!actionLoading}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 disabled:opacity-60 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Key className="h-4 w-4" /> {t.resetPassword}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDelete(openMenuId)}
+              disabled={!!actionLoading}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/30"
+            >
+              <Trash2 className="h-4 w-4" /> {t.deleteUser}
+            </button>
+          </div>
+        </>
+      )}
+
       {/* Detail Modal */}
       {detailUser && (
         <DetailModal user={detailUser} onClose={() => setDetailUser(null)} />
@@ -513,6 +726,19 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
           onClose={() => setEditUser(null)}
           onSave={(body) => handleSaveEdit(editUser.id, body)}
           loading={actionLoading === editUser.id}
+        />
+      )}
+
+      {/* Permissions Modal */}
+      {permissionUser && (
+        <UpdatePermissionsModal
+          user={permissionUser}
+          permissions={availablePermissions}
+          selected={selectedPermissions}
+          setSelected={setSelectedPermissions}
+          loading={permissionMetaLoading || actionLoading === permissionUser.id}
+          onClose={() => setPermissionUser(null)}
+          onSave={handleSavePermissions}
         />
       )}
 
@@ -826,6 +1052,113 @@ function EditUserModal({
               t.save
             )}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// Update Permissions Modal Component
+function UpdatePermissionsModal({
+  user,
+  permissions,
+  selected,
+  setSelected,
+  loading,
+  onClose,
+  onSave,
+}: {
+  user: UserResponse;
+  permissions: { code: string; name?: string }[];
+  selected: string[];
+  setSelected: (next: string[]) => void;
+  loading: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const { language } = useLanguageStore();
+  const t = translations[language];
+  const isEn = language === "en";
+
+  const togglePermission = (code: string) => {
+    setSelected(selected.includes(code) ? selected.filter((p) => p !== code) : [...selected, code]);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
+      <div className="relative w-full max-w-2xl rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{t.updateUserPermissions}</h3>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              {(user.fullName ?? user.email ?? "User")} - {t.selectPermissions}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-900 dark:hover:text-zinc-300">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-4 max-h-[52vh] overflow-y-auto rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+          {permissions.length === 0 ? (
+            <p className="text-sm text-zinc-500">{t.noPermissions}</p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {permissions.map((p) => {
+                const active = selected.includes(p.code);
+                return (
+                  <button
+                    key={p.code}
+                    type="button"
+                    onClick={() => togglePermission(p.code)}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm transition ${
+                      active
+                        ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    <div className="font-medium">
+                      {getPermissionLabel(p.code, p.name, isEn ? "en" : "vi")}
+                    </div>
+                    <div className="mt-0.5 text-[11px] uppercase tracking-wide opacity-70">{p.code}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex items-center justify-between">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            {isEn ? "Selected" : "Đã chọn"}: {selected.length}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              {t.cancel}
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600 disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {isEn ? "Saving..." : "Đang lưu..."}
+                </>
+              ) : (
+                t.save
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
