@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth-store";
 import { parseApiErrorMessage } from "@/lib/api/parseApiError";
 import {
+  isAuthExpiredErrorMessage,
   notifyAuthSessionExpired,
 } from "@/lib/auth-session-events";
 
@@ -107,7 +108,7 @@ async function handleFinalUnauthorizedResponse(
   method: string
 ): Promise<void> {
   if (typeof window === "undefined") return;
-  if (response.status !== 401) return;
+  if (response.status !== 401 && response.status !== 403) return;
 
   const now = Date.now();
   if (now - lastSessionExpiredNotificationAt < SESSION_EXPIRED_NOTIFY_DEBOUNCE_MS) {
@@ -115,13 +116,42 @@ async function handleFinalUnauthorizedResponse(
   }
 
   const message = await readErrorMessage(response);
+
+  const shouldNotifyByStatus = response.status === 401;
+  const shouldNotifyByMessage =
+    response.status === 403 &&
+    (!!message && isAuthExpiredErrorMessage(message));
+
+  if (!shouldNotifyByStatus && !shouldNotifyByMessage) {
+    return;
+  }
+
   clearAuth();
   lastSessionExpiredNotificationAt = now;
   notifyAuthSessionExpired({
-    status: 401,
+    status: response.status,
     message,
     sourceUrl: url,
     method,
+  });
+}
+
+async function normalizeErrorResponseBody(response: Response): Promise<Response> {
+  if (response.ok) return response;
+
+  const raw = await response.clone().text().catch(() => "");
+  if (!raw.trim()) return response;
+
+  const normalized = parseApiErrorMessage(raw);
+  if (!normalized || normalized === raw.trim()) return response;
+
+  const headers = new Headers(response.headers);
+  headers.set("content-type", "text/plain; charset=utf-8");
+
+  return new Response(normalized, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
 
@@ -164,6 +194,7 @@ export async function fetchWithAuth(
     }
   }
 
+  res = await normalizeErrorResponseBody(res);
   await handleFinalUnauthorizedResponse(res, url, method);
   return res;
 }

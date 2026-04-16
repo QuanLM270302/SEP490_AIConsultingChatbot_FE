@@ -4,6 +4,7 @@ import { useRef, useState, FormEvent, KeyboardEvent, ClipboardEvent } from "reac
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { forgotPassword, verifyResetOtp, resetPasswordForgot } from "@/lib/api/auth";
+import { toUiErrorMessage } from "@/lib/api/parseApiError";
 import {
   getNewPasswordValidationMessage,
   PASSWORD_HINT_VI,
@@ -117,7 +118,7 @@ export default function ForgotPasswordPage() {
       window.setTimeout(() => setStep("otp"), 280);
     } catch (err) {
       flashPulse(setEmailPulse, "error", 700);
-      setError(err instanceof Error ? err.message : "Không gửi được OTP.");
+      setError(toUiErrorMessage(err, "Không gửi được OTP."));
     } finally {
       setLoading(false);
     }
@@ -142,7 +143,7 @@ export default function ForgotPasswordPage() {
       setStep("password");
     } catch (err) {
       flashPulse(setOtpPulse, "error", 700);
-      setError(err instanceof Error ? err.message : "OTP không hợp lệ hoặc đã hết hạn.");
+      setError(toUiErrorMessage(err, "OTP không hợp lệ hoặc đã hết hạn."));
     } finally {
       setLoading(false);
     }
@@ -181,7 +182,7 @@ export default function ForgotPasswordPage() {
       setStep("done");
     } catch (err) {
       flashPulse(setPasswordPulse, "error", 700);
-      setError(err instanceof Error ? err.message : "Không đổi được mật khẩu.");
+      setError(toUiErrorMessage(err, "Không đổi được mật khẩu."));
     } finally {
       setLoading(false);
     }
@@ -198,7 +199,7 @@ export default function ForgotPasswordPage() {
       flashPulse(setOtpPulse, "success", 600);
     } catch (err) {
       flashPulse(setOtpPulse, "error", 700);
-      setError(err instanceof Error ? err.message : "Không gửi lại được OTP.");
+      setError(toUiErrorMessage(err, "Không gửi lại được OTP."));
     } finally {
       setLoading(false);
     }

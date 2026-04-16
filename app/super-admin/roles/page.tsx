@@ -14,7 +14,7 @@ import {
 } from "@/lib/api/admin";
 import { Eye, Loader2, MoreVertical, Pencil, Plus, Search, Shield, Trash2 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
-import { useConfirmDialog } from "@/components/ui";
+import { ErrorNotice, useConfirmDialog } from "@/components/ui";
 
 export default function SuperAdminRolesPage() {
   const { language } = useLanguageStore();
@@ -160,7 +160,9 @@ export default function SuperAdminRolesPage() {
               <span className="text-sm text-zinc-500">{isEn ? "Loading..." : "Đang tải…"}</span>
             </div>
           ) : error ? (
-            <div className="p-6 text-sm text-red-600 dark:text-red-400">{error}</div>
+            <div className="p-6">
+              <ErrorNotice message={error} />
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">

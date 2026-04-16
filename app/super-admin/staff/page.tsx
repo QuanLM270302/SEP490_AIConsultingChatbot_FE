@@ -13,7 +13,7 @@ import {
 } from "@/lib/api/admin";
 import { UserPlus, MoreVertical, Eye, UserCheck, UserX, Trash2, Loader2, Search } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
-import { useConfirmDialog } from "@/components/ui";
+import { ErrorNotice, useConfirmDialog } from "@/components/ui";
 
 export default function StaffManagementPage() {
   const { language } = useLanguageStore();
@@ -187,7 +187,9 @@ export default function StaffManagementPage() {
               <span className="text-sm text-zinc-500">{isEn ? "Loading..." : "Đang tải…"}</span>
             </div>
           ) : error ? (
-            <div className="p-6 text-sm text-red-600 dark:text-red-400">{error}</div>
+            <div className="p-6">
+              <ErrorNotice message={error} />
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">

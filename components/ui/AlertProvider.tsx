@@ -3,6 +3,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { parseApiErrorMessage } from "@/lib/api/parseApiError";
+import { useLanguageStore } from "@/lib/language-store";
 
 type AlertTone = "error" | "success" | "info";
 
@@ -56,6 +58,18 @@ const toneStyles: Record<
 
 export function AlertProvider({ children }: { children: React.ReactNode }) {
   const [alertState, setAlertState] = useState<AlertState | null>(null);
+  const { language } = useLanguageStore();
+
+  const toneTitle = useMemo(() => {
+    const isEn = language === "en";
+    return {
+      error: isEn ? "Error" : "Có lỗi xảy ra",
+      success: isEn ? "Success" : "Thành công",
+      info: isEn ? "Notice" : "Thông báo",
+      ok: isEn ? "OK" : "Đóng",
+      close: isEn ? "Close notification" : "Đóng thông báo",
+    };
+  }, [language]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -67,10 +81,11 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
     window.alert = (message?: string) => {
       const normalizedMessage =
         typeof message === "string" ? message : String(message ?? "");
+      const parsedMessage = parseApiErrorMessage(normalizedMessage);
       setAlertState({
         id: Date.now(),
-        message: normalizedMessage,
-        tone: detectTone(normalizedMessage),
+        message: parsedMessage,
+        tone: detectTone(parsedMessage),
       });
     };
 
@@ -112,7 +127,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
             />
 
             <motion.div
-              className={`relative w-full max-w-md overflow-hidden rounded-2xl border border-white/20 bg-[#111827]/90 p-5 text-white shadow-2xl ring-1 ${toneMeta.ring}`}
+              className={`relative w-full max-w-md overflow-hidden rounded-2xl border border-zinc-200 bg-white p-5 text-zinc-900 shadow-2xl ring-1 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white ${toneMeta.ring}`}
               initial={{ opacity: 0, y: 18, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 14, scale: 0.98 }}
@@ -120,29 +135,35 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
             >
               <button
                 type="button"
-                className="absolute right-3 top-3 rounded-full p-1.5 text-gray-300 transition hover:bg-white/10 hover:text-white"
+                className="absolute right-3 top-3 rounded-full p-1.5 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white"
                 onClick={() => setAlertState(null)}
-                aria-label="Close notification"
+                aria-label={toneTitle.close}
               >
                 <X className="h-4 w-4" />
               </button>
 
               <div className="mb-3 flex items-center gap-2">
                 {toneMeta.icon}
-                <p className="text-sm font-semibold tracking-wide">{toneMeta.title}</p>
+                <p className="text-sm font-semibold tracking-wide">
+                  {alertState.tone === "error"
+                    ? toneTitle.error
+                    : alertState.tone === "success"
+                      ? toneTitle.success
+                      : toneTitle.info}
+                </p>
               </div>
 
-              <p className="text-sm leading-relaxed text-gray-100">
+              <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-100">
                 {alertState.message}
               </p>
 
               <div className="mt-5 flex justify-end">
                 <button
                   type="button"
-                  className="rounded-full border border-emerald-300/70 bg-emerald-300/20 px-6 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300/35"
+                  className="rounded-full border border-emerald-300/70 bg-emerald-500/10 px-6 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-500/20 dark:text-emerald-100 dark:hover:bg-emerald-400/25"
                   onClick={() => setAlertState(null)}
                 >
-                  OK
+                  {toneTitle.ok}
                 </button>
               </div>
             </motion.div>

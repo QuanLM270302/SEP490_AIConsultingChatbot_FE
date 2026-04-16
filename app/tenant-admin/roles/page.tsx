@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { AnimatePresence, motion } from "framer-motion";
 import { getPermissionLabel } from "@/lib/permission-labels";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
-import { AnimatedSegmentedControl, useConfirmDialog } from "@/components/ui";
+import { AnimatedSegmentedControl, ErrorNotice, useConfirmDialog } from "@/components/ui";
 import {
   createTenantRole,
   deleteTenantRole,
@@ -274,7 +274,9 @@ export default function TenantAdminRolesPage() {
                 <span className="text-sm text-zinc-500">{t.loading}…</span>
               </div>
             ) : error ? (
-              <div className="p-5 text-sm text-red-600 dark:text-red-400">{error}</div>
+              <div className="p-5">
+                <ErrorNotice message={error} />
+              </div>
             ) : (
               <div className="table-scroll-container">
                 <table className="min-w-176 table-auto text-left">

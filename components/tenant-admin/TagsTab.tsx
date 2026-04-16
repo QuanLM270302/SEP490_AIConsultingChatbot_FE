@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button, useConfirmDialog } from "@/components/ui";
+import { Button, ErrorNotice, useConfirmDialog } from "@/components/ui";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { listTagsManage, createTag, updateTag, deactivateTag, activateTag, deleteTag } from "@/lib/api/tags";
@@ -138,9 +138,7 @@ export function TagsTab() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-950/50 dark:text-red-200">
-          {error}
-        </div>
+        <ErrorNotice message={error} />
       )}
 
       <div className="flex justify-end">

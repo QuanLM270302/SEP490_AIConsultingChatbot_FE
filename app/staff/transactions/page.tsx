@@ -18,6 +18,8 @@ import {
   getTransactionById,
   type Transaction,
 } from "@/lib/api/staff";
+import { toUiErrorMessage } from "@/lib/api/parseApiError";
+import { ErrorNotice } from "@/components/ui";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
@@ -63,7 +65,12 @@ export default function StaffTransactionsPage() {
       setTransactions(data);
     } catch (e) {
       console.error("Failed to load transactions:", e);
-      setError(language === "en" ? "Failed to load transactions list" : "Không thể tải danh sách giao dịch");
+      setError(
+        toUiErrorMessage(
+          e,
+          language === "en" ? "Failed to load transactions list" : "Không thể tải danh sách giao dịch"
+        )
+      );
     } finally {
       setTransactionsLoading(false);
     }
@@ -77,7 +84,12 @@ export default function StaffTransactionsPage() {
       setSelectedTransaction(transaction);
     } catch (e) {
       console.error("Failed to load transaction details:", e);
-      setError(language === "en" ? "Failed to load transaction details" : "Không thể tải chi tiết giao dịch");
+      setError(
+        toUiErrorMessage(
+          e,
+          language === "en" ? "Failed to load transaction details" : "Không thể tải chi tiết giao dịch"
+        )
+      );
     }
   };
 
@@ -233,9 +245,7 @@ export default function StaffTransactionsPage() {
         )}
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-            {error}
-          </div>
+          <ErrorNotice message={error} />
         )}
       </div>
 

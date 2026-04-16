@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { MoreVertical } from "lucide-react";
+import { ErrorNotice } from "@/components/ui";
 import { getTenantRoles, type RoleResponse } from "@/lib/api/tenant-admin";
 
 export function RolesTable() {
@@ -27,7 +28,7 @@ export function RolesTable() {
   if (error) {
     return (
       <div className="overflow-hidden rounded-3xl bg-white p-8 shadow-lg dark:bg-zinc-950">
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <ErrorNotice message={error} />
       </div>
     );
   }

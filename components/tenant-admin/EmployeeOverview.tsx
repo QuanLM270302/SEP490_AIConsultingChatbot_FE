@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ErrorNotice } from "@/components/ui";
 import { getTenantAnalytics } from "@/lib/api/tenant-admin";
 import { isAuthExpiredErrorMessage } from "@/lib/auth-session-events";
 import { useLanguageStore } from "@/lib/language-store";
@@ -36,7 +37,7 @@ export function EmployeeOverview() {
     return (
       <div className="rounded-lg bg-white p-6 shadow dark:bg-zinc-900">
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t.employeeOverview}</h3>
-        <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+        <ErrorNotice message={error} className="mt-4" />
       </div>
     );
   }

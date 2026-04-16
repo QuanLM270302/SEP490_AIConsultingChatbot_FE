@@ -34,6 +34,8 @@ import {
   type Tenant,
   type TenantStatus,
 } from "@/lib/api/staff";
+import { toUiErrorMessage } from "@/lib/api/parseApiError";
+import { ErrorNotice } from "@/components/ui";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { requestStaffPortalStatsRefresh } from "@/lib/staff-portal-stats-refresh";
@@ -59,13 +61,8 @@ function isUnauthorizedError(error: unknown): boolean {
   return /(unauthorized|missing or invalid token|\b401\b)/i.test(message);
 }
 
-function getErrorMessage(error: unknown): string | null {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "object" && error !== null && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim().length > 0) return message;
-  }
-  return null;
+function getErrorMessage(error: unknown, fallback: string): string {
+  return toUiErrorMessage(error, fallback);
 }
 
 export default function StaffOrganizationsPage() {
@@ -114,7 +111,12 @@ export default function StaffOrganizationsPage() {
       setTenants(data);
     } catch (e) {
       console.error("Failed to load tenants:", e);
-      setError(language === "en" ? "Failed to load tenants list" : "Không thể tải danh sách tenant");
+      setError(
+        getErrorMessage(
+          e,
+          language === "en" ? "Failed to load tenants list" : "Không thể tải danh sách tenant"
+        )
+      );
     } finally {
       setTenantsLoading(false);
     }
@@ -162,7 +164,7 @@ export default function StaffOrganizationsPage() {
       await loadTenants();
       requestStaffPortalStatsRefresh();
     } catch (e: unknown) {
-      setError(getErrorMessage(e) || (language === "en" ? "Cannot approve tenant" : "Không thể phê duyệt tenant"));
+      setError(getErrorMessage(e, language === "en" ? "Cannot approve tenant" : "Không thể phê duyệt tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -180,7 +182,7 @@ export default function StaffOrganizationsPage() {
       setRejectTenantId(null);
       setRejectReason("");
     } catch (e: unknown) {
-      setError(getErrorMessage(e) || (language === "en" ? "Cannot reject tenant" : "Không thể từ chối tenant"));
+      setError(getErrorMessage(e, language === "en" ? "Cannot reject tenant" : "Không thể từ chối tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -194,7 +196,7 @@ export default function StaffOrganizationsPage() {
       await loadTenants();
       requestStaffPortalStatsRefresh();
     } catch (e: unknown) {
-      setError(getErrorMessage(e) || (language === "en" ? "Cannot suspend tenant" : "Không thể tạm ngưng tenant"));
+      setError(getErrorMessage(e, language === "en" ? "Cannot suspend tenant" : "Không thể tạm ngưng tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -207,7 +209,7 @@ export default function StaffOrganizationsPage() {
       await activateTenant(tenantId);
       await loadTenants();
     } catch (e: unknown) {
-      setError(getErrorMessage(e) || (language === "en" ? "Cannot reactivate tenant" : "Không thể kích hoạt lại tenant"));
+      setError(getErrorMessage(e, language === "en" ? "Cannot reactivate tenant" : "Không thể kích hoạt lại tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -224,7 +226,7 @@ export default function StaffOrganizationsPage() {
       setDeleteModalOpen(false);
       setDeleteTenantId(null);
     } catch (e: unknown) {
-      setError(getErrorMessage(e) || (language === "en" ? "Cannot delete tenant" : "Không thể xóa tenant"));
+      setError(getErrorMessage(e, language === "en" ? "Cannot delete tenant" : "Không thể xóa tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -402,9 +404,7 @@ export default function StaffOrganizationsPage() {
         )}
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-            {error}
-          </div>
+          <ErrorNotice message={error} />
         )}
       </div>
 
@@ -420,9 +420,7 @@ export default function StaffOrganizationsPage() {
             </p>
             
             {error && (
-              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-                {error}
-              </div>
+              <ErrorNotice message={error} className="mt-3" />
             )}
             
             <textarea
@@ -478,9 +476,7 @@ export default function StaffOrganizationsPage() {
             </p>
             
             {error && (
-              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-                {error}
-              </div>
+              <ErrorNotice message={error} className="mt-3" />
             )}
             
             <div className="mt-6 flex gap-3">

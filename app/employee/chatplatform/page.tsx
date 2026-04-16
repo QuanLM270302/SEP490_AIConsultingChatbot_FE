@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import type { Message } from "@/types/chat";
 import { AIBoxSidebar } from "@/components/chat/AIBoxSidebar";
 import { ChatHistorySidebar } from "@/components/chat/ChatHistorySidebar";
+import { ErrorNotice } from "@/components/ui";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, ThumbsUp, ThumbsDown, FileText, MessageSquare } from "lucide-react";
+import { toUiErrorMessage } from "@/lib/api/parseApiError";
 import { chat, chatbotHealth, getConversationHistory, rateMessage } from "@/lib/api/chatbot";
 
 export default function ChatPlatformPage() {
@@ -83,7 +85,7 @@ export default function ChatPlatformPage() {
       setMessages((prev) => [...prev, newMessage]);
       setCurrentQuestion("");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Không thể kết nối tới chatbot. Vui lòng thử lại.";
+      const message = toUiErrorMessage(err, "Không thể kết nối tới chatbot. Vui lòng thử lại.");
       setError(message);
       const fallbackMessage: Message = {
         id: userMessageId,
@@ -182,9 +184,7 @@ export default function ChatPlatformPage() {
           {/* ERROR MESSAGE */}
           {error && (
             <div className="mx-auto mb-4 w-full max-w-4xl">
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-                {error}
-              </div>
+              <ErrorNotice message={error} />
             </div>
           )}
 

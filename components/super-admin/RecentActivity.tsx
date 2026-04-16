@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Building2, Clock, Shield, UserPlus } from "lucide-react";
+import { ErrorNotice } from "@/components/ui";
 import { useLanguageStore } from "@/lib/language-store";
 import { fetchAdminRecentActivities, type RecentActivityItem } from "@/lib/api/admin-analytics";
 
@@ -42,7 +43,7 @@ export function RecentActivity() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = (cursor?: string) => {
+  const load = useCallback((cursor?: string) => {
     if (cursor) setLoadingMore(true);
     else setLoading(true);
     setError(null);
@@ -64,11 +65,14 @@ export function RecentActivity() {
         setLoading(false);
         setLoadingMore(false);
       });
-  };
+  }, [isEn]);
 
   useEffect(() => {
-    load();
-  }, [isEn]);
+    const frame = window.requestAnimationFrame(() => {
+      load();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [load]);
 
   return (
     <div className="rounded-3xl bg-white p-6 shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
@@ -82,8 +86,8 @@ export function RecentActivity() {
       </p>
 
       {error ? (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm dark:border-red-900/50 dark:bg-red-950/30">
-          <p className="font-medium text-red-700 dark:text-red-200">{error}</p>
+        <div className="mt-6">
+          <ErrorNotice message={error} />
           <button type="button" onClick={() => load()} className="mt-2 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700">
             {isEn ? "Retry" : "Thử lại"}
           </button>
