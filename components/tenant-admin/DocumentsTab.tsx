@@ -14,6 +14,8 @@ import {
   softDeleteDocument,
   restoreDocument,
   downloadDocument,
+  getDocumentDownloadUrl,
+  reindexDocument,
   type UploadDocumentParams,
   type DocumentPreviewResponse,
   type ListDocumentsParams,
@@ -201,6 +203,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   // Menu states
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [reindexing, setReindexing] = useState<Record<string, boolean>>({});
   
   // Search and filter states
   const [searchKeyword, setSearchKeyword] = useState<string>("");
@@ -617,24 +620,29 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
     setMenuPos(null);
     setError(null);
     try {
-      const response = await downloadDocument(id);
-      
-      // Create a blob from the response
-      const blob = new Blob([response.content], { type: response.contentType || 'application/octet-stream' });
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName || response.fileName || 'document';
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const response = await getDocumentDownloadUrl(id);
+      // Open pre-signed URL in new tab - browser will trigger download
+      window.open(response.url, "_blank");
     } catch (e) {
       setError(e instanceof Error ? e.message : isEn ? "Failed to download document" : "Không tải được tài liệu");
+    }
+  };
+
+  const handleReindex = async (id: string) => {
+    setOpenMenuId(null);
+    setMenuPos(null);
+    setError(null);
+    setReindexing((prev) => ({ ...prev, [id]: true }));
+    try {
+      await reindexDocument(id);
+      // Show success message
+      setError(null);
+      // Refresh document list to show updated status
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : isEn ? "Failed to reindex document" : "Không thể re-index tài liệu");
+    } finally {
+      setReindexing((prev) => ({ ...prev, [id]: false }));
     }
   };
 
@@ -1271,6 +1279,22 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
             >
               <Lock className="h-4 w-4" /> {isEn ? "Update access" : "Cập nhật quyền"}
             </button>
+            {(() => {
+              const doc = documents.find((d) => d.id === openMenuId);
+              const status = doc?.embeddingStatus?.toUpperCase();
+              const showReindex = status === "FAILED" || status === "COMPLETED";
+              return showReindex ? (
+                <button
+                  type="button"
+                  onClick={() => void handleReindex(openMenuId)}
+                  disabled={reindexing[openMenuId]}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  <RotateCcw className={`h-4 w-4 ${reindexing[openMenuId] ? "animate-spin" : ""}`} />
+                  {isEn ? "Re-index" : "Re-index lại"}
+                </button>
+              ) : null;
+            })()}
             <button
               type="button"
               onClick={() => {

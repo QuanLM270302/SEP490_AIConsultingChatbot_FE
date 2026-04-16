@@ -20,7 +20,9 @@ export default function ChatPlatformPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [healthStatus, setHealthStatus] = useState<'healthy' | 'error' | 'checking'>('checking');
-  const [showHealthToast, setShowHealthToast] = useState(false);
+
+  const INPUT_CHAR_LIMIT = 500;
+  const INPUT_WARNING_THRESHOLD = 450;
 
   // Check chatbot health on mount and periodically
   useEffect(() => {
@@ -28,11 +30,8 @@ export default function ChatPlatformPage() {
       try {
         await chatbotHealth();
         setHealthStatus('healthy');
-        setShowHealthToast(false);
-      } catch (err) {
+      } catch {
         setHealthStatus('error');
-        setShowHealthToast(true);
-        setTimeout(() => setShowHealthToast(false), 5000);
       }
     };
 
@@ -54,7 +53,6 @@ export default function ChatPlatformPage() {
       const response = await chat({
         message: question,
         conversationId: conversationId ?? undefined,
-        topK: 5,
       });
 
       console.log("API Response:", response);
@@ -85,12 +83,30 @@ export default function ChatPlatformPage() {
       setMessages((prev) => [...prev, newMessage]);
       setCurrentQuestion("");
     } catch (err) {
-      const message = toUiErrorMessage(err, "Không thể kết nối tới chatbot. Vui lòng thử lại.");
-      setError(message);
+      let errorMessage = "Không thể kết nối tới chatbot. Vui lòng thử lại.";
+      
+      if (err instanceof Error) {
+        const message = err.message.toLowerCase();
+        
+        // Check for 429 (daily limit)
+        if (message.includes("429") || message.includes("giới hạn")) {
+          errorMessage = "Bạn đã đạt giới hạn tin nhắn hôm nay. Vui lòng thử lại vào ngày mai.";
+        }
+        // Check for message too long
+        else if (message.includes("quá dài") || message.includes("too long")) {
+          errorMessage = "Tin nhắn quá dài. Vui lòng rút ngắn nội dung dưới 500 ký tự.";
+        }
+        // Use original error message if available
+        else if (err.message) {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
       const fallbackMessage: Message = {
         id: userMessageId,
         question,
-        answer: `**Lỗi:** ${message}\n\nKiểm tra kết nối mạng hoặc liên hệ quản trị viên nếu lỗi tiếp tục.`,
+        answer: `**Lỗi:** ${errorMessage}\n\nKiểm tra kết nối mạng hoặc liên hệ quản trị viên nếu lỗi tiếp tục.`,
         references: [],
         timestamp: new Date(),
         rating: null,
@@ -304,11 +320,12 @@ export default function ChatPlatformPage() {
                   onChange={(e) => setCurrentQuestion(e.target.value)}
                   placeholder="Ask anything about your company..."
                   disabled={isLoading}
+                  maxLength={INPUT_CHAR_LIMIT}
                   className="flex-1 bg-transparent text-sm text-zinc-900 placeholder-zinc-400 outline-none disabled:opacity-50 dark:text-zinc-50 dark:placeholder-zinc-500"
                 />
                 <button
                   type="submit"
-                  disabled={isLoading || !currentQuestion.trim()}
+                  disabled={isLoading || !currentQuestion.trim() || currentQuestion.length > INPUT_CHAR_LIMIT}
                   className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600 disabled:opacity-50"
                 >
                   {isLoading ? (
@@ -318,10 +335,21 @@ export default function ChatPlatformPage() {
                   )}
                 </button>
               </div>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  AI may produce incorrect answers. Verify critical information.
+                </p>
+                <span
+                  className={`text-xs ${
+                    currentQuestion.length > INPUT_WARNING_THRESHOLD
+                      ? "text-red-500 dark:text-red-400"
+                      : "text-zinc-500 dark:text-zinc-400"
+                  }`}
+                >
+                  {currentQuestion.length}/{INPUT_CHAR_LIMIT}
+                </span>
+              </div>
             </form>
-            <p className="mt-2 text-center text-[11px] text-zinc-500 dark:text-zinc-400">
-              AI may produce incorrect answers. Verify critical information.
-            </p>
           </div>
         </div>
       </div>

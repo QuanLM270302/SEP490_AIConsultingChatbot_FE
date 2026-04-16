@@ -14,6 +14,7 @@ import {
   FileText,
   BarChart3,
   CreditCard,
+  ClipboardList,
   X,
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
@@ -60,6 +61,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
     { name: t.documents, href: "/tenant-admin/documents", icon: FileText },
     { name: "AI Chatbot", href: "/chatbot", icon: Bot },
     { name: t.analytics, href: "/tenant-admin/analytics", icon: BarChart3 },
+    { name: t.auditLogs, href: "/tenant-admin/audit-logs", icon: ClipboardList },
     { name: t.subscription, href: "/tenant-admin/subscription", icon: CreditCard },
   ];
 

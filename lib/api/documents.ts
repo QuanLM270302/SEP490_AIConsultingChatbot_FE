@@ -510,6 +510,18 @@ export async function downloadDocument(id: string): Promise<DownloadFileResponse
   };
 }
 
+export async function getDocumentDownloadUrl(id: string): Promise<{ url: string; expiresInMinutes: string }> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/url`);
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to get download URL"));
+  return res.json();
+}
+
+export async function reindexDocument(id: string): Promise<{ message: string; documentId: string; status: string }> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/reindex`, { method: "POST" });
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to reindex document"));
+  return res.json();
+}
+
 export async function getDocumentVersionPreview(
   documentId: string,
   versionId: string

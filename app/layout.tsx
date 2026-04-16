@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { AuthSessionExpiredPopup } from "@/components/auth/AuthSessionExpiredPopup";
+import { SubscriptionExpiredModal } from "@/components/subscription/SubscriptionExpiredModal";
 import { AlertProvider } from "@/components/ui/AlertProvider";
 import { ThemeRouteSync } from "@/components/theme/ThemeRouteSync";
 import "./globals.css";
@@ -56,6 +57,7 @@ export default function RootLayout({
         <AlertProvider>
           <ThemeRouteSync />
           <AuthSessionExpiredPopup />
+          <SubscriptionExpiredModal />
           <AuthGuard>{children}</AuthGuard>
         </AlertProvider>
       </body>

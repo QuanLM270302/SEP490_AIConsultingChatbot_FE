@@ -373,7 +373,7 @@ export default function TenantAdminSubscriptionPage() {
                 {plansError && (
                   <p className="mb-3 text-xs text-red-600 dark:text-red-400">{plansError}</p>
                 )}
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                   {planCards.map((tier) => {
                     const isPressing = pressedTier === tier;
                     const isPopular = tier === POPULAR_TIER;
