@@ -48,7 +48,7 @@ function PreviewPlainText({ text }: { text: string }) {
   return (
     <div className="flex flex-col gap-0">
       {lines.map((line, i) => (
-        <div key={i} className="min-h-[1.5em] whitespace-pre-wrap break-words">
+        <div key={i} className="min-h-[1.5em] whitespace-pre-wrap wrap-break-word">
           {line.length === 0 ? "\u00a0" : line}
         </div>
       ))}
@@ -69,17 +69,17 @@ function DocumentReadablePanel({
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-800/90 bg-gradient-to-b from-zinc-900/95 to-zinc-950 shadow-inner ring-1 ring-white/[0.06]",
+        "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-linear-to-b from-white to-zinc-50 shadow-inner ring-1 ring-black/3 dark:border-zinc-800/90 dark:from-zinc-900/95 dark:to-zinc-950 dark:ring-white/6",
         className
       )}
     >
       {label ? (
-        <div className="shrink-0 border-b border-zinc-800/80 px-5 pb-3 pt-4 sm:px-6 sm:pt-5">
+        <div className="shrink-0 border-b border-zinc-200 px-5 pb-3 pt-4 sm:px-6 sm:pt-5 dark:border-zinc-800/80">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400/95">{label}</p>
         </div>
       ) : null}
       <div className="scrollbar-chat-hidden min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
-        <div className="select-text text-[15px] leading-[1.75] text-zinc-100 antialiased">{children}</div>
+        <div className="select-text text-[15px] leading-[1.75] text-zinc-700 antialiased dark:text-zinc-100">{children}</div>
       </div>
     </div>
   );
@@ -703,7 +703,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                   : "Lọc theo tiêu đề hoặc thẻ — chọn thẻ để xem trước."
               }
             >
-              <h1 className="shrink-0 text-lg font-semibold tracking-tight text-white sm:text-xl">
+              <h1 className="shrink-0 text-lg font-semibold tracking-tight text-zinc-900 sm:text-xl dark:text-white">
                 {language === "en" ? "Document search" : "Tìm kiếm tài liệu"}
               </h1>
               <p className="shrink-0 whitespace-nowrap text-xs leading-normal text-zinc-500 sm:text-[13px]">
@@ -819,10 +819,10 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                   key={doc.id}
                   type="button"
                   onClick={() => setSelected(doc)}
-                  className={`flex min-h-[11.5rem] flex-col rounded-2xl border p-4 text-left shadow-md transition-all duration-200 sm:min-h-[12rem] ${
+                  className={`flex min-h-46 flex-col rounded-2xl border p-4 text-left shadow-md transition-all duration-200 sm:min-h-48 ${
                     active
-                      ? "border-emerald-500/70 bg-emerald-950/35 ring-1 ring-emerald-500/40"
-                      : "border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-zinc-950 hover:-translate-y-0.5 hover:border-emerald-500/40 hover:shadow-emerald-900/20"
+                      ? "border-emerald-500/70 bg-emerald-50 ring-1 ring-emerald-500/30 dark:bg-emerald-950/35 dark:ring-emerald-500/40"
+                      : "border-zinc-200 bg-linear-to-b from-white to-zinc-50 hover:-translate-y-0.5 hover:border-emerald-500/40 hover:shadow-emerald-500/10 dark:border-white/8 dark:from-zinc-900/90 dark:to-zinc-950 dark:hover:shadow-emerald-900/20"
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -830,17 +830,17 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                       <FileText className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-white">
+                      <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-white">
                         <HighlightMatches text={title} query={query} />
                       </h3>
-                      <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-zinc-500">
+                      <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
                         <HighlightMatches text={descLine} query={query} />
                       </p>
                     </div>
                   </div>
-                  <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-white/[0.06] pt-3 text-[11px] text-zinc-500">
-                    <span className="inline-flex items-center gap-1 text-zinc-400">
-                      <Calendar className="h-3 w-3 shrink-0 text-zinc-500" />
+                  <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-zinc-200 pt-3 text-[11px] text-zinc-500 dark:border-white/6 dark:text-zinc-500">
+                    <span className="inline-flex items-center gap-1 text-zinc-500 dark:text-zinc-400">
+                      <Calendar className="h-3 w-3 shrink-0 text-zinc-400 dark:text-zinc-500" />
                       {new Date(doc.uploadedAt).toLocaleDateString(language === "vi" ? "vi-VN" : "en-US")}
                     </span>
                     {doc.tags?.length ? (
@@ -848,7 +848,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                         {doc.tags.slice(0, 2).map((tag) => (
                           <span
                             key={tag.id}
-                            className="inline-flex max-w-[7rem] items-center gap-0.5 truncate rounded-full bg-zinc-800/90 px-2 py-0.5 text-zinc-300"
+                            className="inline-flex max-w-28 items-center gap-0.5 truncate rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-600 dark:bg-zinc-800/90 dark:text-zinc-300"
                           >
                             <Tag className="h-2.5 w-2.5 shrink-0" />
                             <span className="truncate">
@@ -870,19 +870,19 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         ? createPortal(
             (
               <div
-                className="fixed inset-0 z-[110] overflow-y-auto overflow-x-hidden bg-black/50 backdrop-blur-[2px] dark:bg-black/65"
+                className="fixed inset-0 z-110 overflow-y-auto overflow-x-hidden bg-black/50 backdrop-blur-[2px] dark:bg-black/65"
                 role="dialog"
                 aria-modal
                 onClick={() => setSelected(null)}
               >
           <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
             <div
-              className="my-4 flex max-h-[min(92dvh,calc(100dvh-2rem))] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-300 bg-white shadow-2xl ring-1 ring-black/5 dark:border-zinc-700/80 dark:bg-zinc-900 dark:shadow-black/50 dark:ring-white/[0.06] lg:max-h-[min(88dvh,calc(100dvh-2.5rem))] lg:flex-row"
+              className="my-4 flex max-h-[min(92dvh,calc(100dvh-2rem))] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-300 bg-white shadow-2xl ring-1 ring-black/5 dark:border-zinc-700/80 dark:bg-zinc-900 dark:shadow-black/50 dark:ring-white/6 lg:max-h-[min(88dvh,calc(100dvh-2.5rem))] lg:flex-row"
               onClick={(e) => e.stopPropagation()}
               aria-labelledby="document-detail-title"
             >
-            <div className="flex min-h-0 w-full min-w-0 flex-col border-b border-zinc-800/90 lg:w-[min(100%,26rem)] lg:max-w-md lg:shrink-0 lg:border-b-0 lg:border-r lg:border-zinc-800/90">
-              <div className="relative shrink-0 bg-gradient-to-br from-emerald-950/55 via-zinc-900/95 to-zinc-950 px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
+            <div className="flex min-h-0 w-full min-w-0 flex-col border-b border-zinc-200 lg:w-[min(100%,26rem)] lg:max-w-md lg:shrink-0 lg:border-b-0 lg:border-r lg:border-zinc-200 dark:border-zinc-800/90 dark:lg:border-zinc-800/90">
+              <div className="relative shrink-0 bg-linear-to-br from-emerald-50 via-white to-zinc-50 px-4 pb-4 pt-4 dark:from-emerald-950/55 dark:via-zinc-900/95 dark:to-zinc-950 sm:px-6 sm:pb-5 sm:pt-5">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_0%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
                 <button
                   type="button"
@@ -893,7 +893,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                   {t.backToList}
                 </button>
                 <div className="relative flex gap-3.5 pr-4 sm:gap-4 sm:pr-6">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/[0.12] ring-1 ring-emerald-500/25 shadow-inner shadow-emerald-950/40 sm:size-14">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/12 ring-1 ring-emerald-500/25 shadow-inner shadow-emerald-950/40 sm:size-14">
                     <FileText className="h-6 w-6 text-emerald-400 sm:h-7 sm:w-7" />
                   </div>
                   <div className="min-w-0 flex-1 pt-0.5">
@@ -903,17 +903,17 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     {detailLoading ? (
                       <h2
                         id="document-detail-title"
-                        className="mt-1 flex items-center gap-2 text-base font-semibold leading-snug text-white sm:text-lg"
+                        className="mt-1 flex items-center gap-2 text-base font-semibold leading-snug text-zinc-900 dark:text-white sm:text-lg"
                       >
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-emerald-400" />
-                        <span className="truncate text-zinc-300">
+                        <span className="truncate text-zinc-500 dark:text-zinc-300">
                           {selected.documentTitle || selected.originalFileName}
                         </span>
                       </h2>
                     ) : (
                       <h2
                         id="document-detail-title"
-                        className="mt-1 text-base font-semibold leading-snug text-white sm:text-lg"
+                        className="mt-1 text-base font-semibold leading-snug text-zinc-900 dark:text-white sm:text-lg"
                       >
                         {displayDoc?.documentTitle || displayDoc?.originalFileName}
                       </h2>
@@ -921,13 +921,13 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     {displayDoc?.documentTitle &&
                     displayDoc.originalFileName &&
                     displayDoc.documentTitle !== displayDoc.originalFileName ? (
-                      <p className="mt-1.5 truncate text-xs text-zinc-500" title={displayDoc.originalFileName}>
-                        <span className="text-zinc-600">{t.originalFile}</span>{" "}
+                      <p className="mt-1.5 truncate text-xs text-zinc-500 dark:text-zinc-500" title={displayDoc.originalFileName}>
+                        <span className="text-zinc-600 dark:text-zinc-600">{t.originalFile}</span>{" "}
                         {displayDoc.originalFileName}
                       </p>
                     ) : null}
-                    <p className="mt-2 flex items-center gap-1.5 text-xs text-zinc-500">
-                      <Calendar className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
+                    <p className="mt-2 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-500">
+                      <Calendar className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-600" />
                       {new Date(displayDoc?.uploadedAt ?? selected.uploadedAt).toLocaleDateString(
                         language === "vi" ? "vi-VN" : "en-US",
                         { day: "numeric", month: "short", year: "numeric" }
@@ -939,49 +939,49 @@ export function SearchView({ initialQuery }: SearchViewProps) {
 
               <div className="scrollbar-chat-hidden flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
                 <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/[0.06] dark:bg-zinc-950/50">
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/6 dark:bg-zinc-950/50">
                     <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                       <FileType className="h-3 w-3 text-emerald-600 dark:text-emerald-500/80" aria-hidden />
                       {t.metaType}
                     </div>
-                    <p className="mt-1.5 truncate text-sm font-medium text-zinc-100" title={displayDoc?.fileType}>
+                    <p className="mt-1.5 truncate text-sm font-medium text-zinc-900 dark:text-zinc-100" title={displayDoc?.fileType}>
                       {(displayDoc?.fileType ?? "—").toUpperCase()}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/[0.06] dark:bg-zinc-950/50">
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/6 dark:bg-zinc-950/50">
                     <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                       <HardDrive className="h-3 w-3 text-emerald-600 dark:text-emerald-500/80" aria-hidden />
                       {t.metaSize}
                     </div>
-                    <p className="mt-1.5 text-sm font-medium text-zinc-100">
+                    <p className="mt-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                       {displayDoc != null ? formatFileSize(displayDoc.fileSize) : "—"}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/[0.06] dark:bg-zinc-950/50">
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/6 dark:bg-zinc-950/50">
                     <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                       <Shield className="h-3 w-3 text-emerald-600 dark:text-emerald-500/80" aria-hidden />
                       {t.metaVisibility}
                     </div>
-                    <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-zinc-100">
+                    <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-zinc-900 dark:text-zinc-100">
                       {visibilityLabel(displayDoc?.visibility, language === "en")}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/[0.06] dark:bg-zinc-950/50">
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/6 dark:bg-zinc-950/50">
                     <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                       <Sparkles className="h-3 w-3 text-emerald-600 dark:text-emerald-500/80" aria-hidden />
                       {t.metaEmbedding}
                     </div>
-                    <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-zinc-100">
+                    <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-zinc-900 dark:text-zinc-100">
                       {embeddingLabel(displayDoc?.embeddingStatus, language === "en")}
                     </p>
                   </div>
                   {displayDoc?.chunkCount != null ? (
-                    <div className="col-span-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/[0.06] dark:bg-zinc-950/50">
+                    <div className="col-span-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 shadow-inner dark:border-white/6 dark:bg-zinc-950/50">
                       <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                         <Layers className="h-3 w-3 text-emerald-600 dark:text-emerald-500/80" aria-hidden />
                         {t.metaChunks}
                       </div>
-                      <p className="mt-1.5 text-sm font-medium tabular-nums text-zinc-100">
+                      <p className="mt-1.5 text-sm font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
                         {displayDoc.chunkCount.toLocaleString(language === "vi" ? "vi-VN" : "en-US")}
                       </p>
                     </div>
@@ -997,7 +997,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                       {displayDoc.tags.map((tag) => (
                         <span
                           key={tag.id}
-                          className="inline-flex max-w-full items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/[0.08] px-2.5 py-1 text-xs font-medium text-emerald-100/95"
+                          className="inline-flex max-w-full items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/8 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-100/95"
                         >
                           <Tag className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
                           <span className="truncate">{tag.name}</span>
@@ -1012,7 +1012,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     <h3 className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                       {t.aboutDoc}
                     </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">{displayDoc.description}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{displayDoc.description}</p>
                   </section>
                 ) : null}
 
@@ -1021,7 +1021,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     type="button"
                     disabled={actionLoading}
                     onClick={() => void handleDownload(displayDoc ?? selected)}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 disabled:opacity-50 sm:min-w-[8rem]"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-500 disabled:opacity-50 sm:min-w-32"
                   >
                     {actionLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1033,7 +1033,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                   <button
                     type="button"
                     onClick={() => void toggleVersions()}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-600/90 bg-zinc-800/40 px-4 py-2.5 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800 sm:min-w-[8rem]"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600/90 dark:bg-zinc-800/40 dark:text-zinc-100 dark:hover:border-zinc-500 dark:hover:bg-zinc-800 sm:min-w-32"
                   >
                     <History className="h-4 w-4 shrink-0 text-zinc-400" />
                     {t.versions}
@@ -1041,7 +1041,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                 </div>
 
                 {actionError ? (
-                  <p className="text-xs leading-relaxed text-amber-300">{actionError}</p>
+                  <p className="text-xs leading-relaxed text-amber-600 dark:text-amber-300">{actionError}</p>
                 ) : null}
 
                 {versionsOpen ? (
@@ -1054,7 +1054,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                         <button
                           type="button"
                           onClick={() => void loadPreview(selected.id, null)}
-                          className="rounded-md border border-zinc-700 px-2 py-1 text-[11px] font-medium text-zinc-300 hover:bg-zinc-800"
+                          className="rounded-md border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                         >
                           {t.previewCurrent}
                         </button>
@@ -1076,10 +1076,10 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                                 className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 ${
                                   previewing
                                     ? "border-emerald-500/45 bg-emerald-50 dark:bg-emerald-950/20"
-                                    : "border-zinc-200 bg-white dark:border-white/[0.04] dark:bg-zinc-900/80"
+                                    : "border-zinc-200 bg-white dark:border-white/4 dark:bg-zinc-900/80"
                                 }`}
                               >
-                                <span className="text-xs font-medium text-zinc-200">
+                                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
                                   v{v.versionNumber}
                                   {active ? (
                                     <CheckCircle2
@@ -1101,7 +1101,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                                     type="button"
                                     disabled={actionLoading}
                                     onClick={() => void handleDownload(selected, v.versionId)}
-                                    className="shrink-0 rounded-lg border border-emerald-500/30 bg-emerald-600/15 px-2.5 py-1 text-[11px] font-medium text-emerald-300 hover:bg-emerald-600/25 disabled:pointer-events-none disabled:opacity-40"
+                                    className="shrink-0 rounded-lg border border-emerald-500/30 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 disabled:pointer-events-none disabled:opacity-40 dark:bg-emerald-600/15 dark:text-emerald-300 dark:hover:bg-emerald-600/25"
                                   >
                                     {t.downloadVersionAction}
                                   </button>
@@ -1109,7 +1109,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                                     type="button"
                                     disabled={actionLoading || active || !canSetRagActive}
                                     onClick={() => void handleSetRag(selected.id, v.versionId)}
-                                    className="shrink-0 rounded-lg bg-emerald-600/20 px-2.5 py-1 text-[11px] font-medium text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-600/30 disabled:pointer-events-none disabled:opacity-40"
+                                    className="shrink-0 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-500/20 hover:bg-emerald-100 disabled:pointer-events-none disabled:opacity-40 dark:bg-emerald-600/20 dark:text-emerald-300 dark:ring-emerald-500/30 dark:hover:bg-emerald-600/30"
                                   >
                                     {t.setRag}
                                   </button>
@@ -1140,12 +1140,12 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                   </span>
                   {t.preview}
                   {previewVersionId ? (
-                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                       {t.previewVersionBadge}
                     </span>
                   ) : null}
                 </h3>
-                <span className="shrink-0 rounded-full bg-zinc-800/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800/90 dark:text-zinc-400">
                   {previewLoading
                     ? "…"
                     : previewError
@@ -1166,8 +1166,8 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                     <p className="text-xs text-zinc-500">{t.loading}</p>
                   </div>
                 ) : previewError ? (
-                  <div className="rounded-2xl border border-amber-500/25 bg-amber-950/25 px-4 py-5 text-center">
-                    <p className="text-sm leading-relaxed text-amber-100/90">{previewError}</p>
+                  <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-5 text-center dark:border-amber-500/25 dark:bg-amber-950/25">
+                    <p className="text-sm leading-relaxed text-amber-700 dark:text-amber-100/90">{previewError}</p>
                     <button
                       type="button"
                       disabled={actionLoading}
@@ -1192,7 +1192,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                         href={preview.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-3 inline-block text-[13px] font-medium text-emerald-400/95 underline-offset-2 hover:text-emerald-300 hover:underline"
+                        className="mt-3 inline-block text-[13px] font-medium text-emerald-600 underline-offset-2 hover:text-emerald-500 hover:underline dark:text-emerald-400/95 dark:hover:text-emerald-300"
                       >
                         {t.pdfOpenNewTab}
                       </a>
