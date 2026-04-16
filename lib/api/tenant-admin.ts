@@ -173,6 +173,16 @@ export async function getTenantAnalytics(): Promise<TenantAnalyticsResponse> {
   return res.json();
 }
 
+function normalizeUserList(data: unknown): UserResponse[] {
+  if (Array.isArray(data)) return data as UserResponse[];
+  if (data && typeof data === "object") {
+    const o = data as Record<string, unknown>;
+    const inner = o.content ?? o.data;
+    if (Array.isArray(inner)) return inner as UserResponse[];
+  }
+  return [];
+}
+
 /** `status`: ACTIVE (default) | INACTIVE | ALL. `roleId`: lọc user theo role (optional). */
 export async function getTenantUsers(
   status: string = "ACTIVE",
@@ -184,7 +194,8 @@ export async function getTenantUsers(
   }
   const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/users?${params.toString()}`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load users"));
-  return res.json();
+  const raw: unknown = await res.json();
+  return normalizeUserList(raw);
 }
 
 export async function getTenantDepartments(): Promise<DepartmentResponse[]> {
