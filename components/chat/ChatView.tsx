@@ -366,10 +366,21 @@ export function ChatView({
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600">
                         <Sparkles className="h-4 w-4 text-white" />
                       </div>
-                      <div className="flex items-center gap-1 pt-2">
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" />
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                          {isEn ? "AI Assistant" : "Trợ lý AI"}
+                        </div>
+                        <div className="inline-flex min-w-60 max-w-md flex-col gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+                          <div className="flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                            <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                            {isEn ? "Generating answer..." : "Đang tạo câu trả lời..."}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="h-2.5 w-full animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+                            <div className="h-2.5 w-11/12 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+                            <div className="h-2.5 w-8/12 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : null}
@@ -413,9 +424,9 @@ export function ChatView({
                 </form>
                 <div className="mt-2 flex min-h-[18px] items-center justify-between gap-3">
                   {conversationId ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                      <span>🧠</span>
-                      <span>{isEn ? "Conversation memory active" : "Đang nhớ hội thoại"}</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                      <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span>{isEn ? "Memory active" : "Đã bật bộ nhớ hội thoại"}</span>
                     </span>
                   ) : (
                     <span className="text-xs text-transparent">memory</span>
@@ -439,8 +450,8 @@ export function ChatView({
             </div>
           </div>
 
-          <aside className="sticky top-6 hidden w-[28rem] shrink-0 space-y-4 xl:block">
-            <div className="rounded-2xl border border-zinc-200 bg-gradient-to-b from-zinc-50 to-white p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-950">
+          <aside className="sticky top-6 hidden w-md shrink-0 space-y-4 xl:block">
+            <div className="rounded-2xl border border-zinc-200 bg-linear-to-b from-zinc-50 to-white p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-950">
               <div className="mb-3 flex items-center gap-2 text-zinc-900 dark:text-white">
                 <FileText className="h-5 w-5 text-emerald-600" />
                 <h3 className="text-sm font-semibold">
@@ -479,7 +490,7 @@ export function ChatView({
               )}
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-gradient-to-b from-emerald-50/80 to-white p-5 shadow-sm dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-950">
+            <div className="rounded-2xl border border-zinc-200 bg-linear-to-b from-emerald-50/80 to-white p-5 shadow-sm dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-950">
               <div className="mb-3 flex items-center gap-2 text-zinc-900 dark:text-white">
                 <Lightbulb className="h-5 w-5 text-emerald-600" />
                 <h3 className="text-sm font-semibold">{isEn ? "Tips" : "Gợi ý"}</h3>
