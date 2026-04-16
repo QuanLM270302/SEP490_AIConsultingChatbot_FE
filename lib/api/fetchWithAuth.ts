@@ -186,6 +186,24 @@ export async function fetchWithAuth(
   let token = getAccessToken();
   let res = await doFetch(token, "initial");
 
+  // Check for session invalidation (tokenVersion mismatch)
+  if (res.status === 401) {
+    const cloned = res.clone();
+    try {
+      const data = await cloned.json();
+      if (data?.error?.includes("Session expired") ||
+          data?.message?.includes("Session expired")) {
+        clearAuth();
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+        return res;
+      }
+    } catch {
+      // not JSON, continue normal flow
+    }
+  }
+
   /** Access missing/expired but refresh exists — recover once (same as AuthGuard). */
   if (res.status === 401 && getRefreshToken()) {
     const ok = await refreshAuth();
