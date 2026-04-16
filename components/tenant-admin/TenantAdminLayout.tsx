@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AcademicCapIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { OnboardingModal } from "@/components/employee/OnboardingModal";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   getMyOnboarding,
   markMyOnboardingModuleCompleted,
@@ -280,7 +281,17 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
             </div>
           )}
 
-          {children}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
 

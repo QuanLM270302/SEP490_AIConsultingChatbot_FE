@@ -13,6 +13,7 @@ import {
   updateDocumentAccess,
   softDeleteDocument,
   restoreDocument,
+  downloadDocument,
   type UploadDocumentParams,
   type DocumentPreviewResponse,
   type ListDocumentsParams,
@@ -30,6 +31,7 @@ import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/know
 import { getTenantActiveDepartments, getTenantRoles, type DepartmentResponse, type RoleResponse } from "@/lib/api/tenant-admin";
 import {
   Upload,
+  Download,
   Trash2,
   RotateCcw,
   Lock,
@@ -46,6 +48,7 @@ import {
   CircleCheckBig,
   CircleAlert,
   Cpu,
+  MoreVertical,
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
@@ -194,6 +197,10 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   const [embeddingProgress, setEmbeddingProgress] = useState(10);
   const [embeddingCompletedAtByDocId, setEmbeddingCompletedAtByDocId] = useState<Record<string, string>>({});
   const previousEmbeddingStateRef = useRef<Record<string, EmbeddingState>>({});
+  
+  // Menu states
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   
   // Search and filter states
   const [searchKeyword, setSearchKeyword] = useState<string>("");
@@ -479,6 +486,20 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   }, [embeddingModalOpen, embeddingTrackDocId, embeddingTrackStatus, load]);
 
   useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [openMenuId]);
+
+  useEffect(() => {
     if (!embeddingModalOpen) return;
     const target = mapStatusToTargetProgress(embeddingTrackStatus);
     if (embeddingProgress >= target) return;
@@ -576,6 +597,8 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   };
 
   const handleViewDetail = async (id: string) => {
+    setOpenMenuId(null);
+    setMenuPos(null);
     setDetailLoading(true);
     setError(null);
     try {
@@ -587,6 +610,49 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
     } finally {
       setDetailLoading(false);
     }
+  };
+
+  const handleDownload = async (id: string, fileName: string) => {
+    setOpenMenuId(null);
+    setMenuPos(null);
+    setError(null);
+    try {
+      const response = await downloadDocument(id);
+      
+      // Create a blob from the response
+      const blob = new Blob([response.content], { type: response.contentType || 'application/octet-stream' });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName || response.fileName || 'document';
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : isEn ? "Failed to download document" : "Không tải được tài liệu");
+    }
+  };
+
+  const toggleMenu = (docId: string, anchor: HTMLElement) => {
+    if (openMenuId === docId) {
+      setOpenMenuId(null);
+      setMenuPos(null);
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const menuWidth = 208;
+    const margin = 12;
+    const left = Math.min(
+      Math.max(rect.right - menuWidth, margin),
+      window.innerWidth - margin - menuWidth
+    );
+    setMenuPos({ top: rect.bottom + 6, left });
+    setOpenMenuId(docId);
   };
 
   const formatFileSize = (bytes?: number | null): string => {
@@ -1120,47 +1186,14 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end gap-1">
+                  <td className="relative px-6 py-4">
+                    <div className="flex justify-end">
                       <button
                         type="button"
-                        onClick={() => void handleViewDetail(doc.id)}
-                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                        title={isEn ? "View details" : "Xem chi tiết"}
+                        onClick={(e) => toggleMenu(doc.id, e.currentTarget)}
+                        className="rounded-full p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-500 dark:hover:bg-zinc-800"
                       >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => loadVersions(doc.id)}
-                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                        title={isEn ? "Version history" : "Lịch sử phiên bản"}
-                      >
-                        <History className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAccessDoc(doc)}
-                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                        title={isEn ? "Update access" : "Cập nhật quyền truy cập"}
-                      >
-                        <Lock className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewVersionDocId(doc.id)}
-                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                        title={isEn ? "Upload new version" : "Tải lên phiên bản mới"}
-                      >
-                        <Upload className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSoftDelete(doc.id)}
-                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
-                        title={isEn ? "Soft delete" : "Xóa mềm"}
-                      >
-                        <Trash2 className="h-4 w-4" />
+                        <MoreVertical className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
@@ -1182,6 +1215,82 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
             </div>
           )}
         </div>
+      )}
+      
+      {/* Dropdown Menu */}
+      {openMenuId && menuPos && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => {
+              setOpenMenuId(null);
+              setMenuPos(null);
+            }}
+          />
+          <div
+            className="fixed z-50 w-52 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <button
+              type="button"
+              onClick={() => void handleViewDetail(openMenuId)}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Eye className="h-4 w-4" /> {isEn ? "View details" : "Xem chi tiết"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const doc = documents.find((d) => d.id === openMenuId);
+                if (doc) void handleDownload(openMenuId, doc.name);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Download className="h-4 w-4" /> {isEn ? "Download" : "Tải xuống"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpenMenuId(null);
+                setMenuPos(null);
+                loadVersions(openMenuId);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <History className="h-4 w-4" /> {isEn ? "Version history" : "Lịch sử phiên bản"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const doc = documents.find((d) => d.id === openMenuId);
+                setOpenMenuId(null);
+                setMenuPos(null);
+                if (doc) setAccessDoc(doc);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Lock className="h-4 w-4" /> {isEn ? "Update access" : "Cập nhật quyền"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpenMenuId(null);
+                setMenuPos(null);
+                setNewVersionDocId(openMenuId);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <Upload className="h-4 w-4" /> {isEn ? "Upload new version" : "Tải phiên bản mới"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSoftDelete(openMenuId)}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+            >
+              <Trash2 className="h-4 w-4" /> {isEn ? "Soft delete" : "Xóa mềm"}
+            </button>
+          </div>
+        </>
       )}
       </>
       )}
