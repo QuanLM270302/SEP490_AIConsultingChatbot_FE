@@ -283,7 +283,7 @@ export default function Home() {
       <nav className="relative z-10 border-b border-zinc-200/50 bg-white/50 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/50">
         <div className="mx-auto flex max-w-7xl flex-nowrap items-center justify-between gap-2 overflow-x-auto px-3 py-3.5 [scrollbar-width:none] sm:gap-4 sm:px-6 sm:py-4 md:overflow-visible [&::-webkit-scrollbar]:hidden">
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <AppLogo size={34} className="rounded-lg" />
+            <AppLogo size={34} />
             <h1 className="whitespace-nowrap text-[clamp(0.6875rem,0.4rem+3.2vw,1.5rem)] font-bold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
               {homeText.brand}
             </h1>

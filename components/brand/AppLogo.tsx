@@ -3,7 +3,7 @@
 import { twMerge } from "tailwind-merge";
 
 const LOGO_URL =
-  "https://res.cloudinary.com/dhaltx1cv/image/upload/v1776434033/oquwr1kvc0b4vmwemnsz.png";
+  "/logo-transparent.png";
 
 interface AppLogoProps {
   size?: number;
@@ -30,7 +30,7 @@ export function AppLogo({
       <img
         src={LOGO_URL}
         alt={alt}
-        className={twMerge("h-full w-full object-contain", imageClassName)}
+        className={twMerge("block h-full w-full object-contain", imageClassName)}
         loading="lazy"
       />
     </span>
