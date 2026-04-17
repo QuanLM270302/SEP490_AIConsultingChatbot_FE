@@ -71,8 +71,40 @@ export default function ChatPlatformPage() {
 
       console.log("Mapped references:", references);
 
+      // Fetch conversation history to get real message ID from backend
+      let realMessageId = userMessageId; // fallback
+      if (response.conversationId) {
+        try {
+          console.log("🔍 Fetching conversation history for ID:", response.conversationId);
+          const history = await getConversationHistory(response.conversationId);
+          console.log("📥 History response:", history);
+          if (history?.messages?.length) {
+            console.log("📝 Total messages in history:", history.messages.length);
+            // Get the last assistant message (most recent)
+            const lastAssistantMsg = [...history.messages]
+              .reverse()
+              .find((m) => m.role === "ASSISTANT");
+            console.log("🤖 Last assistant message:", lastAssistantMsg);
+            // Backend uses 'messageId' field, not 'id'
+            const msgId = (lastAssistantMsg as any)?.messageId || lastAssistantMsg?.id;
+            if (msgId) {
+              realMessageId = msgId;
+              console.log("✅ Got real message ID from backend:", realMessageId);
+            } else {
+              console.warn("⚠️ No assistant message ID found in history");
+            }
+          } else {
+            console.warn("⚠️ History is empty or invalid");
+          }
+        } catch (e) {
+          console.error("❌ Failed to fetch message ID:", e);
+        }
+      } else {
+        console.warn("⚠️ No conversationId in response");
+      }
+
       const newMessage: Message = {
-        id: userMessageId,
+        id: realMessageId,
         question,
         answer: response.answer,
         references,
@@ -118,13 +150,15 @@ export default function ChatPlatformPage() {
   };
 
   const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
+    console.log("🔵 Rating message:", { messageId, rating });
     setMessages((prev) =>
       prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
     );
     try {
       await rateMessage(messageId, rating);
+      console.log("✅ Rating submitted successfully");
     } catch (e) {
-      console.warn("Rating submission failed:", e);
+      console.error("❌ Rating submission failed:", e);
     }
   };
 
