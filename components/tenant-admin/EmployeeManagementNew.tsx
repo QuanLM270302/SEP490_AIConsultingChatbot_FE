@@ -535,7 +535,7 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 text-sm font-semibold text-white">
-                          {getInitials(employee.fullName || employee.email)}
+                          {getInitials(employee.fullName ?? employee.email ?? "")}
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">
@@ -559,7 +559,7 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${getStatusColor(
-                          employee.isActive
+                          employee.isActive ?? false
                         )}`}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full ${employee.isActive ? "bg-emerald-500" : "bg-zinc-400"}`} />
