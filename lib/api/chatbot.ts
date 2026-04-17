@@ -79,6 +79,9 @@ export async function rateMessage(
   rating: "helpful" | "not-helpful"
 ): Promise<void> {
   const numericRating = rating === "helpful" ? 5 : 1;
+  console.log(`📤 Sending rating request: POST ${CHATBOT_BASE}/messages/${messageId}/rate`, {
+    rating: numericRating,
+  });
   const res = await fetchWithAuth(
     `${CHATBOT_BASE}/messages/${messageId}/rate`,
     {
@@ -88,8 +91,11 @@ export async function rateMessage(
     }
   );
   if (!res.ok) {
-    console.warn("Failed to submit rating:", await res.text().catch(() => ""));
+    const errorText = await res.text().catch(() => "Unknown error");
+    console.error(`❌ Rating API failed (${res.status}):`, errorText);
+    throw new Error(`Failed to submit rating: ${errorText}`);
   }
+  console.log("✅ Rating API success");
 }
 
 export async function chatbotHealth(): Promise<string> {

@@ -166,12 +166,12 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-6 left-4 z-50 w-64 shrink-0 rounded-3xl bg-white p-6 shadow-lg shadow-purple-100/60 transition-transform duration-300 dark:bg-zinc-950 dark:shadow-black/50 lg:translate-x-0",
+          "fixed inset-y-6 left-4 z-50 flex w-64 shrink-0 flex-col overflow-hidden rounded-3xl bg-white shadow-lg shadow-purple-100/60 transition-transform duration-300 dark:bg-zinc-950 dark:shadow-black/50 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-full flex-col justify-between gap-6">
-          <div className="space-y-6">
+        <div className="flex min-h-0 flex-1 flex-col p-6">
+          <div className="shrink-0 space-y-6">
             <div className="flex items-center justify-between">
               <Link
                 href="/tenant-admin"
@@ -200,50 +200,50 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
                 {t.management}
               </p>
             </div>
-
-            <nav className="space-y-1 text-sm">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => {
-                      setOpen(false);
-                    }}
-                    onMouseEnter={() => router.prefetch(item.href)}
-                    onFocus={() => router.prefetch(item.href)}
-                    className={cn(
-                      "relative flex w-full items-center justify-between overflow-hidden rounded-2xl px-3.5 py-3 font-medium transition",
-                      isActive
-                        ? "text-white shadow-sm shadow-purple-400/60"
-                        : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
-                    )}
-                  >
-                    {isActive ? (
-                      <motion.span
-                        layoutId="tenant-sidebar-active-pill"
-                        className="absolute inset-0 rounded-2xl bg-purple-500"
-                        transition={{ type: "spring", stiffness: 280, damping: 30, mass: 0.9 }}
-                      />
-                    ) : null}
-                    <span className="relative z-10 flex items-center gap-3">
-                      <span className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-2xl text-sm",
-                        isActive ? "bg-white/20" : "bg-zinc-100 dark:bg-zinc-900"
-                      )}>
-                        <item.icon className={cn("h-4 w-4", isActive ? "text-white" : "text-zinc-500")} />
-                      </span>
-                      {item.name}
-                    </span>
-                    {isActive && <span className="relative z-10 h-8 w-1.5 rounded-full bg-white/70" />}
-                  </Link>
-                );
-              })}
-            </nav>
           </div>
 
-          <div className="space-y-4">
+          <nav className="mt-6 min-h-0 flex-1 space-y-1 overflow-y-auto text-sm">
+            {navigation.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => {
+                    setOpen(false);
+                  }}
+                  onMouseEnter={() => router.prefetch(item.href)}
+                  onFocus={() => router.prefetch(item.href)}
+                  className={cn(
+                    "relative flex w-full items-center justify-between overflow-hidden rounded-2xl px-3.5 py-3 font-medium transition",
+                    isActive
+                      ? "text-white shadow-sm shadow-purple-400/60"
+                      : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
+                  )}
+                >
+                  {isActive ? (
+                    <motion.span
+                      layoutId="tenant-sidebar-active-pill"
+                      className="absolute inset-0 rounded-2xl bg-purple-500"
+                      transition={{ type: "spring", stiffness: 280, damping: 30, mass: 0.9 }}
+                    />
+                  ) : null}
+                  <span className="relative z-10 flex items-center gap-3">
+                    <span className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-2xl text-sm",
+                      isActive ? "bg-white/20" : "bg-zinc-100 dark:bg-zinc-900"
+                    )}>
+                      <item.icon className={cn("h-4 w-4", isActive ? "text-white" : "text-zinc-500")} />
+                    </span>
+                    {item.name}
+                  </span>
+                  {isActive && <span className="relative z-10 h-8 w-1.5 rounded-full bg-white/70" />}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="mt-4 shrink-0">
             <div className="space-y-3 rounded-2xl bg-linear-to-br from-purple-50 to-violet-50 p-4 text-xs dark:from-purple-950/30 dark:to-violet-950/30">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-zinc-800 dark:text-zinc-100">

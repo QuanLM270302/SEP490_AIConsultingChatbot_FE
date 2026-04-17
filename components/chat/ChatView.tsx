@@ -10,12 +10,14 @@ import {
   Search,
   Lightbulb,
   ChevronDown,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { ChatHistorySidebarNew } from "./ChatHistorySidebarNew";
 import { getStoredUser } from "@/lib/auth-store";
 import { getProfile } from "@/lib/api/profile";
-import { chat, ChatApiError, getConversationHistory } from "@/lib/api/chatbot";
+import { chat, ChatApiError, getConversationHistory, rateMessage } from "@/lib/api/chatbot";
 import { listTagsActive } from "@/lib/api/tags";
 import type { DocumentTagResponse } from "@/types/knowledge";
 
@@ -43,6 +45,7 @@ interface Message {
     confidence?: number;
   }[];
   timestamp: Date;
+  rating?: "helpful" | "not-helpful";
 }
 
 export interface ChatViewProps {
@@ -156,6 +159,19 @@ export function ChatView({
     });
   };
 
+  const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
+    console.log("🔵 Rating message:", { messageId, rating });
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
+    );
+    try {
+      await rateMessage(messageId, rating);
+      console.log("✅ Rating submitted successfully");
+    } catch (e) {
+      console.error("❌ Rating submission failed:", e);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -197,8 +213,40 @@ export function ChatView({
           : "Xin lỗi, hệ thống đang bận. Vui lòng thử lại sau."
         : rawAnswer;
 
+      // Fetch conversation history to get real message IDs from backend
+      let realMessageId = (Date.now() + 1).toString(); // fallback
+      if (response.conversationId) {
+        try {
+          console.log("🔍 Fetching conversation history for ID:", response.conversationId);
+          const history = await getConversationHistory(response.conversationId);
+          console.log("📥 History response:", history);
+          if (history?.messages?.length) {
+            console.log("📝 Total messages in history:", history.messages.length);
+            // Get the last assistant message (most recent)
+            const lastAssistantMsg = [...history.messages]
+              .reverse()
+              .find((m) => m.role === "ASSISTANT");
+            console.log("🤖 Last assistant message:", lastAssistantMsg);
+            // Backend uses 'messageId' field, not 'id'
+            const msgId = (lastAssistantMsg as any)?.messageId || lastAssistantMsg?.id;
+            if (msgId) {
+              realMessageId = msgId;
+              console.log("✅ Got real message ID from backend:", realMessageId);
+            } else {
+              console.warn("⚠️ No assistant message ID found in history");
+            }
+          } else {
+            console.warn("⚠️ History is empty or invalid");
+          }
+        } catch (e) {
+          console.error("❌ Failed to fetch message ID:", e);
+        }
+      } else {
+        console.warn("⚠️ No conversationId in response");
+      }
+
       const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: realMessageId,
         role: "assistant",
         content: answerText,
         sources: (response.sources ?? []).map((s) => ({
@@ -356,6 +404,34 @@ export function ChatView({
                             ))}
                           </div>
                         ) : null}
+                        {message.role === "assistant" && (
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleRate(message.id, "helpful")}
+                              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                                message.rating === "helpful"
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                                  : "border-zinc-200 bg-white text-zinc-600 hover:border-emerald-300 hover:bg-emerald-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30"
+                              }`}
+                            >
+                              <ThumbsUp className="h-3.5 w-3.5" />
+                              {isEn ? "Helpful" : "Hữu ích"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRate(message.id, "not-helpful")}
+                              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                                message.rating === "not-helpful"
+                                  ? "border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950/30 dark:text-red-300"
+                                  : "border-zinc-200 bg-white text-zinc-600 hover:border-red-300 hover:bg-red-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-red-700 dark:hover:bg-red-950/30"
+                              }`}
+                            >
+                              <ThumbsDown className="h-3.5 w-3.5" />
+                              {isEn ? "Not helpful" : "Không hữu ích"}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
