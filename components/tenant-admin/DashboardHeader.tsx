@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Menu, User, LogOut, Settings, Sun, Moon, Globe } from "lucide-react";
+import { Menu, User, LogOut, Settings, Sun, Moon, Globe, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/api/auth";
 import { getAccessToken, clearAuth, getStoredUser } from "@/lib/auth-store";
@@ -15,9 +16,20 @@ const TENANT_FALLBACK_EMAIL = "tenantadmin@company.vn";
 interface DashboardHeaderProps {
   title: string;
   onMenuClick: () => void;
+  onOpenOnboarding?: () => void;
+  onboardingButtonLabel?: string;
+  onboardingBadgeLabel?: string | null;
+  showOnboardingButton?: boolean;
 }
 
-export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
+export function DashboardHeader({
+  title,
+  onMenuClick,
+  onOpenOnboarding,
+  onboardingButtonLabel,
+  onboardingBadgeLabel = null,
+  showOnboardingButton = true,
+}: DashboardHeaderProps) {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -83,25 +95,57 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
   };
 
   return (
-    <div className="mb-6 flex items-center justify-between">
-      <button
-        type="button"
-        className="rounded-2xl bg-white p-3 text-zinc-700 shadow-sm shadow-green-100/60 dark:bg-zinc-950 dark:text-zinc-400 lg:hidden"
-        onClick={onMenuClick}
-      >
-        <span className="sr-only">{t.openSidebar}</span>
-        <Menu className="h-5 w-5" />
-      </button>
+    <div className="flex min-h-16 items-center justify-between px-0 py-1">
+      <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+        <button
+          type="button"
+          className="rounded-2xl bg-white p-3.5 text-zinc-700 shadow-sm shadow-zinc-200/70 dark:bg-zinc-950 dark:text-zinc-400 dark:shadow-black/20 lg:hidden"
+          onClick={onMenuClick}
+        >
+          <span className="sr-only">{t.openSidebar}</span>
+          <Menu className="h-5 w-5" />
+        </button>
+
+        <Link
+          href="/tenant-admin"
+          className="flex h-11 min-w-0 max-w-56 items-center px-1 transition hover:text-emerald-600 dark:hover:text-emerald-400"
+        >
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              Internal Consultant AI
+            </p>
+            <p className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-100">
+              {title}
+            </p>
+          </div>
+        </Link>
+      </div>
 
       <div className="flex flex-1 items-center justify-end gap-3">
+        {showOnboardingButton ? (
+          <button
+            type="button"
+            onClick={onOpenOnboarding}
+            className="group inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition hover:border-emerald-600 hover:bg-emerald-600 hover:text-white dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-emerald-500 dark:hover:bg-emerald-600"
+          >
+            <Sparkles className="h-4.5 w-4.5" />
+            <span>{onboardingButtonLabel ?? t.onboarding}</span>
+            {onboardingBadgeLabel ? (
+              <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-bold text-zinc-700 transition group-hover:bg-white/20 group-hover:text-white dark:bg-zinc-700/90 dark:text-zinc-100">
+                {onboardingBadgeLabel}
+              </span>
+            ) : null}
+          </button>
+        ) : null}
+
         {/* User Menu Dropdown */}
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 shadow-sm shadow-green-100/60 transition hover:bg-zinc-50 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+            className="flex items-center gap-2 rounded-2xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/70 transition hover:bg-zinc-50 dark:bg-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-900"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600">
-              <User className="h-4 w-4 text-white" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-emerald-600">
+              <User className="h-4.5 w-4.5 text-white" />
             </div>
             <span className="hidden text-sm font-semibold text-zinc-900 dark:text-white lg:block">
               {displayName}
@@ -122,9 +166,9 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
           {isUserMenuOpen && (
             <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
               {/* User Info */}
-              <div className="border-b border-zinc-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-900">
+              <div className="border-b border-zinc-200 bg-linear-to-br from-emerald-50 to-white px-4 py-3 dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-900">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-emerald-600">
                     <User className="h-5 w-5 text-white" />
                   </div>
                   <div>
@@ -181,7 +225,7 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
             {/* Header */}
             <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Settings</h3>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t.settings}</h3>
                 <button
                   onClick={() => setIsSettingsOpen(false)}
                   className="rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
@@ -250,7 +294,7 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
                 onClick={() => setIsSettingsOpen(false)}
                 className="w-full rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600"
               >
-                Done
+                {t.done}
               </button>
             </div>
           </div>

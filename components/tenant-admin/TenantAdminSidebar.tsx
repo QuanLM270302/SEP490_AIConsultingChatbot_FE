@@ -60,7 +60,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
     { name: t.departments, href: "/tenant-admin/departments", icon: Building },
     { name: t.roles, href: "/tenant-admin/roles", icon: Shield },
     { name: t.documents, href: "/tenant-admin/documents", icon: FileText },
-    { name: "AI Chatbot", href: "/chatbot", icon: Bot },
+    { name: t.aiChatbot, href: "/chatbot", icon: Bot },
     { name: t.analytics, href: "/tenant-admin/analytics", icon: BarChart3 },
     { name: t.aiInsights, href: "/tenant-admin/ai-insights", icon: Sparkles },
     { name: t.auditLogs, href: "/tenant-admin/audit-logs", icon: ClipboardList },
@@ -166,43 +166,29 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-6 left-4 z-50 flex w-64 shrink-0 flex-col overflow-hidden rounded-3xl bg-white shadow-lg shadow-purple-100/60 transition-transform duration-300 dark:bg-zinc-950 dark:shadow-black/50 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-80 flex h-dvh w-64 shrink-0 flex-col overflow-hidden border-r-2 border-zinc-200/90 bg-white shadow-2xl shadow-purple-100/50 transition-transform duration-300 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-black/45 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex min-h-0 flex-1 flex-col p-6">
-          <div className="shrink-0 space-y-6">
-            <div className="flex items-center justify-between">
-              <Link
-                href="/tenant-admin"
-                onClick={() => {
-                  setOpen(false);
-                }}
-                className="flex items-center gap-2"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-purple-400 to-purple-600 text-white shadow-lg shadow-purple-500/30">
-                  <Building className="h-5 w-5" />
-                </div>
-                <span className="text-lg font-semibold text-zinc-900 dark:text-white">
-                  {t.tenantAdmin}
-                </span>
-              </Link>
+          <div className="shrink-0 space-y-4">
+            <div className="flex items-start justify-end">
               <button
                 onClick={() => setOpen(false)}
-                className="lg:hidden"
+                className="mt-1 lg:hidden"
               >
                 <X className="h-5 w-5 text-zinc-500" />
               </button>
             </div>
 
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
+            <div className="px-0.5 py-1">
+              <p className="text-sm font-bold uppercase tracking-[0.14em] text-zinc-600 dark:text-zinc-300">
                 {t.management}
               </p>
             </div>
           </div>
 
-          <nav className="mt-6 min-h-0 flex-1 space-y-1 overflow-y-auto text-sm">
+          <nav className="mt-5 min-h-0 flex-1 space-y-1 overflow-y-auto pr-2 text-sm [scrollbar-gutter:stable]">
             {navigation.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -218,7 +204,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
                     "relative flex w-full items-center justify-between overflow-hidden rounded-2xl px-3.5 py-3 font-medium transition",
                     isActive
                       ? "text-white shadow-sm shadow-purple-400/60"
-                      : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
+                      : "text-zinc-500 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-300"
                   )}
                 >
                   {isActive ? (

@@ -9,7 +9,6 @@ import {
   Building2,
   CreditCard,
   X,
-  UserCog,
   Package,
   GraduationCap,
 } from "lucide-react";
@@ -57,9 +56,6 @@ export function StaffSidebar({ open, setOpen }: StaffSidebarProps) {
             {/* Logo */}
             <div className="flex items-center justify-between">
               <Link href="/staff" className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-blue-400 to-blue-600 text-white shadow-lg shadow-blue-500/30">
-                  <UserCog className="h-5 w-5" />
-                </div>
                 <span className="text-lg font-semibold text-zinc-900 dark:text-white">
                   Staff
                 </span>
@@ -91,7 +87,7 @@ export function StaffSidebar({ open, setOpen }: StaffSidebarProps) {
                       "relative flex w-full items-center justify-between overflow-hidden rounded-2xl px-3.5 py-3 font-medium transition",
                       isActive
                         ? "text-white shadow-sm shadow-blue-400/60"
-                        : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
+                        : "text-zinc-500 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-300"
                     )}
                   >
                     {isActive ? (

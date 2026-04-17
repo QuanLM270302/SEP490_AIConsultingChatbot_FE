@@ -14,6 +14,7 @@ interface AuthHomePlainLinkProps {
    * `bar` — dòng «hoặc» + nút ngang full width giống kích thước nút Login (đăng nhập).
    */
   variant?: "plain" | "bar";
+  forceEnglish?: boolean;
 }
 
 const BackArrowIcon = () => (
@@ -27,9 +28,12 @@ export function AuthHomePlainLink({
   href = "/",
   className = "",
   variant = "plain",
+  forceEnglish = false,
 }: AuthHomePlainLinkProps) {
   const { language } = useLanguageStore();
   const t = translations[language];
+  const orLabel = forceEnglish ? "OR" : t.or;
+  const backToHomeLabel = forceEnglish ? "Back to home page" : t.backToHome;
 
   if (variant === "bar") {
     return (
@@ -37,14 +41,14 @@ export function AuthHomePlainLink({
         <div
           className="flex items-center gap-3 py-4"
           role="separator"
-          aria-label={t.or}
+          aria-label={orLabel}
         >
           <div
             className="h-px flex-1 bg-zinc-200 dark:bg-zinc-600"
             aria-hidden
           />
           <span className="shrink-0 text-xs font-medium uppercase tracking-[0.18em] text-zinc-400 dark:text-zinc-500">
-            {t.or}
+            {orLabel}
           </span>
           <div
             className="h-px flex-1 bg-zinc-200 dark:bg-zinc-600"
@@ -55,7 +59,7 @@ export function AuthHomePlainLink({
           href={href}
           className="flex w-full items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 shadow-sm transition hover:border-emerald-400/50 hover:bg-emerald-50/90 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-zinc-600 dark:bg-zinc-800/90 dark:text-zinc-100 dark:hover:border-emerald-500/40 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-100"
         >
-          {t.backToHome}
+          {backToHomeLabel}
         </Link>
       </div>
     );
@@ -68,7 +72,7 @@ export function AuthHomePlainLink({
         className="inline-flex items-center gap-2 text-sm text-zinc-600 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
       >
         <BackArrowIcon />
-        {t.backToHome}
+        {backToHomeLabel}
       </Link>
     </div>
   );

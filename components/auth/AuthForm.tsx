@@ -162,7 +162,8 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
             {loading ? "Signing in…" : "Login"}
           </button>
 
-          {mode === "login" && <AuthHomePlainLink variant="bar" />}
+          {mode === "login" && <AuthHomePlainLink variant="bar" forceEnglish />}
+
         </form>
       </div>
 
@@ -171,11 +172,11 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
           <div className="absolute inset-0 bg-zinc-900/70" />
           <div className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
             <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-              Đổi mật khẩu lần đầu
+              First-time password change required
             </h3>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-              Tài khoản này đang được yêu cầu đổi mật khẩu để đảm bảo an toàn.
-              Bạn có thể đổi ngay bây giờ hoặc tiếp tục dùng mật khẩu hiện tại và đổi sau trong trang hồ sơ.
+              This account is required to change its password for security.
+              You can change it now, or continue with your current password and update it later in your profile page.
             </p>
             <div className="mt-4 flex items-center justify-end gap-2">
               <button
@@ -187,7 +188,7 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
                 }}
                 className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
-                Để sau
+                Later
               </button>
               <button
                 type="button"
@@ -198,7 +199,7 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
                 }}
                 className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
               >
-                Đổi mật khẩu ngay
+                Change password now
               </button>
             </div>
           </div>
