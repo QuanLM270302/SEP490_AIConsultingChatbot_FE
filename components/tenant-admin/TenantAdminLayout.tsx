@@ -4,7 +4,6 @@ import { TenantAdminSidebar } from "./TenantAdminSidebar";
 import { DashboardHeader } from "./DashboardHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AcademicCapIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { OnboardingModal } from "@/components/employee/OnboardingModal";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -206,94 +205,41 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
   }, [onboardingOverview]);
 
   return (
-    <div className="flex min-h-screen w-full min-w-0 flex-1 bg-linear-to-br from-zinc-100 via-white to-zinc-100 px-3 py-4 dark:from-black dark:via-black dark:to-black sm:px-5 sm:py-5 lg:px-8 lg:py-6">
-      <TenantAdminSidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-      
-      <main className="min-w-0 flex-1 px-0 py-2 sm:px-3 lg:px-4 lg:pl-72 xl:pl-72">
-        <DashboardHeader 
+    <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col bg-linear-to-br from-zinc-100 via-white to-zinc-100 dark:from-black dark:via-black dark:to-black">
+      <div className="sticky top-0 z-70 border-b border-zinc-200/80 bg-transparent px-3 py-2 dark:border-zinc-800 sm:px-5 lg:pl-72 lg:pr-8">
+        <DashboardHeader
           title={t.tenantAdmin}
-          onMenuClick={() => setSidebarOpen(true)} 
+          onMenuClick={() => setSidebarOpen(true)}
+          onOpenOnboarding={() => setShowOnboardingModal(true)}
+          onboardingButtonLabel={isEn ? "Onboarding" : "Lộ trình onboarding"}
+          onboardingBadgeLabel={
+            !isOnboardingLoading && onboardingSummary.total > 0
+              ? `${onboardingSummary.completed}/${onboardingSummary.total}`
+              : null
+          }
+          showOnboardingButton={isDashboardTab}
         />
-        
-        <div className="mx-auto mt-5 w-full min-w-0 max-w-[min(100%,88rem)] lg:mt-6">
-          {isDashboardTab &&
-            !isOnboardingLoading &&
-            onboardingSummary.total > 0 &&
-            onboardingSummary.hasIncomplete && (
-            <section className="mb-6 overflow-hidden rounded-3xl border border-emerald-300/70 bg-linear-to-r from-emerald-50 via-white to-cyan-50 p-5 shadow-lg shadow-emerald-100/60 dark:border-emerald-900/40 dark:from-emerald-950/40 dark:via-zinc-950 dark:to-cyan-950/30 dark:shadow-black/30">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-2">
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700/60 dark:bg-zinc-900/80 dark:text-emerald-300">
-                    <AcademicCapIcon className="h-4 w-4" />
-                    {isEn ? "Tenant Learning Hub" : "Lộ trình học tập tenant"}
-                  </span>
-                  <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                    {isEn
-                      ? "Onboarding roadmap for tenant teams"
-                      : "Lộ trình onboarding cho đội ngũ tenant"}
-                  </p>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    {isEn
-                      ? "Bilingual content with progress tracking per user."
-                      : "Nội dung song ngữ Việt - Anh, theo dõi tiến độ theo từng người dùng."}
-                  </p>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    {isEn
-                      ? `Completed ${onboardingSummary.completed}/${onboardingSummary.total} modules, ${onboardingSummary.remaining} remaining.`
-                      : `Đã hoàn thành ${onboardingSummary.completed}/${onboardingSummary.total} module, còn ${onboardingSummary.remaining} module.`}
-                  </p>
-                </div>
+      </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowOnboardingModal(true)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-                >
-                  <SparklesIcon className="h-4 w-4" />
-                  {isEn ? "Continue onboarding" : "Tiếp tục onboarding"}
-                </button>
-              </div>
+      <div className="relative flex min-h-0 flex-1 px-3 py-4 sm:px-5 sm:py-5 lg:pr-8 lg:pl-0 lg:py-6">
+        <TenantAdminSidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
-              <div className="mt-4 h-2.5 w-full rounded-full bg-zinc-200/90 dark:bg-zinc-800">
-                <div
-                  className="h-2.5 rounded-full bg-linear-to-r from-emerald-500 to-cyan-500"
-                  style={{
-                    width: `${Math.max(0, Math.min(100, onboardingSummary.progress))}%`,
-                  }}
-                />
-              </div>
-            </section>
-          )}
-
-          {isDashboardTab &&
-            !isOnboardingLoading &&
-            onboardingSummary.total > 0 &&
-            !onboardingSummary.hasIncomplete && (
-            <div className="mb-6 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowOnboardingModal(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+        <main className="min-w-0 flex-1 px-0 py-2 sm:px-3 lg:border-l lg:border-zinc-200/80 lg:px-4 lg:pl-72 dark:lg:border-zinc-800 xl:pl-72">
+          <div className="mx-auto mt-1 w-full min-w-0 max-w-[min(100%,88rem)] lg:mt-2">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pathname}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
               >
-                <SparklesIcon className="h-4 w-4" />
-                {isEn ? "Review onboarding checklist" : "Xem lại checklist onboarding"}
-              </button>
-            </div>
-          )}
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </main>
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </main>
+      </div>
 
       <OnboardingModal
         isOpen={showOnboardingModal}

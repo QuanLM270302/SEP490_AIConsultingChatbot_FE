@@ -397,7 +397,7 @@ export function OnboardingModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="fixed inset-0 z-90 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
         <div className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-emerald-300 bg-white shadow-2xl dark:border-emerald-900/40 dark:bg-zinc-950">
           <div className="border-b border-zinc-200 bg-linear-to-r from-emerald-100 via-white to-cyan-100 px-6 py-5 dark:border-zinc-800 dark:from-emerald-950/50 dark:via-zinc-950 dark:to-cyan-950/40">
             <button
@@ -531,7 +531,7 @@ export function OnboardingModal({
 
       {selectedModule && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-95 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
           onClick={closeDetailModal}
         >
           <div
