@@ -25,6 +25,7 @@ import { translations } from "@/lib/translations";
 import { getStoredUser } from "@/lib/auth-store";
 import { mergeRolesWithCache, readTenantRolesCache } from "@/lib/tenant-roles-cache";
 import { getPermissionLabel } from "@/lib/permission-labels";
+import { AnimatedSegmentedControl, ErrorNotice, useConfirmDialog } from "@/components/ui";
 
 /** Không gán user thường làm admin nền tảng / tenant admin / staff */
 const ROLE_CODES_EXCLUDED_FROM_USER_ASSIGNMENT = new Set(["TENANT_ADMIN", "SUPER_ADMIN", "STAFF"]);
@@ -49,12 +50,20 @@ export function EmployeesTable() {
   const [availablePermissions, setAvailablePermissions] = useState<{ code: string; name?: string }[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [permissionMetaLoading, setPermissionMetaLoading] = useState(false);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const loadUsers = () => {
     setLoading(true);
     setError(null);
     getTenantUsers(statusFilter)
-      .then(setUsers)
+      .then((data) => {
+        // Filter out Tenant Administrators from the list
+        const filtered = data.filter((u) => {
+          const roleName = (u.roleName ?? "").toLowerCase();
+          return !roleName.includes("tenant admin");
+        });
+        setUsers(filtered);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : t.errorLoadingData))
       .finally(() => setLoading(false));
   };
@@ -124,8 +133,16 @@ export function EmployeesTable() {
       .finally(() => setActionLoading(null));
   };
 
-  const handleDelete = (userId: string) => {
-    if (!confirm(t.confirmDeleteUser)) return;
+  const handleDelete = async (userId: string) => {
+    const ok = await confirm({
+      title: language === "en" ? "Remove employee from organization?" : "Xóa nhân viên khỏi tổ chức?",
+      description: t.confirmDeleteUser,
+      confirmText: language === "en" ? "Remove" : "Xóa",
+      cancelText: t.cancel,
+      tone: "danger",
+    });
+    if (!ok) return;
+
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoading(userId);
@@ -199,33 +216,29 @@ export function EmployeesTable() {
   if (error) {
     return (
       <div className="overflow-hidden rounded-3xl bg-white p-8 shadow-lg dark:bg-zinc-950">
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <ErrorNotice message={error} />
       </div>
     );
   }
 
   return (
     <>
-      <div className="flex flex-wrap gap-2 mb-4">
-        {(["ACTIVE", "INACTIVE", "ALL"] as const).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setStatusFilter(s)}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-              statusFilter === s
-                ? "bg-emerald-500 text-white"
-                : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            }`}
-          >
-            {s === "ALL" ? t.all : s === "ACTIVE" ? t.active : t.inactive}
-          </button>
-        ))}
+      <div className="mb-4">
+        <AnimatedSegmentedControl
+          value={statusFilter}
+          onChange={setStatusFilter}
+          layoutId="employees-status-pill"
+          options={[
+            { value: "ACTIVE", label: t.active },
+            { value: "INACTIVE", label: t.inactive },
+            { value: "ALL", label: t.all },
+          ]}
+        />
       </div>
 
       <div className="overflow-hidden rounded-3xl bg-white shadow-lg shadow-purple-100/60 dark:bg-zinc-950 dark:shadow-black/40">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-zinc-100 dark:divide-zinc-900">
+        <div className="table-scroll-container">
+          <table className="min-w-208 table-auto divide-y divide-zinc-100 dark:divide-zinc-900 lg:min-w-full">
             <thead className="bg-zinc-50 dark:bg-zinc-900">
               <tr>
                 <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.name}</th>
@@ -246,23 +259,29 @@ export function EmployeesTable() {
               ) : (
                 users.map((user) => (
                   <tr key={user.id} className="transition hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-zinc-900 dark:text-white">{user.fullName ?? "—"}</td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <div className="text-xs text-zinc-600 dark:text-zinc-400">{user.email ?? "—"}</div>
+                    <td className="px-4 py-4 align-top text-sm font-medium text-zinc-900 dark:text-white sm:px-6">
+                      <div className="max-w-56 whitespace-normal wrap-break-word">{user.fullName ?? "—"}</div>
+                    </td>
+                    <td className="px-4 py-4 align-top sm:px-6">
+                      <div className="max-w-72 whitespace-normal break-all text-xs text-zinc-600 dark:text-zinc-400">{user.email ?? "—"}</div>
                       {user.contactEmail ? (
-                        <div className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-500">
+                        <div className="mt-0.5 max-w-72 whitespace-normal break-all text-[11px] text-zinc-500 dark:text-zinc-500">
                           {t.contactEmail}: {user.contactEmail}
                         </div>
                       ) : null}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">{user.departmentName ?? "—"}</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">{user.roleName ?? "—"}</td>
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="px-4 py-4 align-top text-sm text-zinc-900 dark:text-white sm:px-6">
+                      <div className="max-w-40 whitespace-normal wrap-break-word">{user.departmentName ?? "—"}</div>
+                    </td>
+                    <td className="px-4 py-4 align-top text-sm text-zinc-900 dark:text-white sm:px-6">
+                      <div className="max-w-40 whitespace-normal wrap-break-word">{user.roleName ?? "—"}</div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-4 align-top sm:px-6">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${isActive(user) ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-500/20 text-red-600 dark:text-red-400"}`}>
                         {isActive(user) ? t.active : t.inactive}
                       </span>
                     </td>
-                    <td className="relative whitespace-nowrap px-6 py-4 text-right">
+                    <td className="relative whitespace-nowrap px-4 py-4 text-right align-top sm:px-6">
                       <button
                         type="button"
                         onClick={(e) => toggleMenu(user.id, e.currentTarget)}
@@ -350,9 +369,9 @@ export function EmployeesTable() {
             </button>
             <button
               type="button"
-              onClick={() => handleDelete(openMenuId)}
+              onClick={() => void handleDelete(openMenuId)}
               disabled={!!actionLoading}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/30"
             >
               <Trash2 className="h-4 w-4" /> {t.deleteUser}
             </button>
@@ -397,6 +416,8 @@ export function EmployeesTable() {
         />
       )}
 
+      {confirmDialog}
+
     </>
   );
 }
@@ -410,7 +431,7 @@ function DetailModal({ user, onClose }: { user: UserResponse; onClose: () => voi
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl dark:bg-zinc-950">
-        <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-purple-500 to-violet-600 px-6 py-8">
+        <div className="relative overflow-hidden rounded-t-3xl bg-linear-to-br from-purple-500 to-violet-600 px-6 py-8">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
           <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-4">

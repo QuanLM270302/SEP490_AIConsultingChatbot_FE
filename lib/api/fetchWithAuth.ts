@@ -3,9 +3,27 @@
  * On 403, tries tryRefreshAuth() then retries once. Invalid refresh (4xx/5xx) clears storage;
  * pure network errors keep the session. Use in client code only (reads localStorage).
  */
-import { getAccessToken, getRefreshToken, refreshAuth, tryRefreshAuth } from "@/lib/auth-store";
+import {
+  clearAuth,
+  getAccessToken,
+  getRefreshToken,
+  refreshAuth,
+  tryRefreshAuth,
+} from "@/lib/auth-store";
+import { parseApiErrorMessage } from "@/lib/api/parseApiError";
+import {
+  isAuthExpiredErrorMessage,
+  notifyAuthSessionExpired,
+} from "@/lib/auth-session-events";
+import {
+  isSubscriptionExpiredError,
+  showSubscriptionExpiredModal,
+} from "@/lib/subscription-expired-modal";
 
 type RequestAttempt = "initial" | "retry-401-refresh" | "retry-403-refresh";
+const SESSION_EXPIRED_NOTIFY_DEBOUNCE_MS = 1_500;
+
+let lastSessionExpiredNotificationAt = 0;
 
 function isRequestObject(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
@@ -78,6 +96,75 @@ function logApiResponse(url: string, method: string, res: Response, attempt: Req
   });
 }
 
+async function readErrorMessage(response: Response): Promise<string | undefined> {
+  try {
+    const raw = await response.clone().text();
+    if (!raw || !raw.trim()) return undefined;
+    return parseApiErrorMessage(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+async function handleFinalUnauthorizedResponse(
+  response: Response,
+  url: string,
+  method: string
+): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (response.status !== 401 && response.status !== 403) return;
+
+  const now = Date.now();
+  if (now - lastSessionExpiredNotificationAt < SESSION_EXPIRED_NOTIFY_DEBOUNCE_MS) {
+    return;
+  }
+
+  const message = await readErrorMessage(response);
+
+  // Check for subscription expired (grace period) - show modal instead of clearing auth
+  if (response.status === 403 && message && isSubscriptionExpiredError(message)) {
+    showSubscriptionExpiredModal({ message });
+    return;
+  }
+
+  const shouldNotifyByStatus = response.status === 401;
+  const shouldNotifyByMessage =
+    response.status === 403 &&
+    (!!message && isAuthExpiredErrorMessage(message));
+
+  if (!shouldNotifyByStatus && !shouldNotifyByMessage) {
+    return;
+  }
+
+  clearAuth();
+  lastSessionExpiredNotificationAt = now;
+  notifyAuthSessionExpired({
+    status: response.status,
+    message,
+    sourceUrl: url,
+    method,
+  });
+}
+
+async function normalizeErrorResponseBody(response: Response): Promise<Response> {
+  if (response.ok) return response;
+
+  const raw = await response.clone().text().catch(() => "");
+  if (!raw.trim()) return response;
+
+  const normalized = parseApiErrorMessage(raw);
+  if (!normalized || normalized === raw.trim()) return response;
+
+  const headers = new Headers(response.headers);
+  headers.set("content-type", "text/plain; charset=utf-8");
+
+  return new Response(normalized, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export async function fetchWithAuth(
   input: RequestInfo | URL,
   init?: RequestInit
@@ -99,6 +186,24 @@ export async function fetchWithAuth(
   let token = getAccessToken();
   let res = await doFetch(token, "initial");
 
+  // Check for session invalidation (tokenVersion mismatch)
+  if (res.status === 401) {
+    const cloned = res.clone();
+    try {
+      const data = await cloned.json();
+      if (data?.error?.includes("Session expired") ||
+          data?.message?.includes("Session expired")) {
+        clearAuth();
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+        return res;
+      }
+    } catch {
+      // not JSON, continue normal flow
+    }
+  }
+
   /** Access missing/expired but refresh exists — recover once (same as AuthGuard). */
   if (res.status === 401 && getRefreshToken()) {
     const ok = await refreshAuth();
@@ -116,5 +221,8 @@ export async function fetchWithAuth(
       if (token) res = await doFetch(token, "retry-403-refresh");
     }
   }
+
+  res = await normalizeErrorResponseBody(res);
+  await handleFinalUnauthorizedResponse(res, url, method);
   return res;
 }

@@ -613,6 +613,32 @@ export default function StaffOnboardingPage() {
         </div>
       </div>
 
+      {/* Tenant Selector */}
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+          {isEn ? "Source Tenant (for module management)" : "Tenant nguồn (để quản lý module)"}
+        </label>
+        <select
+          value={selectedTenantId}
+          onChange={(e) => setSelectedTenantId(e.target.value)}
+          className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+        >
+          <option value="">{isEn ? "Select a tenant..." : "Chọn tenant..."}</option>
+          {tenants.map((tenant) => (
+            <option key={tenant.id} value={tenant.id}>
+              {tenant.name} ({tenant.status})
+            </option>
+          ))}
+        </select>
+        {selectedTenantId && (
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+            {isEn 
+              ? "Modules will be created/managed for this tenant. Use 'Apply to all tenants' to sync to others."
+              : "Module sẽ được tạo/quản lý cho tenant này. Dùng 'Áp dụng cho tất cả tenant' để đồng bộ sang tenant khác."}
+          </p>
+        )}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
           <p className="text-xs text-zinc-500 dark:text-zinc-400">{text.totalModules}</p>
@@ -730,6 +756,33 @@ export default function StaffOnboardingPage() {
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{text.editorHint}</p>
 
             <form onSubmit={submitEditor} className="mt-5 space-y-4">
+              {/* Tenant Selector - only show when creating new module */}
+              {!editorState.id && (
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500">
+                    {isEn ? "Target Tenant *" : "Tenant đích *"}
+                  </label>
+                  <select
+                    value={selectedTenantId}
+                    onChange={(e) => setSelectedTenantId(e.target.value)}
+                    required
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  >
+                    <option value="">{isEn ? "Select tenant..." : "Chọn tenant..."}</option>
+                    {tenants.map((tenant) => (
+                      <option key={tenant.id} value={tenant.id}>
+                        {tenant.name} ({tenant.status})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    {isEn 
+                      ? "Module will be created for this tenant"
+                      : "Module sẽ được tạo cho tenant này"}
+                  </p>
+                </div>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-500">{text.formTitle}</label>

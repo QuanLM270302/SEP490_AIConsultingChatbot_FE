@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/admin";
 import { MoreVertical, Pencil, Trash2, Loader2, Eye, Plus, Power, PowerOff } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
+import { useConfirmDialog } from "@/components/ui";
 
 type Filter = "all" | "active";
 
@@ -50,6 +51,7 @@ export function SubscriptionPlansTable() {
   const [detailPlan, setDetailPlan] = useState<SubscriptionPlanResponse | null>(null);
   const [editPlan, setEditPlan] = useState<SubscriptionPlanResponse | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const load = () => {
     setLoading(true);
@@ -113,13 +115,33 @@ export function SubscriptionPlansTable() {
     }
   };
 
-  const handleDelete = (plan: SubscriptionPlanResponse) => {
-    if (!confirm(isEn ? "Delete this plan permanently? This action cannot be undone." : "Xóa vĩnh viễn gói này? Hành động này không thể hoàn tác.")) return;
+  const handleDelete = async (plan: SubscriptionPlanResponse) => {
+    const ok = await confirm({
+      title: isEn ? "Delete plan permanently?" : "Xóa vĩnh viễn gói này?",
+      description: isEn
+        ? "This action cannot be undone."
+        : "Hành động này không thể hoàn tác.",
+      confirmText: isEn ? "Delete" : "Xóa",
+      cancelText: isEn ? "Cancel" : "Hủy",
+      tone: "danger",
+    });
+    if (!ok) return;
+
     void runPlanAction(plan.id, () => deleteSubscriptionPlan(plan.id));
   };
 
-  const handleDeactivate = (plan: SubscriptionPlanResponse) => {
-    if (!confirm(isEn ? "Are you sure you want to deactivate this plan?" : "Bạn có chắc muốn ngừng kích hoạt gói này?")) return;
+  const handleDeactivate = async (plan: SubscriptionPlanResponse) => {
+    const ok = await confirm({
+      title: isEn ? "Deactivate this plan?" : "Ngừng kích hoạt gói này?",
+      description: isEn
+        ? "The plan will no longer be available for new subscriptions."
+        : "Gói sẽ không còn khả dụng cho đăng ký mới.",
+      confirmText: isEn ? "Deactivate" : "Ngừng kích hoạt",
+      cancelText: isEn ? "Cancel" : "Hủy",
+      tone: "warning",
+    });
+    if (!ok) return;
+
     void runPlanAction(plan.id, () => deactivateSubscriptionPlan(plan.id));
   };
 
@@ -440,7 +462,7 @@ export function SubscriptionPlansTable() {
             {selectedMenuPlan.isActive ? (
               <button
                 type="button"
-                onClick={() => handleDeactivate(selectedMenuPlan)}
+                onClick={() => void handleDeactivate(selectedMenuPlan)}
                 disabled={!!actionLoading}
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-60 dark:text-amber-400 dark:hover:bg-amber-950/30"
               >
@@ -458,7 +480,7 @@ export function SubscriptionPlansTable() {
             )}
             <button
               type="button"
-              onClick={() => handleDelete(selectedMenuPlan)}
+              onClick={() => void handleDelete(selectedMenuPlan)}
               disabled={!!actionLoading}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
             >
@@ -467,6 +489,8 @@ export function SubscriptionPlansTable() {
           </div>
         </>
       )}
+
+      {confirmDialog}
     </div>
   );
 }
@@ -485,6 +509,16 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   const [maxUsers, setMaxUsers] = useState("10");
   const [maxDocuments, setMaxDocuments] = useState("100");
   const [maxStorageGb, setMaxStorageGb] = useState("5");
+  const [maxApiCalls, setMaxApiCalls] = useState("10000");
+  const [maxChatbotRequests, setMaxChatbotRequests] = useState("1000");
+  const [maxRagDocuments, setMaxRagDocuments] = useState("500");
+  const [maxAiTokens, setMaxAiTokens] = useState("100000");
+  const [contextWindowTokens, setContextWindowTokens] = useState("4096");
+  const [ragChunkSize, setRagChunkSize] = useState("512");
+  const [aiModel, setAiModel] = useState("gpt-4");
+  const [embeddingModel, setEmbeddingModel] = useState("text-embedding-ada-002");
+  const [features, setFeatures] = useState("Basic features");
+  const [displayOrder, setDisplayOrder] = useState("0");
 
   useEffect(() => {
     getSubscriptionPlanTypes()
@@ -542,36 +576,32 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         planType,
         name: planName,
         description: description.trim() || "Default description",
-        monthlyPrice: Math.max(0, toNum(monthlyPrice, 0)),
-        quarterlyPrice: Math.max(0, toNum(quarterlyPrice, 0)),
-        yearlyPrice: Math.max(0, toNum(yearlyPrice, 0)),
-        maxUsers: Math.max(1, toInt(maxUsers, 10)),
-        maxDocuments: Math.max(0, toInt(maxDocuments, 100)),
-        maxStorageGb: Math.max(1, toInt(maxStorageGb, 5)),
-        maxApiCalls: 10000,
-        maxChatbotRequests: 1000,
-        maxRagDocuments: 500,
-        maxAiTokens: 100000,
-        contextWindowTokens: 4096,
-        ragChunkSize: 512,
-        enableRag: true,
-        isTrial: planType === "TRIAL",
-        displayOrder: 0,
+        monthlyPrice: parseFloat(monthlyPrice) || 0,
+        quarterlyPrice: parseFloat(quarterlyPrice) || 0,
+        yearlyPrice: parseFloat(yearlyPrice) || 0,
+        maxUsers: parseInt(maxUsers) || 1,
+        maxDocuments: parseInt(maxDocuments) || 0,
+        maxStorageGb: parseInt(maxStorageGb) || 1,
+        maxApiCalls: parseInt(maxApiCalls) || 0,
+        maxChatbotRequests: parseInt(maxChatbotRequests) || 0,
+        maxRagDocuments: parseInt(maxRagDocuments) || 0,
+        maxAiTokens: parseInt(maxAiTokens) || 0,
+        contextWindowTokens: parseInt(contextWindowTokens) || 1,
+        ragChunkSize: parseInt(ragChunkSize) || 256,
+        aiModel: aiModel.trim() || "string",
+        embeddingModel: embeddingModel.trim() || "string",
+        displayOrder: parseInt(displayOrder) || 0,
+        features: features.trim() || "string",
       };
       
-      // Only add optional fields if they have values
-      if (planType === "TRIAL") {
-        body.trialDays = 14;
-      }
-      
       console.log("📤 Request body:", JSON.stringify(body, null, 2));
-      console.log("📤 selectedType:", selectedType);
-      console.log("📤 planName:", planName);
+      console.log("📤 All fields present:", Object.keys(body));
       await createSubscriptionPlan(body);
       onSuccess();
     } catch (err) {
       console.error("❌ Error creating plan:", err);
-      alert(err instanceof Error ? err.message : isEn ? "Failed to create plan" : "Tạo gói thất bại");
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      alert(`${isEn ? "Failed to create plan" : "Tạo gói thất bại"}\n\n${errorMsg}`);
     } finally {
       setLoading(false);
     }
@@ -580,12 +610,12 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
-      <div className="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
+      <div className="relative max-h-[90vh] w-full max-w-2xl overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{isEn ? "Create subscription plan" : "Tạo gói đăng ký"}</h3>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-          {/* Plan Type Dropdown - Moved to top */}
+          {/* Plan Type Dropdown */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">{isEn ? "Plan type *" : "Loại gói *"}</label>
+            <label className="block text-xs text-zinc-500">Loại gói *</label>
             <select
               value={planType}
               onChange={(e) => setPlanType(e.target.value as SubscriptionPlanTypeOption["code"])}
@@ -603,6 +633,20 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 {selectedType.defaultName}
               </p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-xs text-zinc-500">Tên gói *</label>
+            <input 
+              type="text" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              placeholder="Tên hiển thị của gói"
+              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+            />
+            <p className="mt-1 text-xs text-zinc-400">
+              {isEn ? "Leave empty to use default name" : "Để trống để dùng tên mặc định"}
+            </p>
           </div>
 
           <div>
@@ -671,6 +715,7 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 min="1" 
                 value={maxUsers} 
                 onChange={(e) => setMaxUsers(e.target.value)} 
+                placeholder="10"
                 className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
               />
             </div>
@@ -681,6 +726,7 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 min="0" 
                 value={maxDocuments} 
                 onChange={(e) => setMaxDocuments(e.target.value)} 
+                placeholder="100"
                 className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
               />
             </div>
@@ -691,6 +737,129 @@ function CreatePlanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 min="1" 
                 value={maxStorageGb} 
                 onChange={(e) => setMaxStorageGb(e.target.value)} 
+                placeholder="5"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+          </div>
+
+          {/* Advanced Limits */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-zinc-500">Max API Calls</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={maxApiCalls} 
+                onChange={(e) => setMaxApiCalls(e.target.value)} 
+                placeholder="10000"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Max Chatbot Requests</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={maxChatbotRequests} 
+                onChange={(e) => setMaxChatbotRequests(e.target.value)} 
+                placeholder="1000"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Max RAG Documents</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={maxRagDocuments} 
+                onChange={(e) => setMaxRagDocuments(e.target.value)} 
+                placeholder="500"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Max AI Tokens</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={maxAiTokens} 
+                onChange={(e) => setMaxAiTokens(e.target.value)} 
+                placeholder="100000"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Context Window Tokens</label>
+              <input 
+                type="number" 
+                min="1" 
+                value={contextWindowTokens} 
+                onChange={(e) => setContextWindowTokens(e.target.value)} 
+                placeholder="4096"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">RAG Chunk Size</label>
+              <input 
+                type="number" 
+                min="256" 
+                value={ragChunkSize} 
+                onChange={(e) => setRagChunkSize(e.target.value)} 
+                placeholder="512"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+          </div>
+
+          {/* AI Models */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-zinc-500">AI Model *</label>
+              <input 
+                type="text" 
+                value={aiModel} 
+                onChange={(e) => setAiModel(e.target.value)} 
+                placeholder="gpt-4"
+                required
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Embedding Model *</label>
+              <input 
+                type="text" 
+                value={embeddingModel} 
+                onChange={(e) => setEmbeddingModel(e.target.value)} 
+                placeholder="text-embedding-ada-002"
+                required
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+          </div>
+
+          {/* Features & Display Order */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-zinc-500">Features *</label>
+              <input 
+                type="text" 
+                value={features} 
+                onChange={(e) => setFeatures(e.target.value)} 
+                placeholder="Basic features"
+                required
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">{isEn ? "Display order" : "Thứ tự hiển thị"}</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={displayOrder} 
+                onChange={(e) => setDisplayOrder(e.target.value)} 
+                placeholder="0"
                 className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" 
               />
             </div>
@@ -730,17 +899,17 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
   const [maxUsers, setMaxUsers] = useState(String(plan.maxUsers ?? 10));
   const [maxDocuments, setMaxDocuments] = useState(String(plan.maxDocuments ?? 100));
   const [maxStorageGb, setMaxStorageGb] = useState(String(plan.maxStorageGb ?? 5));
+  const [maxApiCalls, setMaxApiCalls] = useState(String(plan.maxApiCalls ?? 10000));
+  const [maxChatbotRequests, setMaxChatbotRequests] = useState(String(plan.maxChatbotRequests ?? 1000));
+  const [maxRagDocuments, setMaxRagDocuments] = useState(String(plan.maxRagDocuments ?? 500));
+  const [maxAiTokens, setMaxAiTokens] = useState(String(plan.maxAiTokens ?? 100000));
+  const [contextWindowTokens, setContextWindowTokens] = useState(String(plan.contextWindowTokens ?? 4096));
+  const [ragChunkSize, setRagChunkSize] = useState(String(plan.ragChunkSize ?? 512));
+  const [aiModel, setAiModel] = useState(plan.aiModel ?? "gpt-4");
+  const [embeddingModel, setEmbeddingModel] = useState(plan.embeddingModel ?? "text-embedding-ada-002");
+  const [features, setFeatures] = useState(plan.features ?? "");
   const [isActive, setIsActive] = useState(plan.isActive ?? true);
   const [displayOrder, setDisplayOrder] = useState(String(plan.displayOrder ?? 0));
-
-  const toInt = (v: string, fallback: number) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? Math.trunc(n) : fallback;
-  };
-  const toNum = (v: string, fallback: number) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : fallback;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -749,27 +918,27 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
       await updateSubscriptionPlan(plan.id, {
         name: name.trim(),
         description: description.trim() || undefined,
-        monthlyPrice: toNum(monthlyPrice, 0),
-        quarterlyPrice: toNum(quarterlyPrice, 0),
-        yearlyPrice: toNum(yearlyPrice, 0),
-        maxUsers: Math.max(1, toInt(maxUsers, plan.maxUsers ?? 10)),
-        maxDocuments: Math.max(0, toInt(maxDocuments, plan.maxDocuments ?? 100)),
-        maxStorageGb: Math.max(1, toInt(maxStorageGb, plan.maxStorageGb ?? 5)),
-        maxApiCalls: Math.max(0, Math.trunc(plan.maxApiCalls ?? 10000)),
-        maxChatbotRequests: Math.max(0, Math.trunc(plan.maxChatbotRequests ?? 1000)),
-        maxRagDocuments: Math.max(0, Math.trunc(plan.maxRagDocuments ?? 500)),
-        maxAiTokens: Math.max(0, Math.trunc(plan.maxAiTokens ?? 100000)),
-        contextWindowTokens: Math.max(1, Math.trunc(plan.contextWindowTokens ?? 4096)),
-        ragChunkSize: Math.max(256, Math.trunc(plan.ragChunkSize ?? 512)),
-        enableRag: Math.max(0, Math.trunc(plan.maxRagDocuments ?? 500)) > 0,
-        aiModel: plan.aiModel ?? undefined,
-        embeddingModel: plan.embeddingModel ?? undefined,
-        features: plan.features ?? undefined,
+        monthlyPrice: parseFloat(monthlyPrice) || 0,
+        quarterlyPrice: parseFloat(quarterlyPrice) || 0,
+        yearlyPrice: parseFloat(yearlyPrice) || 0,
+        maxUsers: parseInt(maxUsers) || 1,
+        maxDocuments: parseInt(maxDocuments) || 0,
+        maxStorageGb: parseInt(maxStorageGb) || 1,
+        maxApiCalls: parseInt(maxApiCalls) || 0,
+        maxChatbotRequests: parseInt(maxChatbotRequests) || 0,
+        maxRagDocuments: parseInt(maxRagDocuments) || 0,
+        maxAiTokens: parseInt(maxAiTokens) || 0,
+        contextWindowTokens: parseInt(contextWindowTokens) || 1,
+        ragChunkSize: parseInt(ragChunkSize) || 256,
+        aiModel: aiModel.trim() || undefined,
+        embeddingModel: embeddingModel.trim() || undefined,
+        features: features.trim() || undefined,
         isActive,
-        displayOrder: Math.max(0, toInt(displayOrder, plan.displayOrder ?? 0)),
+        displayOrder: parseInt(displayOrder) || 0,
       });
       onSuccess();
     } catch (err) {
+      console.error("❌ Error updating plan:", err);
       alert(err instanceof Error ? err.message : "Cập nhật thất bại");
     } finally {
       setLoading(false);
@@ -779,28 +948,105 @@ function EditPlanModal({ plan, onClose, onSuccess }: { plan: SubscriptionPlanRes
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
-      <div className="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
+      <div className="relative max-h-[90vh] w-full max-w-2xl overflow-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-zinc-950">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{isEn ? `Update plan: ${plan.code}` : `Cập nhật gói: ${plan.code}`}</h3>
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-          <div><label className="block text-xs text-zinc-500">Tên *</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-          <div><label className="block text-xs text-zinc-500">Mô tả</label><input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+          <div>
+            <label className="block text-xs text-zinc-500">Tên *</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-500">Mô tả</label>
+            <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+          </div>
+          
           <div className="grid grid-cols-3 gap-2">
-            <div><label className="block text-xs text-zinc-500">Giá tháng</label><input type="number" min="0" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Giá quý</label><input type="number" min="0" value={quarterlyPrice} onChange={(e) => setQuarterlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">Giá năm</label><input type="number" min="0" value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div>
+              <label className="block text-xs text-zinc-500">Giá tháng</label>
+              <input type="number" min="0" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Giá quý</label>
+              <input type="number" min="0" value={quarterlyPrice} onChange={(e) => setQuarterlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Giá năm</label>
+              <input type="number" min="0" value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
           </div>
+          
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="block text-xs text-zinc-500">{isEn ? "Max users" : "Người dùng tối đa"}</label>
+              <input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">{isEn ? "Max documents" : "Tài liệu tối đa"}</label>
+              <input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">{isEn ? "Max storage (GB)" : "Dung lượng tối đa (GB)"}</label>
+              <input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="block text-xs text-zinc-500">{isEn ? "Max users" : "Người dùng tối đa"}</label><input type="number" min="1" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">{isEn ? "Max documents" : "Tài liệu tối đa"}</label><input type="number" min="0" value={maxDocuments} onChange={(e) => setMaxDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">{isEn ? "Max storage (GB)" : "Dung lượng tối đa (GB)"}</label><input type="number" min="1" value={maxStorageGb} onChange={(e) => setMaxStorageGb(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
-            <div><label className="block text-xs text-zinc-500">{isEn ? "Display order" : "Thứ tự hiển thị"}</label><input type="number" min="0" value={displayOrder} onChange={(e) => setDisplayOrder(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" /></div>
+            <div>
+              <label className="block text-xs text-zinc-500">Max API Calls</label>
+              <input type="number" min="0" value={maxApiCalls} onChange={(e) => setMaxApiCalls(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Max Chatbot Requests</label>
+              <input type="number" min="0" value={maxChatbotRequests} onChange={(e) => setMaxChatbotRequests(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Max RAG Documents</label>
+              <input type="number" min="0" value={maxRagDocuments} onChange={(e) => setMaxRagDocuments(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Max AI Tokens</label>
+              <input type="number" min="0" value={maxAiTokens} onChange={(e) => setMaxAiTokens(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Context Window Tokens</label>
+              <input type="number" min="1" value={contextWindowTokens} onChange={(e) => setContextWindowTokens(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">RAG Chunk Size</label>
+              <input type="number" min="256" value={ragChunkSize} onChange={(e) => setRagChunkSize(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-zinc-500">AI Model</label>
+              <input type="text" value={aiModel} onChange={(e) => setAiModel(e.target.value)} placeholder="gpt-4" className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500">Embedding Model</label>
+              <input type="text" value={embeddingModel} onChange={(e) => setEmbeddingModel(e.target.value)} placeholder="text-embedding-ada-002" className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-zinc-500">Features</label>
+            <input type="text" value={features} onChange={(e) => setFeatures(e.target.value)} placeholder="Basic features" className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+          </div>
+
+          <div>
+            <label className="block text-xs text-zinc-500">{isEn ? "Display order" : "Thứ tự hiển thị"}</label>
+            <input type="number" min="0" value={displayOrder} onChange={(e) => setDisplayOrder(e.target.value)} className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
+          </div>
+
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded text-green-500" />
             <span className="text-sm text-zinc-700 dark:text-zinc-300">{isEn ? "Active" : "Đang hoạt động"}</span>
           </label>
+          
           <div className="mt-6 flex gap-2">
-            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Lưu"}</button>
+            <button type="submit" disabled={loading} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin inline" /> : "Lưu"}
+            </button>
             <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700 dark:text-zinc-300">Hủy</button>
           </div>
         </form>

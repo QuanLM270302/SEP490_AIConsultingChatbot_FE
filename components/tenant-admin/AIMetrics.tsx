@@ -1,10 +1,10 @@
 "use client";
 
 import { Zap, Calendar, Layers, BarChart3, Loader2 } from "lucide-react";
+import { ErrorNotice } from "@/components/ui";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import type { TenantLlmUsageResponse } from "@/lib/api/tenant-admin";
-import { parseApiErrorMessage } from "@/lib/api/parseApiError";
 
 function formatInt(n: number): string {
   return Number.isFinite(n) ? Math.trunc(n).toLocaleString() : "0";
@@ -39,9 +39,7 @@ export function AIMetrics({
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
-        {parseApiErrorMessage(error)}
-      </div>
+      <ErrorNotice message={error} />
     );
   }
 

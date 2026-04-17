@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { getPermissionLabel } from "@/lib/permission-labels";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
+import { AnimatedSegmentedControl, ErrorNotice, useConfirmDialog } from "@/components/ui";
 import {
   createTenantRole,
   deleteTenantRole,
@@ -18,7 +20,7 @@ import {
 import { Eye, Loader2, MoreVertical, Pencil, Plus, Shield, Trash2 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
-import { getStoredUser } from "@/lib/auth-store";
+import { getAccessToken, getRefreshToken, getStoredUser, refreshAuth } from "@/lib/auth-store";
 import {
   mergeRolesWithCache,
   readTenantRolesCache,
@@ -26,6 +28,13 @@ import {
 } from "@/lib/tenant-roles-cache";
 
 type FilterMode = "all" | "custom" | "fixed";
+
+const TAB_EASE = [0.22, 1, 0.36, 1] as const;
+
+function isUnauthorizedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /(unauthorized|missing or invalid token|\b401\b)/i.test(message);
+}
 
 export default function TenantAdminRolesPage() {
   const { language } = useLanguageStore();
@@ -41,8 +50,17 @@ export default function TenantAdminRolesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [detail, setDetail] = useState<RoleResponse | null>(null);
   const [editRole, setEditRole] = useState<RoleResponse | null>(null);
+  const [isFilterPending, startFilterTransition] = useTransition();
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const fixedCodes = useMemo(() => new Set(["TENANT_ADMIN", "EMPLOYEE"]), []);
+
+  const ensureAccessToken = useCallback(async (): Promise<boolean> => {
+    if (getAccessToken()) return true;
+    if (!getRefreshToken()) return false;
+    const ok = await refreshAuth();
+    return ok && !!getAccessToken();
+  }, []);
 
   /** Lưu snapshot đầy đủ (tab “Tất cả”) để sau đăng xuất vẫn khôi phục hiển thị. */
   const persistFullCatalog = useCallback(async () => {
@@ -63,7 +81,8 @@ export default function TenantAdminRolesPage() {
     setError(null);
     const tenantId = getStoredUser()?.tenantId ?? null;
     const cached = readTenantRolesCache(tenantId);
-    try {
+
+    const fetchRolesAndPermissions = async () => {
       const [list, perms] = await Promise.all([
         filter === "custom"
           ? getTenantCustomRoles()
@@ -72,6 +91,24 @@ export default function TenantAdminRolesPage() {
             : getTenantRoles(),
         getTenantAvailablePermissions().catch(() => []),
       ]);
+      return { list, perms };
+    };
+
+    try {
+      await ensureAccessToken();
+
+      let result: { list: RoleResponse[]; perms: { code: string; name?: string }[] };
+      try {
+        result = await fetchRolesAndPermissions();
+      } catch (e) {
+        if (isUnauthorizedError(e) && (await ensureAccessToken())) {
+          result = await fetchRolesAndPermissions();
+        } else {
+          throw e;
+        }
+      }
+
+      const { list, perms } = result;
       const merged = mergeRolesWithCache(list, cached, filter);
       setRoles(merged);
       if (tenantId && filter === "all") {
@@ -98,7 +135,7 @@ export default function TenantAdminRolesPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, language, fixedCodes]);
+  }, [filter, language, fixedCodes, ensureAccessToken]);
 
   useEffect(() => {
     void load();
@@ -150,7 +187,15 @@ export default function TenantAdminRolesPage() {
       alert("Role cố định không thể xóa.");
       return;
     }
-    if (!confirm(`Bạn có chắc muốn xóa role "${role.name ?? role.code ?? role.id}"?`)) return;
+    const ok = await confirm({
+      title: "Xóa vai trò?",
+      description: `Bạn có chắc muốn xóa role "${role.name ?? role.code ?? role.id}"?`,
+      confirmText: "Xóa",
+      cancelText: t.cancel,
+      tone: "danger",
+    });
+    if (!ok) return;
+
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoadingId(role.id);
@@ -168,113 +213,150 @@ export default function TenantAdminRolesPage() {
   return (
     <TenantAdminLayout>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{t.rolesAndPermissions}</h1>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              {t.manageRolesDescription}
-            </p>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+            {t.rolesAndPermissions}
+          </h1>
+          <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-400">
+            {t.manageRolesDescription}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+            <Shield className="h-4 w-4" />
+            {language === "en" ? "Role filters" : "Bộ lọc vai trò"}
           </div>
+
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all hover:bg-emerald-600 hover:shadow-xl hover:shadow-emerald-500/40"
           >
             <Plus className="h-4 w-4" />
             {t.addCustomRole}
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {(["all", "custom", "fixed"] as FilterMode[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                filter === f
-                  ? "bg-green-500 text-white"
-                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              }`}
-            >
-              {f === "all" ? t.all : f === "custom" ? t.customRoles : t.fixedRoles}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <AnimatedSegmentedControl
+            value={filter}
+            onChange={(next) => {
+              if (next === filter) return;
+              startFilterTransition(() => setFilter(next));
+            }}
+            layoutId="roles-filter-pill"
+            options={[
+              { value: "all", label: t.all },
+              { value: "custom", label: t.customRoles },
+              { value: "fixed", label: t.fixedRoles },
+            ]}
+          />
+          {isFilterPending ? (
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+              {language === "en" ? "Switching..." : "Đang chuyển tab..."}
+            </span>
+          ) : null}
         </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-green-500" />
-              <span className="text-sm text-zinc-500">{t.loading}…</span>
-            </div>
-          ) : error ? (
-            <div className="p-5 text-sm text-red-600 dark:text-red-400">{error}</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="border-b border-zinc-200 bg-zinc-50/60 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
-                  <tr>
-                    <th className="px-6 py-4 font-medium">{t.roleLabel}</th>
-                    <th className="px-6 py-4 font-medium">{t.codeLabel}</th>
-                    <th className="px-6 py-4 font-medium">{t.usersCount}</th>
-                    <th className="px-6 py-4 font-medium">{t.typeLabel}</th>
-                    <th className="px-6 py-4 font-medium text-right">{t.thaoTac}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {roles.length === 0 ? (
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={filter}
+            initial={{ opacity: 0, y: 16, scale: 0.996, filter: "blur(2px)" }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -12, scale: 0.994, filter: "blur(1px)" }}
+            transition={{ duration: 0.36, ease: TAB_EASE }}
+            className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+                <span className="text-sm text-zinc-500">{t.loading}…</span>
+              </div>
+            ) : error ? (
+              <div className="p-5">
+                <ErrorNotice message={error} />
+              </div>
+            ) : (
+              <div className="table-scroll-container">
+                <table className="min-w-176 table-auto text-left">
+                  <thead className="border-b border-zinc-200 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/50">
                     <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
-                        {t.noData}
-                      </td>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.roleLabel}</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.codeLabel}</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.usersCount}</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.typeLabel}</th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.thaoTac}</th>
                     </tr>
-                  ) : (
-                    roles.map((role) => {
-                      const fixed = isFixedRole(role);
-                      return (
-                        <tr key={role.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                          <td className="px-6 py-4">
-                            <p className="font-medium text-zinc-900 dark:text-white">{role.name ?? "—"}</p>
-                            <p className="text-xs text-zinc-500">{role.description ?? (language === "vi" ? "Không có mô tả" : "No description")}</p>
-                          </td>
-                          <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.code ?? "—"}</td>
-                          <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{role.usersCount ?? 0}</td>
-                          <td className="px-6 py-4">
-                            {fixed ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700 ring-1 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-300">
-                                <Shield className="h-3 w-3" />
-                                {t.fixed}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700 ring-1 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-300">
-                                {t.custom}
-                              </span>
-                            )}
-                          </td>
-                          <td className="relative px-6 py-4 text-right">
-                            <button
-                              type="button"
-                              onClick={(e) => toggleMenu(role.id, e.currentTarget)}
-                              className="rounded-full p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-                            >
-                              <MoreVertical className="h-5 w-5" />
-                            </button>
-                            {actionLoadingId === role.id ? (
-                              <span className="absolute right-10 top-1/2 -translate-y-1/2">
-                                <Loader2 className="h-4 w-4 animate-spin text-green-500" />
-                              </span>
-                            ) : null}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
+                    {roles.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
+                          {t.noData}
+                        </td>
+                      </tr>
+                    ) : (
+                      roles.map((role, index) => {
+                        const fixed = isFixedRole(role);
+                        return (
+                          <motion.tr
+                            key={role.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{
+                              duration: 0.28,
+                              delay: Math.min(index * 0.03, 0.24),
+                              ease: TAB_EASE,
+                            }}
+                            className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                          >
+                            <td className="px-4 py-4 align-top sm:px-6">
+                              <p className="max-w-64 whitespace-normal text-sm font-semibold text-zinc-900 dark:text-white">{role.name ?? "—"}</p>
+                              <p className="mt-1 max-w-72 whitespace-normal text-xs text-zinc-500 dark:text-zinc-400">
+                                {role.description ?? (language === "vi" ? "Không có mô tả" : "No description")}
+                              </p>
+                            </td>
+                            <td className="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-400 sm:px-6">
+                              <div className="max-w-48 whitespace-normal wrap-break-word">{role.code ?? "—"}</div>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-400 sm:px-6">{role.usersCount ?? 0}</td>
+                            <td className="whitespace-nowrap px-4 py-4 align-top sm:px-6">
+                              {fixed ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                  <Shield className="h-3 w-3" />
+                                  {t.fixed}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                  {t.custom}
+                                </span>
+                              )}
+                            </td>
+                            <td className="relative whitespace-nowrap px-4 py-4 text-right align-top sm:px-6">
+                              <button
+                                type="button"
+                                onClick={(e) => toggleMenu(role.id, e.currentTarget)}
+                                className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
+                              {actionLoadingId === role.id ? (
+                                <span className="absolute right-10 top-1/2 -translate-y-1/2">
+                                  <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                                </span>
+                              ) : null}
+                            </td>
+                          </motion.tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {openMenuId && menuPos && (
@@ -350,7 +432,7 @@ export default function TenantAdminRolesPage() {
           <div className="absolute inset-0 bg-zinc-900/70 backdrop-blur-sm" onClick={() => setDetail(null)} />
           <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-zinc-900">
             {/* HEADER */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 px-8 py-8 dark:from-emerald-600 dark:to-emerald-700">
+            <div className="relative overflow-hidden bg-linear-to-br from-emerald-500 to-emerald-600 px-8 py-8 dark:from-emerald-600 dark:to-emerald-700">
               <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
               <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
               <div className="relative flex items-start justify-between">
@@ -383,7 +465,7 @@ export default function TenantAdminRolesPage() {
               {/* Stats Cards Row */}
               <div className="grid gap-4 sm:grid-cols-3">
                 {/* Role Code Card */}
-                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-linear-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
                   <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-emerald-500/5 blur-2xl" />
                   <div className="relative">
                     <div className="mb-2 flex items-center gap-2">
@@ -401,7 +483,7 @@ export default function TenantAdminRolesPage() {
                 </div>
 
                 {/* Users Count Card */}
-                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-linear-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
                   <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-blue-500/5 blur-2xl" />
                   <div className="relative">
                     <div className="mb-2 flex items-center gap-2">
@@ -419,7 +501,7 @@ export default function TenantAdminRolesPage() {
                 </div>
 
                 {/* Status Card */}
-                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-linear-to-br from-white to-zinc-50 p-5 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
                   <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-purple-500/5 blur-2xl" />
                   <div className="relative">
                     <div className="mb-2 flex items-center gap-2">
@@ -439,7 +521,7 @@ export default function TenantAdminRolesPage() {
 
               {/* Description Card */}
               {detail.description && (
-                <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                <div className="rounded-2xl border border-zinc-200 bg-linear-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
                   <div className="mb-3 flex items-center gap-2">
                     <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -456,7 +538,7 @@ export default function TenantAdminRolesPage() {
 
               {/* Permissions Card */}
               {detail.permissions && detail.permissions.length > 0 && (
-                <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
+                <div className="rounded-2xl border border-zinc-200 bg-linear-to-br from-white to-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-900/50">
                   <div className="mb-4 flex items-center gap-2">
                     <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -499,6 +581,8 @@ export default function TenantAdminRolesPage() {
           </div>
         </div>
       )}
+
+      {confirmDialog}
     </TenantAdminLayout>
   );
 }
@@ -675,7 +759,7 @@ function EditRoleModal({
     return () => {
       cancelled = true;
     };
-  }, [role.id]);
+  }, [role.id, role.permissions]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

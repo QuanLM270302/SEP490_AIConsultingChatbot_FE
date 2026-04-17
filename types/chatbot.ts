@@ -46,6 +46,7 @@ export interface SourceDocument {
 // GET /api/v1/chatbot/history/{id}
 export interface ChatMessageResponse {
   id: string;
+  messageId?: string; // Backend uses this field name
   role: "USER" | "ASSISTANT";
   content: string;
   sources: SourceDocument[];

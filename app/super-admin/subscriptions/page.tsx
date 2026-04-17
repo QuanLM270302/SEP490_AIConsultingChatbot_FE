@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/admin";
 import { Loader2, Eye, Filter, ChevronDown } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
+import { AnimatedSegmentedControl } from "@/components/ui";
 
 type FilterMode = "all" | "active";
 
@@ -89,36 +90,17 @@ export default function SubscriptionsPage() {
                   </span>
                   <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{isEn ? "Filter" : "Lọc"}</span>
                 </div>
-                <div className="flex items-center gap-2 rounded-full bg-zinc-100/80 p-1 dark:bg-zinc-800/80">
-                  <button
-                    type="button"
-                    onClick={() => setFilter("all")}
-                    disabled={!!tenantIdFilter.trim()}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                      tenantIdFilter.trim()
-                        ? "cursor-not-allowed opacity-50"
-                        : filter === "all"
-                          ? "bg-white text-green-700 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:text-green-400 dark:ring-zinc-700"
-                          : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
-                    }`}
-                  >
-                    {isEn ? "All" : "Tất cả"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilter("active")}
-                    disabled={!!tenantIdFilter.trim()}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                      tenantIdFilter.trim()
-                        ? "cursor-not-allowed opacity-50"
-                        : filter === "active"
-                          ? "bg-white text-green-700 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:text-green-400 dark:ring-zinc-700"
-                          : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
-                    }`}
-                  >
-                    {isEn ? "Active" : "Đang hoạt động"}
-                  </button>
-                </div>
+                <AnimatedSegmentedControl
+                  value={filter}
+                  onChange={setFilter}
+                  layoutId="super-admin-subscriptions-filter-pill"
+                  size="sm"
+                  className="rounded-full bg-zinc-100/80 p-1 dark:bg-zinc-800/80"
+                  options={[
+                    { value: "all", label: isEn ? "All" : "Tất cả", disabled: !!tenantIdFilter.trim() },
+                    { value: "active", label: isEn ? "Active" : "Đang hoạt động", disabled: !!tenantIdFilter.trim() },
+                  ]}
+                />
               </div>
 
               <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:gap-3">

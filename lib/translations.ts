@@ -2,6 +2,7 @@ export const translations = {
   vi: {
     // Common
     settings: 'Cài đặt',
+    back: 'Quay lại',
     profile: 'Hồ sơ',
     logout: 'Đăng xuất',
     save: 'Lưu',
@@ -37,6 +38,8 @@ export const translations = {
     employees: 'Nhân viên',
     departments: 'Phòng ban',
     documents: 'Tài liệu',
+    auditLogs: 'Nhật ký hoạt động',
+    aiInsights: 'Thông tin AI',
     subscription: 'Gói đăng ký',
     tenantAdmin: 'Quản trị tổ chức',
     management: 'Quản lý',
@@ -100,7 +103,7 @@ export const translations = {
     rejected: 'Từ chối',
     suspended: 'Tạm ngưng',
     noTenants: 'Chưa có tổ chức nào.',
-    nameEmail: 'Tên / thư điện tử',
+    nameEmail: 'Tên / Email',
     status: 'Trạng thái',
     actions: 'Thao tác',
     viewDetail: 'Xem chi tiết',
@@ -119,7 +122,7 @@ export const translations = {
     deleting: 'Đang xóa...',
     tenantDetail: 'Chi tiết tổ chức',
     organizationName: 'Tên tổ chức',
-    contactEmail: 'Thư điện tử liên hệ',
+    contactEmail: 'Email liên hệ',
     companySize: 'Quy mô công ty',
     address: 'Địa chỉ',
     website: 'Trang web',
@@ -199,7 +202,7 @@ export const translations = {
     // Common Table & UI
     name: 'Tên',
     code: 'Mã',
-    email: 'Thư điện tử',
+    email: 'Email',
     department: 'Phòng ban',
     role: 'Vai trò',
     noDepartments: 'Chưa có phòng ban. Dữ liệu được tải từ máy chủ.',
@@ -244,8 +247,8 @@ export const translations = {
     updateUserPermissions: 'Cập nhật quyền',
     selectPermissions: 'Chọn các quyền bổ sung cho người dùng.',
     noPermissions: 'Không có danh sách quyền.',
-    confirmDeleteUser: 'Bạn có chắc muốn xóa (vô hiệu hóa) người dùng này?',
-    passwordResetSent: 'Mật khẩu mới đã được gửi đến thư điện tử của người dùng.',
+    confirmDeleteUser: 'Bạn có chắc muốn xóa người dùng này khỏi tổ chức? Hành động này không thể hoàn tác.',
+    passwordResetSent: 'Mật khẩu mới đã được gửi đến email của người dùng.',
     
     // Department Table
     updateDepartment: 'Cập nhật phòng ban',
@@ -448,6 +451,7 @@ export const translations = {
   en: {
     // Common
     settings: 'Settings',
+    back: 'Back',
     profile: 'Profile',
     logout: 'Logout',
     save: 'Save',
@@ -483,6 +487,8 @@ export const translations = {
     employees: 'Employees',
     departments: 'Departments',
     documents: 'Documents',
+    auditLogs: 'Audit Logs',
+    aiInsights: 'AI Insights',
     subscription: 'Subscription',
     tenantAdmin: 'Tenant Admin',
     management: 'Management',
@@ -690,7 +696,7 @@ export const translations = {
     updateUserPermissions: 'Update permissions',
     selectPermissions: 'Select additional permissions for user.',
     noPermissions: 'No permissions available.',
-    confirmDeleteUser: 'Are you sure you want to delete (deactivate) this user?',
+    confirmDeleteUser: 'Are you sure you want to remove this user from the organization? This action cannot be undone.',
     passwordResetSent: 'New password has been sent to user email.',
     
     // Department Table

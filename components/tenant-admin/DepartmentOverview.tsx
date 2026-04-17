@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ErrorNotice } from "@/components/ui";
 import { getTenantDepartments } from "@/lib/api/tenant-admin";
+import { isAuthExpiredErrorMessage } from "@/lib/auth-session-events";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 
@@ -19,7 +21,10 @@ export function DepartmentOverview() {
           list.map((d) => ({ name: d.name ?? "—", count: d.employeeCount ?? 0 }))
         )
       )
-      .catch((e) => setError(e instanceof Error ? e.message : t.error))
+      .catch((e) => {
+        const message = e instanceof Error ? e.message : t.error;
+        setError(isAuthExpiredErrorMessage(message) ? null : message);
+      })
       .finally(() => setLoading(false));
   }, [t.error]);
 
@@ -36,7 +41,7 @@ export function DepartmentOverview() {
     return (
       <div className="rounded-lg bg-white p-6 shadow dark:bg-zinc-900">
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t.departmentOverview}</h3>
-        <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+        <ErrorNotice message={error} className="mt-4" />
       </div>
     );
   }

@@ -4,6 +4,8 @@ import { useState, FormEvent } from "react";
 import Link from "next/link";
 import { AuthHeroPanel } from "@/components/auth/AuthHeroPanel";
 import { AuthHomePlainLink } from "@/components/auth/AuthHomePlainLink";
+import { ErrorNotice } from "@/components/ui";
+import { toUiErrorMessage } from "@/lib/api/parseApiError";
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
@@ -45,15 +47,15 @@ export default function RegisterPage() {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(data.message || "Registration failed");
+        throw new Error(toUiErrorMessage(data, "Registration failed"));
       }
 
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(toUiErrorMessage(err, "Registration failed"));
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,7 @@ export default function RegisterPage() {
     return (
       <div className="flex min-h-dvh">
         {/* Left: Success message */}
-        <div className="flex w-full flex-col border-zinc-200 bg-white px-6 py-10 dark:border-zinc-800 dark:bg-zinc-900 sm:px-8 lg:w-1/2 lg:border-r lg:px-12 lg:py-14">
+        <div className="flex w-full flex-col justify-center border-zinc-200 bg-white px-6 py-8 dark:border-zinc-800 dark:bg-zinc-900 sm:px-8 lg:w-1/2 lg:border-r lg:px-12 lg:py-10">
           <div className="mx-auto w-full max-w-md space-y-6 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
               <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -127,9 +129,7 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200">
-                {error}
-              </div>
+              <ErrorNotice message={error} />
             )}
 
             <div className="space-y-1.5">

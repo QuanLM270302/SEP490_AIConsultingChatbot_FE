@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Pencil, Trash2, MoreVertical } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Pencil, MoreVertical, Power } from "lucide-react";
+import { ErrorNotice, useConfirmDialog } from "@/components/ui";
 import {
   getTenantDepartments,
   getTenantActiveDepartments,
   updateTenantDepartment,
-  deleteTenantDepartment,
   type DepartmentResponse,
   type UpdateDepartmentRequest,
 } from "@/lib/api/tenant-admin";
@@ -18,7 +18,7 @@ export function DepartmentsTable({
   filter,
 }: {
   refreshKey?: number;
-  filter: "all" | "active";
+  filter: "all" | "active" | "inactive";
 }) {
   const { language } = useLanguageStore();
   const t = translations[language];
@@ -30,23 +30,31 @@ export function DepartmentsTable({
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const { confirm, confirmDialog } = useConfirmDialog();
+
+  const loadDepartments = useCallback(async () => {
+    try {
+      let data: DepartmentResponse[];
+      if (filter === "active") {
+        data = await getTenantActiveDepartments();
+      } else if (filter === "inactive") {
+        const all = await getTenantDepartments();
+        data = all.filter((d) => !d.isActive);
+      } else {
+        data = await getTenantDepartments();
+      }
+      setDepartments(data);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.errorLoadingData);
+    }
+  }, [filter, t.errorLoadingData]);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const load = async () => {
-      try {
-        const data =
-          filter === "active" ? await getTenantActiveDepartments() : await getTenantDepartments();
-        setDepartments(data);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : t.errorLoadingData);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [refreshKey, filter, t.errorLoadingData]);
+    loadDepartments().finally(() => setLoading(false));
+  }, [refreshKey, loadDepartments]);
 
   useEffect(() => {
     if (openMenuId == null) return;
@@ -79,6 +87,51 @@ export function DepartmentsTable({
     setOpenMenuId(deptId);
   };
 
+  const selectedDept = openMenuId == null
+    ? null
+    : departments.find((d) => d.id === openMenuId) ?? null;
+  const selectedDeptActive = selectedDept?.isActive ?? false;
+
+  const handleToggleActive = async () => {
+    if (!selectedDept || openMenuId == null) return;
+
+    const isCurrentlyActive = selectedDeptActive;
+    const ok = await confirm({
+      title: isCurrentlyActive
+        ? language === "en"
+          ? "Deactivate department?"
+          : "Vô hiệu hóa phòng ban?"
+        : language === "en"
+          ? "Activate department?"
+          : "Kích hoạt phòng ban?",
+      description: isCurrentlyActive
+        ? language === "en"
+          ? "This department will be marked as inactive."
+          : "Phòng ban này sẽ được chuyển sang trạng thái không hoạt động."
+        : language === "en"
+          ? "This department will be marked as active."
+          : "Phòng ban này sẽ được chuyển sang trạng thái hoạt động.",
+      confirmText: isCurrentlyActive
+        ? t.deactivate
+        : t.activate,
+      cancelText: t.cancel,
+      tone: isCurrentlyActive ? "danger" : "default",
+    });
+    if (!ok) return;
+
+    setActionLoadingId(openMenuId);
+    try {
+      await updateTenantDepartment(openMenuId, { isActive: !isCurrentlyActive });
+      await loadDepartments();
+      setOpenMenuId(null);
+      setMenuPos(null);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t.error);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="overflow-hidden rounded-3xl bg-white p-8 shadow-lg dark:bg-zinc-950">
@@ -90,25 +143,25 @@ export function DepartmentsTable({
   if (error) {
     return (
       <div className="overflow-hidden rounded-3xl bg-white p-8 shadow-lg dark:bg-zinc-950">
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <ErrorNotice message={error} />
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-white shadow-lg shadow-green-100/60 dark:bg-zinc-950 dark:shadow-black/40">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-zinc-100 dark:divide-zinc-900">
-          <thead className="bg-zinc-50 dark:bg-zinc-900">
+    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="table-scroll-container">
+        <table className="min-w-176 table-auto divide-y divide-zinc-100 dark:divide-zinc-900 lg:min-w-full">
+          <thead className="bg-zinc-50/50 dark:bg-zinc-900/50">
             <tr>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.department}</th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.code}</th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.employees}</th>
-              <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{t.status}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.department}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.code}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.employees}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.status}</th>
               <th className="relative px-6 py-4"><span className="sr-only">{t.actions}</span></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-900 dark:bg-zinc-950">
+          <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
             {departments.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
@@ -117,11 +170,15 @@ export function DepartmentsTable({
               </tr>
             ) : (
               departments.map((dept) => (
-                <tr key={dept.id} className="transition hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-zinc-900 dark:text-white">{dept.name ?? "—"}</td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-600 dark:text-zinc-400">{dept.code ?? "—"}</td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-900 dark:text-white">{dept.employeeCount ?? "—"}</td>
-                  <td className="whitespace-nowrap px-6 py-4">
+                <tr key={dept.id} className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                  <td className="px-4 py-4 align-top text-sm font-medium text-zinc-900 dark:text-white sm:px-6">
+                    <div className="max-w-56 whitespace-normal wrap-break-word">{dept.name ?? "—"}</div>
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm text-zinc-600 dark:text-zinc-400 sm:px-6">
+                    <div className="max-w-40 whitespace-normal wrap-break-word">{dept.code ?? "—"}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4 align-top text-sm text-zinc-900 dark:text-white sm:px-6">{dept.employeeCount ?? "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-4 align-top sm:px-6">
                     <span
                       className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
                         (dept.isActive ?? (filter === "active")) ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-500/20 text-red-600 dark:text-red-400"
@@ -130,12 +187,12 @@ export function DepartmentsTable({
                       {(dept.isActive ?? (filter === "active")) ? t.active : t.inactive}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right">
+                  <td className="whitespace-nowrap px-4 py-4 text-right align-top sm:px-6">
                     <button
                       type="button"
                       aria-label="Thao tác"
                       onClick={(e) => toggleMenu(dept.id, e.currentTarget)}
-                      className="rounded-full p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-500 dark:hover:bg-zinc-900"
+                      className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>
@@ -174,24 +231,21 @@ export function DepartmentsTable({
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (!confirm(t.confirmDeleteDepartment)) return;
-                setActionLoadingId(openMenuId);
-                deleteTenantDepartment(openMenuId)
-                  .then(async () => {
-                    const data =
-                      filter === "active" ? await getTenantActiveDepartments() : await getTenantDepartments();
-                    setDepartments(data);
-                    setOpenMenuId(null);
-                    setMenuPos(null);
-                  })
-                  .catch((e) => alert(e instanceof Error ? e.message : t.error))
-                  .finally(() => setActionLoadingId(null));
-              }}
+              onClick={() => void handleToggleActive()}
               disabled={actionLoadingId === openMenuId}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
+              className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm disabled:opacity-60 ${
+                selectedDeptActive
+                  ? "text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                  : "text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+              }`}
             >
-              <Trash2 className="h-4 w-4" /> {actionLoadingId === openMenuId ? t.deleting : t.delete}
+              <Power className="h-4 w-4" />
+              {actionLoadingId === openMenuId 
+                ? t.saving 
+                : selectedDeptActive
+                  ? t.deactivate
+                  : t.activate
+              }
             </button>
           </div>
         </>
@@ -205,8 +259,15 @@ export function DepartmentsTable({
             setEditLoading(true);
             try {
               await updateTenantDepartment(editDept.id, body);
-              const data =
-                filter === "active" ? await getTenantActiveDepartments() : await getTenantDepartments();
+              let data: DepartmentResponse[];
+              if (filter === "active") {
+                data = await getTenantActiveDepartments();
+              } else if (filter === "inactive") {
+                const all = await getTenantDepartments();
+                data = all.filter((d) => !d.isActive);
+              } else {
+                data = await getTenantDepartments();
+              }
               setDepartments(data);
               setEditDept(null);
             } finally {
@@ -217,6 +278,8 @@ export function DepartmentsTable({
           t={t}
         />
       )}
+
+      {confirmDialog}
     </div>
   );
 }

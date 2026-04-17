@@ -10,15 +10,30 @@ import {
   Search,
   Lightbulb,
   ChevronDown,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { ChatHistorySidebarNew } from "./ChatHistorySidebarNew";
 import { getStoredUser } from "@/lib/auth-store";
 import { getProfile } from "@/lib/api/profile";
-import { chat, getConversationHistory } from "@/lib/api/chatbot";
-import { listCategoriesFlat } from "@/lib/api/categories";
+import { chat, ChatApiError, getConversationHistory, rateMessage } from "@/lib/api/chatbot";
 import { listTagsActive } from "@/lib/api/tags";
-import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
+import type { DocumentTagResponse } from "@/types/knowledge";
+
+const INPUT_CHAR_LIMIT = 500;
+const INPUT_WARNING_THRESHOLD = 450;
+
+function extractAnswerFromApiError(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const answer = (data as { answer?: unknown }).answer;
+  return typeof answer === "string" ? answer : "";
+}
+
+function looksLikeTooLongError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return normalized.includes("quá dài") || normalized.includes("too long");
+}
 
 interface Message {
   id: string;
@@ -30,6 +45,7 @@ interface Message {
     confidence?: number;
   }[];
   timestamp: Date;
+  rating?: "helpful" | "not-helpful";
 }
 
 export interface ChatViewProps {
@@ -61,11 +77,8 @@ export function ChatView({
     documentName: string;
     confidence?: number;
   } | null>(null);
-  const [categories, setCategories] = useState<DocumentCategoryResponse[]>([]);
   const [tags, setTags] = useState<DocumentTagResponse[]>([]);
-  const [categoryId, setCategoryId] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [topK, setTopK] = useState(5);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,12 +97,9 @@ export function ChatView({
   }, []);
 
   useEffect(() => {
-    Promise.all([listCategoriesFlat().catch(() => []), listTagsActive().catch(() => [])]).then(
-      ([cats, activeTags]) => {
-        setCategories(cats);
-        setTags(activeTags);
-      }
-    );
+    listTagsActive()
+      .then((activeTags) => setTags(activeTags))
+      .catch(() => setTags([]));
   }, []);
 
   const toggleTag = (tagId: string) => {
@@ -149,6 +159,19 @@ export function ChatView({
     });
   };
 
+  const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
+    console.log("🔵 Rating message:", { messageId, rating });
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
+    );
+    try {
+      await rateMessage(messageId, rating);
+      console.log("✅ Rating submitted successfully");
+    } catch (e) {
+      console.error("❌ Rating submission failed:", e);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -170,8 +193,6 @@ export function ChatView({
       const response = await chat({
         message: text,
         conversationId: conversationId ?? undefined,
-        topK,
-        categoryId: categoryId || undefined,
         tagIds: selectedTagIds.length ? selectedTagIds : undefined,
       });
 
@@ -192,8 +213,40 @@ export function ChatView({
           : "Xin lỗi, hệ thống đang bận. Vui lòng thử lại sau."
         : rawAnswer;
 
+      // Fetch conversation history to get real message IDs from backend
+      let realMessageId = (Date.now() + 1).toString(); // fallback
+      if (response.conversationId) {
+        try {
+          console.log("🔍 Fetching conversation history for ID:", response.conversationId);
+          const history = await getConversationHistory(response.conversationId);
+          console.log("📥 History response:", history);
+          if (history?.messages?.length) {
+            console.log("📝 Total messages in history:", history.messages.length);
+            // Get the last assistant message (most recent)
+            const lastAssistantMsg = [...history.messages]
+              .reverse()
+              .find((m) => m.role === "ASSISTANT");
+            console.log("🤖 Last assistant message:", lastAssistantMsg);
+            // Backend uses 'messageId' field, not 'id'
+            const msgId = (lastAssistantMsg as any)?.messageId || lastAssistantMsg?.id;
+            if (msgId) {
+              realMessageId = msgId;
+              console.log("✅ Got real message ID from backend:", realMessageId);
+            } else {
+              console.warn("⚠️ No assistant message ID found in history");
+            }
+          } else {
+            console.warn("⚠️ History is empty or invalid");
+          }
+        } catch (e) {
+          console.error("❌ Failed to fetch message ID:", e);
+        }
+      } else {
+        console.warn("⚠️ No conversationId in response");
+      }
+
       const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: realMessageId,
         role: "assistant",
         content: answerText,
         sources: (response.sources ?? []).map((s) => ({
@@ -204,7 +257,27 @@ export function ChatView({
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMessage]);
-    } catch {
+    } catch (err) {
+      if (err instanceof ChatApiError) {
+        const apiAnswer = extractAnswerFromApiError(err.data) || err.message;
+        if (err.status === 429) {
+          setError(
+            isEn
+              ? "You have reached today's message limit. Please try again tomorrow."
+              : "Bạn đã đạt giới hạn tin nhắn hôm nay. Vui lòng thử lại vào ngày mai."
+          );
+          return;
+        }
+        if (err.status === 400 && looksLikeTooLongError(apiAnswer)) {
+          setError(
+            isEn
+              ? "Your message is too long. Please shorten it."
+              : "Tin nhắn quá dài. Vui lòng rút ngắn nội dung."
+          );
+          return;
+        }
+      }
+
       setError(isEn ? "Failed to get a response from the chatbot." : "Không thể nhận phản hồi từ chatbot.");
       const fallback: Message = {
         id: (Date.now() + 1).toString(),
@@ -250,71 +323,6 @@ export function ChatView({
                   {error}
                 </div>
               ) : null}
-
-              <details className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
-                <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.12em] text-zinc-600 dark:text-zinc-400">
-                  <span className="inline-flex items-center gap-2">
-                    {isEn ? "RAG filters" : "Bộ lọc RAG"}
-                    <ChevronDown className="h-4 w-4 opacity-70" />
-                  </span>
-                </summary>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">
-                      {isEn ? "Category" : "Danh mục"}
-                    </label>
-                    <select
-                      value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
-                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                    >
-                      <option value="">{isEn ? "All categories" : "Tất cả danh mục"}</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">Top K</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={topK}
-                      onChange={(e) =>
-                        setTopK(Math.min(20, Math.max(1, Number(e.target.value) || 5)))
-                      }
-                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                    />
-                  </div>
-                  <div className="sm:col-span-2 lg:col-span-1">
-                    <label className="mb-1 block text-xs text-zinc-600 dark:text-zinc-400">
-                      {isEn ? "Tags" : "Thẻ"}
-                    </label>
-                    <div className="scrollbar-chat-hidden flex max-h-24 flex-wrap gap-2 overflow-y-auto">
-                      {tags.slice(0, 16).map((tg) => {
-                        const active = selectedTagIds.includes(tg.id);
-                        return (
-                          <button
-                            key={tg.id}
-                            type="button"
-                            onClick={() => toggleTag(tg.id)}
-                            className={`rounded-full px-2.5 py-1 text-xs transition ${
-                              active
-                                ? "bg-emerald-600 text-white"
-                                : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                            }`}
-                          >
-                            {tg.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </details>
 
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12">
@@ -396,6 +404,34 @@ export function ChatView({
                             ))}
                           </div>
                         ) : null}
+                        {message.role === "assistant" && (
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleRate(message.id, "helpful")}
+                              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                                message.rating === "helpful"
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                                  : "border-zinc-200 bg-white text-zinc-600 hover:border-emerald-300 hover:bg-emerald-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30"
+                              }`}
+                            >
+                              <ThumbsUp className="h-3.5 w-3.5" />
+                              {isEn ? "Helpful" : "Hữu ích"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRate(message.id, "not-helpful")}
+                              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                                message.rating === "not-helpful"
+                                  ? "border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950/30 dark:text-red-300"
+                                  : "border-zinc-200 bg-white text-zinc-600 hover:border-red-300 hover:bg-red-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-red-700 dark:hover:bg-red-950/30"
+                              }`}
+                            >
+                              <ThumbsDown className="h-3.5 w-3.5" />
+                              {isEn ? "Not helpful" : "Không hữu ích"}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -404,10 +440,21 @@ export function ChatView({
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600">
                         <Sparkles className="h-4 w-4 text-white" />
                       </div>
-                      <div className="flex items-center gap-1 pt-2">
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" />
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                          {isEn ? "AI Assistant" : "Trợ lý AI"}
+                        </div>
+                        <div className="inline-flex min-w-60 max-w-md flex-col gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+                          <div className="flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                            <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                            {isEn ? "Generating answer..." : "Đang tạo câu trả lời..."}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="h-2.5 w-full animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+                            <div className="h-2.5 w-11/12 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+                            <div className="h-2.5 w-8/12 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : null}
@@ -437,18 +484,38 @@ export function ChatView({
                         isEn ? "Ask about policies, HR, IT…" : "Hỏi về chính sách, HR, IT…"
                       }
                       rows={1}
+                      maxLength={INPUT_CHAR_LIMIT}
                       className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent text-[15px] text-zinc-900 placeholder-zinc-500 outline-none dark:text-white dark:placeholder-zinc-400"
                     />
                     <button
                       type="submit"
-                      disabled={!input.trim() || isLoading}
+                      disabled={!input.trim() || isLoading || input.length > INPUT_CHAR_LIMIT}
                       className="rounded-lg bg-emerald-600 p-2.5 text-white transition hover:bg-emerald-700 disabled:opacity-50"
                     >
                       <Send className="h-5 w-5" />
                     </button>
                   </div>
+                  <div className="mt-2 flex min-h-[18px] items-center justify-between gap-3">
+                    {conversationId ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                        <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        <span>{isEn ? "Memory active" : "Đã bật bộ nhớ hội thoại"}</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-transparent">memory</span>
+                    )}
+                    <span
+                      className={`text-xs ${
+                        input.length > INPUT_WARNING_THRESHOLD
+                          ? "text-red-500 dark:text-red-400"
+                          : "text-zinc-500 dark:text-zinc-400"
+                      }`}
+                    >
+                      {input.length}/{INPUT_CHAR_LIMIT}
+                    </span>
+                  </div>
                 </form>
-                <p className="mt-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
+                <p className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-400">
                   {isEn
                     ? "AI can make mistakes. Verify important information."
                     : "AI có thể mắc lỗi. Hãy xác minh thông tin quan trọng."}
@@ -457,8 +524,8 @@ export function ChatView({
             </div>
           </div>
 
-          <aside className="sticky top-6 hidden w-[28rem] shrink-0 space-y-4 xl:block">
-            <div className="rounded-2xl border border-zinc-200 bg-gradient-to-b from-zinc-50 to-white p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-950">
+          <aside className="sticky top-6 hidden w-md shrink-0 space-y-4 xl:block">
+            <div className="rounded-2xl border border-zinc-200 bg-linear-to-b from-zinc-50 to-white p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-950">
               <div className="mb-3 flex items-center gap-2 text-zinc-900 dark:text-white">
                 <FileText className="h-5 w-5 text-emerald-600" />
                 <h3 className="text-sm font-semibold">
@@ -497,7 +564,7 @@ export function ChatView({
               )}
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-gradient-to-b from-emerald-50/80 to-white p-5 shadow-sm dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-950">
+            <div className="rounded-2xl border border-zinc-200 bg-linear-to-b from-emerald-50/80 to-white p-5 shadow-sm dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-950">
               <div className="mb-3 flex items-center gap-2 text-zinc-900 dark:text-white">
                 <Lightbulb className="h-5 w-5 text-emerald-600" />
                 <h3 className="text-sm font-semibold">{isEn ? "Tips" : "Gợi ý"}</h3>

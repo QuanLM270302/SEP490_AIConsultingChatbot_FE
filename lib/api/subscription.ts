@@ -73,6 +73,45 @@ export interface SelectPlanResponse {
   polling_interval_seconds?: number;
 }
 
+export interface TrialSelectPlanResponse {
+  message: string;
+  subscription_id: string;
+  tier: string;
+  status: string;
+  is_trial?: boolean;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface TenantSubscriptionPlanResponse {
+  id: string;
+  code?: string;
+  name?: string;
+  description?: string;
+  monthlyPrice?: number;
+  quarterlyPrice?: number;
+  yearlyPrice?: number;
+  currency?: string;
+  maxUsers?: number;
+  maxDocuments?: number;
+  maxStorageGb?: number;
+  maxApiCalls?: number;
+  maxChatbotRequests?: number;
+  maxRagDocuments?: number;
+  maxAiTokens?: number;
+  contextWindowTokens?: number;
+  ragChunkSize?: number;
+  aiModel?: string;
+  embeddingModel?: string;
+  isActive?: boolean;
+  displayOrder?: number;
+  features?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type SelectPlanApiResponse = SelectPlanResponse | TrialSelectPlanResponse;
+
 /** GET /api/v1/tenant-subscription/my-subscription - full subscription (Tenant Admin) */
 export async function getMySubscription(): Promise<MySubscriptionResponse> {
   const res = await fetchWithAuth(`${TENANT_SUBSCRIPTION_BASE}/my-subscription`);
@@ -91,8 +130,15 @@ export async function getCurrentSubscription(): Promise<CurrentSubscriptionMap |
   return res.json();
 }
 
+/** GET /api/v1/subscriptions/plans - active plans visible to current tenant */
+export async function getAvailableSubscriptionPlans(): Promise<TenantSubscriptionPlanResponse[]> {
+  const res = await fetchWithAuth(`${SUBSCRIPTIONS_BASE}/plans`);
+  if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load available plans"));
+  return res.json();
+}
+
 /** POST /api/v1/subscriptions/select-plan - chọn gói, trả về payment + QR */
-export async function selectPlan(tier: SubscriptionTier, cycle: BillingCycle): Promise<SelectPlanResponse> {
+export async function selectPlan(tier: SubscriptionTier, cycle: BillingCycle): Promise<SelectPlanApiResponse> {
   const res = await fetchWithAuth(`${SUBSCRIPTIONS_BASE}/select-plan`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -100,7 +146,7 @@ export async function selectPlan(tier: SubscriptionTier, cycle: BillingCycle): P
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || "Chọn gói thất bại");
-  return data as SelectPlanResponse;
+  return data as SelectPlanApiResponse;
 }
 
 /** PUT /api/v1/subscriptions/cancel - hủy subscription (body: { reason }) */

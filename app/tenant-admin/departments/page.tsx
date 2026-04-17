@@ -3,73 +3,60 @@
 import { useState } from "react";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { DepartmentsTable } from "@/components/tenant-admin/DepartmentsTable";
-import { DepartmentStructure } from "@/components/tenant-admin/DepartmentStructure";
-import { Plus } from "lucide-react";
+import { Filter, Plus } from "lucide-react";
 import { createTenantDepartment } from "@/lib/api/tenant-admin";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { AnimatedSegmentedControl } from "@/components/ui";
 
 export default function DepartmentsPage() {
   const { language } = useLanguageStore();
   const t = translations[language];
   const [createOpen, setCreateOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [filter, setFilter] = useState<"all" | "active">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
 
   return (
     <TenantAdminLayout>
-      <div className="space-y-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
-              {t.manageDepartments}
-            </h1>
-            <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-              {t.organizationStructure}
-            </p>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+            {t.manageDepartments}
+          </h1>
+          <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-400">
+            {t.organizationStructure}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+            <Filter className="h-4 w-4" />
+            {language === "en" ? "Filters" : "Bộ lọc"}
           </div>
+
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-2 rounded-2xl bg-green-500 px-6 py-3 font-semibold text-white shadow-lg hover:bg-green-600"
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all hover:bg-emerald-600 hover:shadow-xl hover:shadow-emerald-500/40"
           >
             <Plus className="h-4 w-4" />
             {t.addDepartment}
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setFilter("all")}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-              filter === "all"
-                ? "bg-green-500 text-white"
-                : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            }`}
-          >
-            {t.allDepartments}
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("active")}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-              filter === "active"
-                ? "bg-green-500 text-white"
-                : "bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            }`}
-          >
-            {t.activeDepartments}
-          </button>
-        </div>
+        <AnimatedSegmentedControl
+          value={filter}
+          onChange={setFilter}
+          layoutId="departments-filter-pill"
+          options={[
+            { value: "all", label: t.allDepartments },
+            { value: "active", label: t.activeDepartments },
+            { value: "inactive", label: language === "en" ? "Inactive" : "Không hoạt động" },
+          ]}
+        />
 
-        <div className="grid gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <DepartmentsTable refreshKey={refreshKey} filter={filter} />
-          </div>
-          <div>
-            <DepartmentStructure />
-          </div>
+        <div className="min-w-0">
+          <DepartmentsTable refreshKey={refreshKey} filter={filter} />
         </div>
       </div>
 

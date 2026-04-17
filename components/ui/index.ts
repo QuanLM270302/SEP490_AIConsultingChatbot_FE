@@ -4,6 +4,9 @@
  */
 
 export { Button } from "./Button";
+export { ErrorNotice } from "./ErrorNotice";
 export { Input } from "./Input";
 export { Select } from "./Select";
+export { useConfirmDialog } from "./ConfirmDialog";
+export { AnimatedSegmentedControl } from "./AnimatedSegmentedControl";
 

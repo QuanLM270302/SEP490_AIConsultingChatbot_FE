@@ -30,10 +30,61 @@
   --foreground: #ededed;
 }
 
+/* Global zoom-safe foundation */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+/* Prevent fixed-size media from overflowing when zoomed */
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Keep common app wrappers stable across browser zoom levels */
+#__next,
+main,
+section,
+article,
+aside,
+header,
+footer {
+  min-width: 0;
+}
+
+/* Improve behavior for pages using dvh when zooming */
+.h-dvh {
+  height: 100dvh;
+}
+.min-h-dvh {
+  min-height: 100dvh;
+}
+@supports (height: 100svh) {
+  .h-dvh {
+    height: 100svh;
+  }
+  .min-h-dvh {
+    min-height: 100svh;
+  }
 }
 
 /* Gradient animation for home page */
@@ -103,18 +154,52 @@ body {
   background: rgba(16, 185, 129, 0.55);
 }
 
-/* Ẩn scrollbar trên toàn bộ ứng dụng nhưng vẫn giữ khả năng cuộn */
-html,
+/* Giữ scrollbar nhìn thấy được để người dùng nhận ra vùng tràn khi zoom */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.75) transparent;
+}
+
 body,
 * {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.55) transparent;
 }
 
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
 *::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+  display: block;
+  width: 8px;
+  height: 8px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.55);
+  border-radius: 9999px;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(113, 113, 122, 0.75);
+}
+
+.table-scroll-container {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.table-scroll-container table {
+  min-width: 100%;
 }

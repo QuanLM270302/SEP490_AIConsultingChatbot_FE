@@ -347,8 +347,34 @@ export interface DownloadFileResponse {
   contentDisposition: string | null;
 }
 
-export async function listDocuments(): Promise<DocumentResponse[]> {
-  const res = await fetchWithAuth(DOCUMENTS_BASE);
+export interface ListDocumentsParams {
+  keyword?: string;
+  categoryId?: string;
+  tagIds?: string[];
+  status?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export async function listDocuments(params?: ListDocumentsParams): Promise<DocumentResponse[]> {
+  let url = DOCUMENTS_BASE;
+  
+  if (params) {
+    const searchParams = new URLSearchParams();
+    if (params.keyword) searchParams.append('keyword', params.keyword);
+    if (params.categoryId) searchParams.append('categoryId', params.categoryId);
+    if (params.tagIds && params.tagIds.length > 0) {
+      params.tagIds.forEach(id => searchParams.append('tagIds', id));
+    }
+    if (params.status) searchParams.append('status', params.status);
+    if (params.fromDate) searchParams.append('fromDate', params.fromDate);
+    if (params.toDate) searchParams.append('toDate', params.toDate);
+    
+    const queryString = searchParams.toString();
+    if (queryString) url += `?${queryString}`;
+  }
+  
+  const res = await fetchWithAuth(url);
   if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to list documents"));
   const data: unknown = await res.json();
   if (Array.isArray(data)) return data as DocumentResponse[];
@@ -482,6 +508,18 @@ export async function downloadDocument(id: string): Promise<DownloadFileResponse
     contentType: res.headers.get("content-type") ?? "application/octet-stream",
     contentDisposition,
   };
+}
+
+export async function getDocumentDownloadUrl(id: string): Promise<{ url: string; expiresInMinutes: string }> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/url`);
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to get download URL"));
+  return res.json();
+}
+
+export async function reindexDocument(id: string): Promise<{ message: string; documentId: string; status: string }> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/${id}/reindex`, { method: "POST" });
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to reindex document"));
+  return res.json();
 }
 
 export async function getDocumentVersionPreview(

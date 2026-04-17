@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Check,
   Loader2,
@@ -34,9 +34,13 @@ import {
   type Tenant,
   type TenantStatus,
 } from "@/lib/api/staff";
+import { toUiErrorMessage } from "@/lib/api/parseApiError";
+import { ErrorNotice } from "@/components/ui";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { requestStaffPortalStatsRefresh } from "@/lib/staff-portal-stats-refresh";
+import { getAccessToken, getRefreshToken, refreshAuth } from "@/lib/auth-store";
+import { AnimatedSegmentedControl } from "@/components/ui";
 
 const statusLabel: Record<TenantStatus, Record<'vi' | 'en', string>> = {
   PENDING: { vi: "Chờ duyệt", en: "Pending" },
@@ -51,6 +55,15 @@ const statusColor: Record<TenantStatus, string> = {
   REJECTED: "bg-red-500/20 text-red-700 dark:text-red-400",
   SUSPENDED: "bg-zinc-500/20 text-zinc-600 dark:text-zinc-400",
 };
+
+function isUnauthorizedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /(unauthorized|missing or invalid token|\b401\b)/i.test(message);
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return toUiErrorMessage(error, fallback);
+}
 
 export default function StaffOrganizationsPage() {
   const { language } = useLanguageStore();
@@ -70,22 +83,56 @@ export default function StaffOrganizationsPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTenantId, setDeleteTenantId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadTenants();
+  const ensureStaffAccessToken = useCallback(async (): Promise<boolean> => {
+    if (getAccessToken()) return true;
+    if (!getRefreshToken()) return false;
+    const ok = await refreshAuth();
+    return ok && !!getAccessToken();
   }, []);
 
-  const loadTenants = async () => {
+  const loadTenants = useCallback(async () => {
     try {
       setTenantsLoading(true);
-      const data = await getTenants();
+      setError(null);
+
+      await ensureStaffAccessToken();
+
+      let data: Tenant[];
+      try {
+        data = await getTenants();
+      } catch (e) {
+        if (isUnauthorizedError(e) && (await ensureStaffAccessToken())) {
+          data = await getTenants();
+        } else {
+          throw e;
+        }
+      }
+
       setTenants(data);
     } catch (e) {
       console.error("Failed to load tenants:", e);
-      setError(language === "en" ? "Failed to load tenants list" : "Không thể tải danh sách tenant");
+      setError(
+        getErrorMessage(
+          e,
+          language === "en" ? "Failed to load tenants list" : "Không thể tải danh sách tenant"
+        )
+      );
     } finally {
       setTenantsLoading(false);
     }
-  };
+  }, [ensureStaffAccessToken, language]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        void loadTenants();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadTenants]);
 
   const openRejectModal = (tenantId: string) => {
     setRejectTenantId(tenantId);
@@ -116,8 +163,8 @@ export default function StaffOrganizationsPage() {
       await approveTenant(tenantId);
       await loadTenants();
       requestStaffPortalStatsRefresh();
-    } catch (e: any) {
-      setError(e.message || (language === "en" ? "Cannot approve tenant" : "Không thể phê duyệt tenant"));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e, language === "en" ? "Cannot approve tenant" : "Không thể phê duyệt tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -134,8 +181,8 @@ export default function StaffOrganizationsPage() {
       setRejectModalOpen(false);
       setRejectTenantId(null);
       setRejectReason("");
-    } catch (e: any) {
-      setError(e.message || (language === "en" ? "Cannot reject tenant" : "Không thể từ chối tenant"));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e, language === "en" ? "Cannot reject tenant" : "Không thể từ chối tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -148,8 +195,8 @@ export default function StaffOrganizationsPage() {
       await suspendTenant(tenantId);
       await loadTenants();
       requestStaffPortalStatsRefresh();
-    } catch (e: any) {
-      setError(e.message || (language === "en" ? "Cannot suspend tenant" : "Không thể tạm ngưng tenant"));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e, language === "en" ? "Cannot suspend tenant" : "Không thể tạm ngưng tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -161,8 +208,8 @@ export default function StaffOrganizationsPage() {
       setError(null);
       await activateTenant(tenantId);
       await loadTenants();
-    } catch (e: any) {
-      setError(e.message || (language === "en" ? "Cannot reactivate tenant" : "Không thể kích hoạt lại tenant"));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e, language === "en" ? "Cannot reactivate tenant" : "Không thể kích hoạt lại tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -178,8 +225,8 @@ export default function StaffOrganizationsPage() {
       requestStaffPortalStatsRefresh();
       setDeleteModalOpen(false);
       setDeleteTenantId(null);
-    } catch (e: any) {
-      setError(e.message || (language === "en" ? "Cannot delete tenant" : "Không thể xóa tenant"));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e, language === "en" ? "Cannot delete tenant" : "Không thể xóa tenant"));
     } finally {
       setActionLoading(null);
     }
@@ -226,22 +273,20 @@ export default function StaffOrganizationsPage() {
                   </span>
                   <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{language === "en" ? "Filter" : "Lọc"}</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 rounded-full bg-zinc-100/80 p-1 dark:bg-zinc-800/80">
-                  {(["ALL", "PENDING", "ACTIVE", "REJECTED", "SUSPENDED"] as const).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setStatusFilter(s)}
-                      className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-                        statusFilter === s
-                          ? "bg-white text-green-700 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:text-green-400 dark:ring-zinc-700"
-                          : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
-                      }`}
-                    >
-                      {s === "ALL" ? t.all : statusLabel[s][language]}
-                    </button>
-                  ))}
-                </div>
+                <AnimatedSegmentedControl
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  layoutId="staff-organizations-status-pill"
+                  size="sm"
+                  className="rounded-full bg-zinc-100/80 p-1 dark:bg-zinc-800/80"
+                  options={[
+                    { value: "ALL", label: t.all },
+                    { value: "PENDING", label: statusLabel.PENDING[language] },
+                    { value: "ACTIVE", label: statusLabel.ACTIVE[language] },
+                    { value: "REJECTED", label: statusLabel.REJECTED[language] },
+                    { value: "SUSPENDED", label: statusLabel.SUSPENDED[language] },
+                  ]}
+                />
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -359,9 +404,7 @@ export default function StaffOrganizationsPage() {
         )}
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-            {error}
-          </div>
+          <ErrorNotice message={error} />
         )}
       </div>
 
@@ -377,9 +420,7 @@ export default function StaffOrganizationsPage() {
             </p>
             
             {error && (
-              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-                {error}
-              </div>
+              <ErrorNotice message={error} className="mt-3" />
             )}
             
             <textarea
@@ -435,9 +476,7 @@ export default function StaffOrganizationsPage() {
             </p>
             
             {error && (
-              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-                {error}
-              </div>
+              <ErrorNotice message={error} className="mt-3" />
             )}
             
             <div className="mt-6 flex gap-3">

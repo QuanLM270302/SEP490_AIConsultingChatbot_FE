@@ -74,7 +74,7 @@ export function ChatbotAnalyticsView() {
   }, [forbidden, pageError, load]);
 
   return (
-    <div className="scrollbar-chat-hidden h-full overflow-y-auto scroll-smooth bg-zinc-950">
+    <div className="scrollbar-chat-hidden h-full overflow-y-auto scroll-smooth bg-white dark:bg-zinc-950">
       <div className="mx-auto max-w-5xl space-y-8 px-6 py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>

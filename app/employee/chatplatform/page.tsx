@@ -4,9 +4,11 @@ import { useState, useEffect } from "react";
 import type { Message } from "@/types/chat";
 import { AIBoxSidebar } from "@/components/chat/AIBoxSidebar";
 import { ChatHistorySidebar } from "@/components/chat/ChatHistorySidebar";
+import { ErrorNotice } from "@/components/ui";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, ThumbsUp, ThumbsDown, FileText, MessageSquare } from "lucide-react";
-import { chat, chatbotHealth, getConversationHistory } from "@/lib/api/chatbot";
+import { toUiErrorMessage } from "@/lib/api/parseApiError";
+import { chat, chatbotHealth, getConversationHistory, rateMessage } from "@/lib/api/chatbot";
 
 export default function ChatPlatformPage() {
   const router = useRouter();
@@ -18,7 +20,9 @@ export default function ChatPlatformPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [healthStatus, setHealthStatus] = useState<'healthy' | 'error' | 'checking'>('checking');
-  const [showHealthToast, setShowHealthToast] = useState(false);
+
+  const INPUT_CHAR_LIMIT = 500;
+  const INPUT_WARNING_THRESHOLD = 450;
 
   // Check chatbot health on mount and periodically
   useEffect(() => {
@@ -26,11 +30,8 @@ export default function ChatPlatformPage() {
       try {
         await chatbotHealth();
         setHealthStatus('healthy');
-        setShowHealthToast(false);
-      } catch (err) {
+      } catch {
         setHealthStatus('error');
-        setShowHealthToast(true);
-        setTimeout(() => setShowHealthToast(false), 5000);
       }
     };
 
@@ -52,7 +53,6 @@ export default function ChatPlatformPage() {
       const response = await chat({
         message: question,
         conversationId: conversationId ?? undefined,
-        topK: 5,
       });
 
       console.log("API Response:", response);
@@ -71,8 +71,40 @@ export default function ChatPlatformPage() {
 
       console.log("Mapped references:", references);
 
+      // Fetch conversation history to get real message ID from backend
+      let realMessageId = userMessageId; // fallback
+      if (response.conversationId) {
+        try {
+          console.log("🔍 Fetching conversation history for ID:", response.conversationId);
+          const history = await getConversationHistory(response.conversationId);
+          console.log("📥 History response:", history);
+          if (history?.messages?.length) {
+            console.log("📝 Total messages in history:", history.messages.length);
+            // Get the last assistant message (most recent)
+            const lastAssistantMsg = [...history.messages]
+              .reverse()
+              .find((m) => m.role === "ASSISTANT");
+            console.log("🤖 Last assistant message:", lastAssistantMsg);
+            // Backend uses 'messageId' field, not 'id'
+            const msgId = (lastAssistantMsg as any)?.messageId || lastAssistantMsg?.id;
+            if (msgId) {
+              realMessageId = msgId;
+              console.log("✅ Got real message ID from backend:", realMessageId);
+            } else {
+              console.warn("⚠️ No assistant message ID found in history");
+            }
+          } else {
+            console.warn("⚠️ History is empty or invalid");
+          }
+        } catch (e) {
+          console.error("❌ Failed to fetch message ID:", e);
+        }
+      } else {
+        console.warn("⚠️ No conversationId in response");
+      }
+
       const newMessage: Message = {
-        id: userMessageId,
+        id: realMessageId,
         question,
         answer: response.answer,
         references,
@@ -83,12 +115,30 @@ export default function ChatPlatformPage() {
       setMessages((prev) => [...prev, newMessage]);
       setCurrentQuestion("");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Không thể kết nối tới chatbot. Vui lòng thử lại.";
-      setError(message);
+      let errorMessage = "Không thể kết nối tới chatbot. Vui lòng thử lại.";
+      
+      if (err instanceof Error) {
+        const message = err.message.toLowerCase();
+        
+        // Check for 429 (daily limit)
+        if (message.includes("429") || message.includes("giới hạn")) {
+          errorMessage = "Bạn đã đạt giới hạn tin nhắn hôm nay. Vui lòng thử lại vào ngày mai.";
+        }
+        // Check for message too long
+        else if (message.includes("quá dài") || message.includes("too long")) {
+          errorMessage = "Tin nhắn quá dài. Vui lòng rút ngắn nội dung dưới 500 ký tự.";
+        }
+        // Use original error message if available
+        else if (err.message) {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
       const fallbackMessage: Message = {
         id: userMessageId,
         question,
-        answer: `**Lỗi:** ${message}\n\nKiểm tra kết nối mạng hoặc liên hệ quản trị viên nếu lỗi tiếp tục.`,
+        answer: `**Lỗi:** ${errorMessage}\n\nKiểm tra kết nối mạng hoặc liên hệ quản trị viên nếu lỗi tiếp tục.`,
         references: [],
         timestamp: new Date(),
         rating: null,
@@ -99,10 +149,17 @@ export default function ChatPlatformPage() {
     }
   };
 
-  const handleRate = (messageId: string, rating: "helpful" | "not-helpful") => {
+  const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
+    console.log("🔵 Rating message:", { messageId, rating });
     setMessages((prev) =>
       prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
     );
+    try {
+      await rateMessage(messageId, rating);
+      console.log("✅ Rating submitted successfully");
+    } catch (e) {
+      console.error("❌ Rating submission failed:", e);
+    }
   };
 
   return (
@@ -162,10 +219,11 @@ export default function ChatPlatformPage() {
 
               <button
                 type="button"
-                onClick={() => setIsHistoryOpen(true)}
-                className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                onClick={() => setIsHistoryOpen((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
-                History
+                <MessageSquare className="h-4 w-4" />
+                Trò chuyện
               </button>
             </div>
           </div>
@@ -176,9 +234,7 @@ export default function ChatPlatformPage() {
           {/* ERROR MESSAGE */}
           {error && (
             <div className="mx-auto mb-4 w-full max-w-4xl">
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-                {error}
-              </div>
+              <ErrorNotice message={error} />
             </div>
           )}
 
@@ -298,11 +354,12 @@ export default function ChatPlatformPage() {
                   onChange={(e) => setCurrentQuestion(e.target.value)}
                   placeholder="Ask anything about your company..."
                   disabled={isLoading}
+                  maxLength={INPUT_CHAR_LIMIT}
                   className="flex-1 bg-transparent text-sm text-zinc-900 placeholder-zinc-400 outline-none disabled:opacity-50 dark:text-zinc-50 dark:placeholder-zinc-500"
                 />
                 <button
                   type="submit"
-                  disabled={isLoading || !currentQuestion.trim()}
+                  disabled={isLoading || !currentQuestion.trim() || currentQuestion.length > INPUT_CHAR_LIMIT}
                   className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600 disabled:opacity-50"
                 >
                   {isLoading ? (
@@ -312,10 +369,21 @@ export default function ChatPlatformPage() {
                   )}
                 </button>
               </div>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  AI may produce incorrect answers. Verify critical information.
+                </p>
+                <span
+                  className={`text-xs ${
+                    currentQuestion.length > INPUT_WARNING_THRESHOLD
+                      ? "text-red-500 dark:text-red-400"
+                      : "text-zinc-500 dark:text-zinc-400"
+                  }`}
+                >
+                  {currentQuestion.length}/{INPUT_CHAR_LIMIT}
+                </span>
+              </div>
             </form>
-            <p className="mt-2 text-center text-[11px] text-zinc-500 dark:text-zinc-400">
-              AI may produce incorrect answers. Verify critical information.
-            </p>
           </div>
         </div>
       </div>
@@ -359,6 +427,7 @@ export default function ChatPlatformPage() {
           setCurrentChatId(null);
         }}
         currentChatId={currentChatId}
+        showToggleButton={false}
       />
     </div>
   );

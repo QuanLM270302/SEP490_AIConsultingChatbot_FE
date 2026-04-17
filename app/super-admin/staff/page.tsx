@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   getStaffList,
   getStaffById,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/admin";
 import { UserPlus, MoreVertical, Eye, UserCheck, UserX, Trash2, Loader2, Search } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
+import { ErrorNotice, useConfirmDialog } from "@/components/ui";
 
 export default function StaffManagementPage() {
   const { language } = useLanguageStore();
@@ -26,19 +27,37 @@ export default function StaffManagementPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [search, setSearch] = useState("");
+  const { confirm, confirmDialog } = useConfirmDialog();
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
     getStaffList()
       .then(setList)
       .catch((e) => setError(e instanceof Error ? e.message : isEn ? "Failed to load list" : "Lỗi tải danh sách"))
       .finally(() => setLoading(false));
-  };
+  }, [isEn]);
 
   useEffect(() => {
-    load();
-  }, []);
+    let alive = true;
+    getStaffList()
+      .then((data) => {
+        if (!alive) return;
+        setList(data);
+        setError(null);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        setError(e instanceof Error ? e.message : isEn ? "Failed to load list" : "Lỗi tải danh sách");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [isEn]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -91,8 +110,18 @@ export default function StaffManagementPage() {
       .finally(() => setActionLoading(null));
   };
 
-  const handleDelete = (userId: string) => {
-    if (!confirm(isEn ? "Are you sure you want to delete this STAFF account?" : "Bạn có chắc muốn xóa tài khoản nhân viên vận hành này?")) return;
+  const handleDelete = async (userId: string) => {
+    const ok = await confirm({
+      title: isEn ? "Delete STAFF account?" : "Xóa tài khoản STAFF?",
+      description: isEn
+        ? "Are you sure you want to delete this STAFF account?"
+        : "Bạn có chắc muốn xóa tài khoản nhân viên vận hành này?",
+      confirmText: isEn ? "Delete" : "Xóa",
+      cancelText: isEn ? "Cancel" : "Hủy",
+      tone: "danger",
+    });
+    if (!ok) return;
+
     setOpenMenuId(null);
     setMenuPos(null);
     setActionLoading(userId);
@@ -144,7 +173,7 @@ export default function StaffManagementPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
               <input
                 type="text"
-                placeholder={isEn ? "Search by name or email..." : "Tìm theo tên hoặc thư điện tử..."}
+                placeholder={isEn ? "Search by name or email..." : "Tìm theo tên hoặc email..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-lg border-0 bg-zinc-50 py-2 pl-10 pr-4 text-sm text-zinc-900 ring-1 ring-inset ring-zinc-200 focus:ring-2 focus:ring-green-500 dark:bg-zinc-900/50 dark:text-white dark:ring-zinc-800"
@@ -158,13 +187,15 @@ export default function StaffManagementPage() {
               <span className="text-sm text-zinc-500">{isEn ? "Loading..." : "Đang tải…"}</span>
             </div>
           ) : error ? (
-            <div className="p-6 text-sm text-red-600 dark:text-red-400">{error}</div>
+            <div className="p-6">
+              <ErrorNotice message={error} />
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="border-b border-zinc-200 bg-zinc-50/50 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/50">
                   <tr>
-                    <th className="px-6 py-4 font-medium">{isEn ? "Name / Email" : "Tên / thư điện tử"}</th>
+                    <th className="px-6 py-4 font-medium">{isEn ? "Name / Email" : "Tên / Email"}</th>
                     <th className="px-6 py-4 font-medium">{isEn ? "Phone" : "SĐT"}</th>
                     <th className="px-6 py-4 font-medium">{isEn ? "Status" : "Trạng thái"}</th>
                     <th className="px-6 py-4 font-medium text-right">{isEn ? "Actions" : "Thao tác"}</th>
@@ -394,15 +425,17 @@ export default function StaffManagementPage() {
             )}
             <button
               type="button"
-              onClick={() => handleDelete(openMenuId)}
+              onClick={() => void handleDelete(openMenuId)}
               disabled={!!actionLoading}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/30"
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/30"
             >
               <Trash2 className="h-4 w-4" /> {isEn ? "Delete" : "Xóa"}
             </button>
           </div>
         </>
       )}
+
+      {confirmDialog}
     </>
   );
 }
