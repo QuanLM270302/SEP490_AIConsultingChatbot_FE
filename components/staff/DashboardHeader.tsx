@@ -80,14 +80,16 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
 
   return (
     <div className="mb-6 flex items-center justify-between">
-      <button
-        type="button"
-        className="rounded-2xl bg-white p-3 text-zinc-700 shadow-sm shadow-green-100/60 dark:bg-zinc-950 dark:text-zinc-400 lg:hidden"
-        onClick={onMenuClick}
-      >
-        <span className="sr-only">Open sidebar</span>
-        <Menu className="h-5 w-5" />
-      </button>
+      <div className="flex items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          className="rounded-2xl bg-white p-3 text-zinc-700 shadow-sm shadow-green-100/60 dark:bg-zinc-950 dark:text-zinc-400 lg:hidden"
+          onClick={onMenuClick}
+        >
+          <span className="sr-only">Open sidebar</span>
+          <Menu className="h-5 w-5" />
+        </button>
+      </div>
 
       <div className="flex flex-1 items-center justify-end gap-3">
         <div className="relative" ref={menuRef}>
