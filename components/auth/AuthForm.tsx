@@ -163,6 +163,7 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
           </button>
 
           {mode === "login" && <AuthHomePlainLink variant="bar" forceEnglish />}
+
         </form>
       </div>
 

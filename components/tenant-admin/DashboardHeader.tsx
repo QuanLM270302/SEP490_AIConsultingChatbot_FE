@@ -10,7 +10,6 @@ import { getProfile } from "@/lib/api/profile";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { useAppTheme } from "@/lib/use-app-theme";
-import { AppLogo } from "@/components/brand/AppLogo";
 
 const TENANT_FALLBACK_EMAIL = "tenantadmin@company.vn";
 
@@ -109,9 +108,8 @@ export function DashboardHeader({
 
         <Link
           href="/tenant-admin"
-          className="flex h-11 min-w-0 max-w-56 items-center gap-3 px-1 transition"
+          className="flex h-11 min-w-0 max-w-56 items-center px-1 transition hover:text-emerald-600 dark:hover:text-emerald-400"
         >
-          <AppLogo size={36} className="rounded-lg border-transparent bg-white/95 p-0.5 dark:bg-zinc-950" />
           <div className="min-w-0 leading-tight">
             <p className="truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
               Internal Consultant AI

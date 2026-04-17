@@ -204,7 +204,7 @@ export function TenantAdminSidebar({ open, setOpen }: TenantAdminSidebarProps) {
                     "relative flex w-full items-center justify-between overflow-hidden rounded-2xl px-3.5 py-3 font-medium transition",
                     isActive
                       ? "text-white shadow-sm shadow-purple-400/60"
-                      : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50"
+                      : "text-zinc-500 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-300"
                   )}
                 >
                   {isActive ? (
