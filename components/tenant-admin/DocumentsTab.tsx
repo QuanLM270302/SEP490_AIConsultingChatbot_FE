@@ -1250,7 +1250,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
               type="button"
               onClick={() => {
                 const doc = documents.find((d) => d.id === openMenuId);
-                if (doc) void handleDownload(openMenuId, doc.name);
+                if (doc) void handleDownload(openMenuId, doc.originalFileName);
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
