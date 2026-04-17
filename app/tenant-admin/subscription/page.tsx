@@ -4,12 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { SubscriptionTabs } from "@/components/subscription/SubscriptionTabs";
-import { SubscriptionInfo } from "@/components/tenant-admin/SubscriptionInfo";
 import { BillingHistory } from "@/components/tenant-admin/BillingHistory";
 import {
   getAvailableSubscriptionPlans,
   getMySubscription,
   selectPlan,
+  cancelSubscription,
+  toggleAutoRenew,
 } from "@/lib/api/subscription";
 import { getPaymentHistory, getPaymentStatus } from "@/lib/api/payment";
 import { Be_Vietnam_Pro } from "next/font/google";
@@ -42,6 +43,7 @@ const TIER_LABEL_EN: Record<SubscriptionTier, string> = {
 
 const TIER_ORDER: SubscriptionTier[] = ["TRIAL", "STARTER", "STANDARD", "ENTERPRISE"];
 const FALLBACK_PLAN_CARDS: SubscriptionTier[] = ["STARTER", "STANDARD", "ENTERPRISE"];
+const POPULAR_TIER: SubscriptionTier = "STANDARD";
 
 const PLAN_FEATURES_VI: Record<SubscriptionTier, string[]> = {
   TRIAL: [
@@ -88,8 +90,6 @@ const PLAN_FEATURES_EN: Record<SubscriptionTier, string[]> = {
     "Great for company-wide multi-department rollout",
   ],
 };
-
-const POPULAR_TIER: SubscriptionTier = "STANDARD";
 
 const pricingFont = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -174,22 +174,39 @@ function formatAmount(
     : `${amount.toLocaleString(locale)} ${unit}`;
 }
 
+function formatDate(dateStr: string | undefined, lang: "vi" | "en"): string {
+  if (!dateStr) return "—";
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(lang === "en" ? "en-US" : "vi-VN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export default function TenantAdminSubscriptionPage() {
   const [activeTab, setActiveTab] = useState<TabId>("plans");
   const [subscription, setSubscription] = useState<MySubscriptionResponse | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [availablePlans, setAvailablePlans] = useState<TenantSubscriptionPlanResponse[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
-  const [plansError, setPlansError] = useState<string | null>(null);
   const [payments, setPayments] = useState<Awaited<ReturnType<typeof getPaymentHistory>>>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
-  const [pressedTier, setPressedTier] = useState<SubscriptionTier | null>(null);
+  const [pressedTier, setPressedTier] = useState<SubscriptionTier | undefined>(undefined);
   const [planModalOpen, setPlanModalOpen] = useState(false);
-  const [planModalTier, setPlanModalTier] = useState<SubscriptionTier | null>(null);
+  const [planModalTier, setPlanModalTier] = useState<SubscriptionTier | undefined>(undefined);
   const [modalBillingCycle, setModalBillingCycle] = useState<BillingCycle>("MONTHLY");
-  const [paymentPending, setPaymentPending] = useState<SelectPlanResponse | null>(null);
+  const [paymentPending, setPaymentPending] = useState<SelectPlanResponse | undefined>(undefined);
   const [selectPlanLoading, setSelectPlanLoading] = useState(false);
   const [selectPlanError, setSelectPlanError] = useState<string | null>(null);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [autoRenewLoading, setAutoRenewLoading] = useState(false);
   const { language } = useLanguageStore();
   const t = translations[language];
 
@@ -205,7 +222,7 @@ export default function TenantAdminSubscriptionPage() {
         notifyTenantSubscriptionUpdated(tenantId, data);
       })
       .catch(() => {
-        setSubscription(null); // 404 or error = no subscription
+        setSubscription(null);
         notifyTenantSubscriptionUpdated(tenantId, null);
       })
       .finally(() => {
@@ -215,6 +232,14 @@ export default function TenantAdminSubscriptionPage() {
       });
   }, []);
 
+  const loadAvailablePlans = useCallback(() => {
+    setPlansLoading(true);
+    getAvailableSubscriptionPlans()
+      .then(setAvailablePlans)
+      .catch(() => setAvailablePlans([]))
+      .finally(() => setPlansLoading(false));
+  }, []);
+
   const loadPayments = useCallback(() => {
     setPaymentsLoading(true);
     getPaymentHistory()
@@ -222,24 +247,6 @@ export default function TenantAdminSubscriptionPage() {
       .catch(() => setPayments([]))
       .finally(() => setPaymentsLoading(false));
   }, []);
-
-  const loadAvailablePlans = useCallback(() => {
-    setPlansLoading(true);
-    setPlansError(null);
-    getAvailableSubscriptionPlans()
-      .then(setAvailablePlans)
-      .catch((e) => {
-        setAvailablePlans([]);
-        setPlansError(
-          e instanceof Error
-            ? e.message
-            : language === "en"
-              ? "Failed to load available plans"
-              : "Không thể tải danh sách gói"
-        );
-      })
-      .finally(() => setPlansLoading(false));
-  }, [language]);
 
   const sortedPlans = useMemo(
     () =>
@@ -295,7 +302,7 @@ export default function TenantAdminSubscriptionPage() {
       } else {
         handleSubscriptionUpdated();
         setPlanModalOpen(false);
-        setPlanModalTier(null);
+        setPlanModalTier(undefined);
       }
     } catch (e) {
       setSelectPlanError(e instanceof Error ? e.message : "Chọn gói thất bại");
@@ -307,12 +314,8 @@ export default function TenantAdminSubscriptionPage() {
   const handleSubscriptionUpdated = () => {
     loadSubscription();
     loadAvailablePlans();
-    setPaymentPending(null);
+    setPaymentPending(undefined);
     if (activeTab === "history") loadPayments();
-  };
-
-  const handleSubscriptionInfoUpdated = () => {
-    loadSubscription({ silent: true });
   };
 
   const handleSelectTier = (tier: SubscriptionTier) => {
@@ -320,24 +323,57 @@ export default function TenantAdminSubscriptionPage() {
     setPlanModalTier(tier);
     setModalBillingCycle("MONTHLY");
     setPlanModalOpen(true);
-    setPaymentPending(null);
+    setPaymentPending(undefined);
     setSelectPlanError(null);
     window.setTimeout(() => {
-      setPressedTier((current) => (current === tier ? null : current));
+      setPressedTier((current) => (current === tier ? undefined : current));
     }, 260);
   };
 
   const handleClosePlanModal = () => {
     if (selectPlanLoading) return;
     setPlanModalOpen(false);
-    setPlanModalTier(null);
-    setPaymentPending(null);
+    setPlanModalTier(undefined);
+    setPaymentPending(undefined);
     setSelectPlanError(null);
   };
+
+  const handleToggleAutoRenew = async () => {
+    if (!subscription || autoRenewLoading) return;
+    setAutoRenewLoading(true);
+    try {
+      await toggleAutoRenew(!subscription.autoRenew);
+      loadSubscription({ silent: true });
+    } catch (e) {
+      console.error("Failed to toggle auto-renew:", e);
+    } finally {
+      setAutoRenewLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!cancelReason.trim() || cancelLoading) return;
+    setCancelLoading(true);
+    try {
+      await cancelSubscription(cancelReason);
+      loadSubscription();
+      setCancelModalOpen(false);
+      setCancelReason("");
+    } catch (e) {
+      console.error("Failed to cancel subscription:", e);
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const currentPlanData = subscription ? planMap.get(subscription.tier) : undefined;
+  const currentPlanFeatures = parsePlanFeatures(currentPlanData?.features);
+  const hasActiveSubscription = subscription && (subscription.status === "ACTIVE" || subscription.status === "TRIAL");
 
   return (
     <TenantAdminLayout>
       <div className="space-y-6 text-zinc-900 dark:text-zinc-100">
+        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
             {t.tenantAdminSubscription}
@@ -347,170 +383,295 @@ export default function TenantAdminSubscriptionPage() {
           </p>
         </div>
 
+        {/* Tabs */}
         <section className="mb-6">
           <SubscriptionTabs activeTab={activeTab} onTabChange={setActiveTab} />
         </section>
 
+        {/* Plans Tab */}
         {activeTab === "plans" && (
           <>
-            <div className="mb-5 rounded-3xl border border-zinc-200/80 bg-linear-to-br from-white via-zinc-50 to-emerald-50/60 p-5 shadow-sm shadow-zinc-200/60 dark:contents dark:border-0 dark:bg-transparent dark:p-0 dark:shadow-none">
-              <div className="mb-5">
-                <SubscriptionInfo
-                  subscription={subscription}
-                  loading={subscriptionLoading}
-                  onUpdated={handleSubscriptionInfoUpdated}
-                />
-              </div>
-              <div className={`${pricingFont.className} mb-5`}>
-                <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-                  {language === "en" ? "Select your plan" : "Chọn hạng gói phù hợp"}
-                </h3>
-                {plansLoading && (
-                  <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-                    {language === "en" ? "Loading available plans..." : "Đang tải danh sách gói..."}
+            {/* Current Plan Section */}
+            <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+              {language === "en" ? "Current Plan" : "Gói hiện tại"}
+            </h2>
+            {hasActiveSubscription && (
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                subscription.status === "ACTIVE" 
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                  : subscription.status === "TRIAL"
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                  : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+              }`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${
+                  subscription.status === "ACTIVE" 
+                    ? "bg-emerald-500"
+                    : subscription.status === "TRIAL"
+                    ? "bg-blue-500"
+                    : "bg-zinc-500"
+                }`} />
+                {subscription.status === "ACTIVE" 
+                  ? language === "en" ? "Active" : "Đang hoạt động"
+                  : subscription.status === "TRIAL"
+                  ? language === "en" ? "Trial" : "Dùng thử"
+                  : subscription.status}
+              </span>
+            )}
+          </div>
+
+          {subscriptionLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-emerald-500 dark:border-zinc-700 dark:border-t-emerald-400" />
+            </div>
+          ) : !hasActiveSubscription ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center dark:border-amber-900/50 dark:bg-amber-900/20">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                {language === "en" 
+                  ? "You don't have an active subscription. Choose a plan below to get started." 
+                  : "Bạn chưa có gói đăng ký nào. Chọn gói phù hợp bên dưới để bắt đầu."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+              {/* Plan Info */}
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    {language === "en" ? "Plan" : "Gói"}
                   </p>
-                )}
-                {plansError && (
-                  <p className="mb-3 text-xs text-red-600 dark:text-red-400">{plansError}</p>
-                )}
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                  {planCards.map((tier) => {
-                    const isPressing = pressedTier === tier;
-                    const isPopular = tier === POPULAR_TIER;
-                    const isCurrentPlan =
-                      !!subscription &&
-                      subscription.tier === tier &&
-                      (subscription.status === "ACTIVE" || subscription.status === "TRIAL");
-                    const planData = planMap.get(tier);
-                    const apiFeatures = parsePlanFeatures(planData?.features);
-                    const fallbackFeatures =
-                      language === "en" ? PLAN_FEATURES_EN[tier] : PLAN_FEATURES_VI[tier];
-                    const features = apiFeatures.length > 0 ? apiFeatures : fallbackFeatures;
-                    const cycleLabel = language === "en" ? "month" : "tháng";
-                    return (
-                      <article
-                        key={tier}
-                        className={`relative flex min-h-[420px] flex-col overflow-hidden rounded-2xl border bg-white px-5 pb-5 text-zinc-900 shadow-[0_12px_30px_rgba(15,23,42,0.09)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#111111] dark:text-white dark:shadow-none ${
-                          isPopular
-                            ? "z-10 border-2 border-[#efb7af] dark:border-[#f28b82]"
-                            : "border-zinc-200 dark:border-[#222222]"
-                        } hover:-translate-y-1 hover:border-zinc-300 dark:hover:border-[#343434] ${isPressing ? "scale-[0.985]" : "scale-100"}`}
-                      >
-                        {isPopular && (
-                          <>
-                            <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-[#f8d8d2]/65 via-transparent to-transparent dark:from-[#f28b82]/14" />
-                            <div className="absolute inset-x-0 top-0 z-20">
-                              <span className="block bg-[#efb7af] py-2 text-center text-xs font-bold uppercase tracking-wide text-zinc-900 dark:bg-[#f28b82] dark:text-black">
-                                {language === "en" ? "Most Popular" : "Phổ biến nhất"}
-                              </span>
-                            </div>
-                          </>
-                        )}
-
-                        {isCurrentPlan && (
-                          <div className={`absolute right-3 z-20 ${isPopular ? "top-11" : "top-3"}`}>
-                            <span className="inline-flex rounded-full bg-indigo-500 px-2.5 py-1 text-xs font-semibold text-white">
-                              {language === "en" ? "Current plan" : "Gói đang dùng"}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className={`relative z-10 flex h-full flex-col ${isPopular ? "pt-12" : "pt-5"}`}>
-                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-500">
-                            {language === "en" ? "Plan" : "Hạng gói"}
-                          </p>
-
-                          <h4 className="mt-1 text-5xl leading-tight font-bold text-zinc-900 dark:text-zinc-100">
-                            {tierDisplayName(tier, language === "en" ? "en" : "vi")}
-                          </h4>
-
-                          {tier === "TRIAL" ? (
-                            <>
-                              <p className="mt-3 text-[3.05rem] leading-none font-extrabold text-zinc-950 dark:text-zinc-50">
-                                {language === "en" ? "Free" : "Miễn phí"}
-                              </p>
-                              <p className="mt-1 text-xs font-medium text-zinc-500 dark:text-zinc-500">
-                                {language === "en" ? "for 14 days" : "trong 14 ngày"}
-                              </p>
-                            </>
-                          ) : (
-                            <>
-                              <p className="mt-3 text-[3.05rem] leading-none font-extrabold text-zinc-950 dark:text-zinc-50">
-                                {formatTierPrice(planData, "MONTHLY", language === "en" ? "en" : "vi")}
-                              </p>
-                              <p className="mt-1 text-xs font-medium text-zinc-500 dark:text-zinc-500">/{cycleLabel}</p>
-                            </>
-                          )}
-
-                          {planData?.description ? (
-                            <p className="mt-4 min-h-[48px] text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                              {planData.description}
-                            </p>
-                          ) : (
-                            <div className="mt-4 min-h-[48px]" />
-                          )}
-
-                          <ul className="mt-6 flex-1 space-y-3 text-base text-zinc-700 dark:text-zinc-200">
-                            {features.map((feature) => (
-                              <li key={feature} className="flex items-start gap-2">
-                                <span className="mt-2 text-[10px] leading-none text-zinc-400 dark:text-zinc-500">●</span>
-                                <span>{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
-
-                          <div className="mt-6">
-                            <button
-                              type="button"
-                              disabled={isCurrentPlan}
-                              onClick={() => handleSelectTier(tier)}
-                              className={`inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-bold transition-all duration-300 active:scale-[0.98] ${
-                                isCurrentPlan
-                                  ? "cursor-not-allowed border border-zinc-300 bg-zinc-100 text-zinc-500 dark:border-zinc-700 dark:bg-[#1a1a1a] dark:text-zinc-500"
-                                  : "bg-emerald-500 text-white hover:bg-emerald-400 dark:bg-[#f28b82] dark:text-black dark:hover:opacity-95"
-                              }`}
-                            >
-                              {isCurrentPlan
-                                ? language === "en"
-                                  ? "Currently active"
-                                  : "Đang sử dụng"
-                                : language === "en"
-                                  ? "Select this plan"
-                                  : "Chọn gói này"}
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
+                  <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-white">
+                    {tierDisplayName(subscription.tier, language === "en" ? "en" : "vi")}
+                  </p>
                 </div>
+
+                <div>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    {language === "en" ? "Price" : "Giá"}
+                  </p>
+                  <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
+                    {subscription.price != null 
+                      ? formatAmount(subscription.price, subscription.currency, language === "en" ? "en" : "vi")
+                      : language === "en" ? "Free" : "Miễn phí"}
+                    {subscription.price != null && subscription.billingCycle && (
+                      <span className="text-base font-normal text-zinc-500">
+                        /{subscription.billingCycle === "YEARLY" 
+                          ? language === "en" ? "year" : "năm"
+                          : subscription.billingCycle === "QUARTERLY"
+                          ? language === "en" ? "quarter" : "quý"
+                          : language === "en" ? "month" : "tháng"}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {currentPlanFeatures.length > 0 && (
+                  <div>
+                    <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-400">
+                      {language === "en" ? "Features" : "Tính năng"}
+                    </p>
+                    <ul className="space-y-2">
+                      {currentPlanFeatures.slice(0, 4).map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                          <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Billing Info & Actions */}
+              <div className="space-y-4">
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                  <p className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    {language === "en" ? "Billing Information" : "Thông tin thanh toán"}
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    {subscription.nextBillingDate && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-600 dark:text-zinc-400">
+                          {language === "en" ? "Next billing date:" : "Ngày thanh toán tiếp theo:"}
+                        </span>
+                        <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                          {formatDate(subscription.nextBillingDate, language === "en" ? "en" : "vi")}
+                        </span>
+                      </div>
+                    )}
+                    {subscription.endDate && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-600 dark:text-zinc-400">
+                          {language === "en" ? "End date:" : "Ngày kết thúc:"}
+                        </span>
+                        <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                          {formatDate(subscription.endDate, language === "en" ? "en" : "vi")}
+                        </span>
+                      </div>
+                    )}
+                    {subscription.status !== "TRIAL" && (
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="text-zinc-600 dark:text-zinc-400">
+                          {language === "en" ? "Auto-renew:" : "Tự động gia hạn:"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleToggleAutoRenew}
+                          disabled={autoRenewLoading}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            subscription.autoRenew 
+                              ? "bg-emerald-500" 
+                              : "bg-zinc-300 dark:bg-zinc-700"
+                          } ${autoRenewLoading ? "opacity-50" : ""}`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            subscription.autoRenew ? "translate-x-6" : "translate-x-1"
+                          }`} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCancelModalOpen(true)}
+                  className="w-full rounded-xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:border-red-900/50 dark:bg-zinc-900 dark:text-red-400 dark:hover:bg-red-900/20"
+                >
+                  {language === "en" ? "Cancel Plan" : "Hủy gói"}
+                </button>
               </div>
             </div>
+          )}
+        </section>
 
-            {planModalOpen && planModalTier && (
-              <PlanCheckoutModal
-                language={language === "en" ? "en" : "vi"}
-                tier={planModalTier}
-                planData={modalPlanData}
-                features={modalFeatures}
-                billingCycle={modalBillingCycle}
-                totalAmount={modalAmount}
-                onBillingCycleChange={setModalBillingCycle}
-                onClose={handleClosePlanModal}
-                onConfirm={handleConfirmPay}
-                confirmLoading={selectPlanLoading}
-                confirmError={selectPlanError}
-                paymentPending={paymentPending}
-                onPaymentSuccess={() => {
-                  handleSubscriptionUpdated();
-                  setPlanModalOpen(false);
-                  setPlanModalTier(null);
-                }}
-              />
-            )}
+            {/* Available Plans Section - OLD DESIGN */}
+            <div className={`${pricingFont.className} mb-5`}>
+              <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                {language === "en" ? "Select your plan" : "Chọn hạng gói phù hợp"}
+              </h3>
+              {plansLoading && (
+                <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
+                  {language === "en" ? "Loading available plans..." : "Đang tải danh sách gói..."}
+                </p>
+              )}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {planCards.map((tier) => {
+                const isPressing = pressedTier === tier;
+                const isPopular = tier === POPULAR_TIER;
+                const isCurrentPlan = !!(subscription?.tier === tier && hasActiveSubscription);
+                const planData = planMap.get(tier);
+                const apiFeatures = parsePlanFeatures(planData?.features);
+                const fallbackFeatures =
+                  language === "en" ? PLAN_FEATURES_EN[tier] : PLAN_FEATURES_VI[tier];
+                const features = apiFeatures.length > 0 ? apiFeatures : fallbackFeatures;
+                const cycleLabel = language === "en" ? "month" : "tháng";
+                
+                return (
+                  <article
+                    key={tier}
+                    className={`relative flex min-h-[420px] flex-col overflow-hidden rounded-2xl border bg-white px-5 pb-5 text-zinc-900 shadow-[0_12px_30px_rgba(15,23,42,0.09)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#111111] dark:text-white dark:shadow-none ${
+                      isPopular
+                        ? "z-10 border-2 border-emerald-400 dark:border-emerald-500"
+                        : "border-zinc-200 dark:border-[#222222]"
+                    } hover:-translate-y-1 hover:border-zinc-300 dark:hover:border-[#343434] ${isPressing ? "scale-[0.985]" : "scale-100"}`}
+                  >
+                    {isPopular && (
+                      <>
+                        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-emerald-100/65 via-transparent to-transparent dark:from-emerald-500/14" />
+                        <div className="absolute inset-x-0 top-0 z-20">
+                          <span className="block bg-emerald-400 py-2 text-center text-xs font-bold uppercase tracking-wide text-white dark:bg-emerald-500 dark:text-white">
+                            {language === "en" ? "Most Popular" : "Phổ biến nhất"}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    {isCurrentPlan && (
+                      <div className={`absolute right-3 z-20 ${isPopular ? "top-11" : "top-3"}`}>
+                        <span className="inline-flex rounded-full bg-indigo-500 px-2.5 py-1 text-xs font-semibold text-white">
+                          {language === "en" ? "Current plan" : "Gói đang dùng"}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className={`relative z-10 flex h-full flex-col ${isPopular ? "pt-12" : "pt-5"}`}>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-500">
+                        {language === "en" ? "Plan" : "Hạng gói"}
+                      </p>
+
+                      <h4 className="mt-1 text-5xl leading-tight font-bold text-zinc-900 dark:text-zinc-100">
+                        {tierDisplayName(tier, language === "en" ? "en" : "vi")}
+                      </h4>
+
+                      {tier === "TRIAL" ? (
+                        <>
+                          <p className="mt-3 text-[3.05rem] leading-none font-extrabold text-zinc-950 dark:text-zinc-50">
+                            {language === "en" ? "Free" : "Miễn phí"}
+                          </p>
+                          <p className="mt-1 text-xs font-medium text-zinc-500 dark:text-zinc-500">
+                            {language === "en" ? "for 14 days" : "trong 14 ngày"}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="mt-3 text-[3.05rem] leading-none font-extrabold text-zinc-950 dark:text-zinc-50">
+                            {formatTierPrice(planData, "MONTHLY", language === "en" ? "en" : "vi")}
+                          </p>
+                          <p className="mt-1 text-xs font-medium text-zinc-500 dark:text-zinc-500">/{cycleLabel}</p>
+                        </>
+                      )}
+
+                      {planData?.description ? (
+                        <p className="mt-4 min-h-[48px] text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                          {planData.description}
+                        </p>
+                      ) : (
+                        <div className="mt-4 min-h-[48px]" />
+                      )}
+
+                      <ul className="mt-6 flex-1 space-y-3 text-base text-zinc-700 dark:text-zinc-200">
+                        {features.map((feature) => (
+                          <li key={feature} className="flex items-start gap-2">
+                            <span className="mt-2 text-[10px] leading-none text-zinc-400 dark:text-zinc-500">●</span>
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div className="mt-6">
+                        <button
+                          type="button"
+                          disabled={isCurrentPlan}
+                          onClick={() => handleSelectTier(tier)}
+                          className={`inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-bold transition-all duration-300 active:scale-[0.98] ${
+                            isCurrentPlan
+                              ? "cursor-not-allowed border border-zinc-300 bg-zinc-100 text-zinc-500 dark:border-zinc-700 dark:bg-[#1a1a1a] dark:text-zinc-500"
+                              : "bg-emerald-500 text-white hover:bg-emerald-400 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500"
+                          }`}
+                        >
+                          {isCurrentPlan
+                            ? language === "en"
+                              ? "Currently active"
+                              : "Đang sử dụng"
+                            : language === "en"
+                              ? "Select this plan"
+                              : "Chọn gói này"}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+              </div>
+            </div>
           </>
         )}
 
+        {/* Billing Tab */}
         {activeTab === "billing" && (
           <section className="rounded-3xl border-2 border-zinc-200 bg-white p-8 text-sm text-zinc-700 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
             <h2 className="mb-3 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
@@ -522,8 +683,78 @@ export default function TenantAdminSubscriptionPage() {
           </section>
         )}
 
+        {/* History Tab */}
         {activeTab === "history" && (
           <BillingHistory payments={payments} loading={paymentsLoading} />
+        )}
+
+        {/* Plan Selection Modal */}
+        {planModalOpen && planModalTier && (
+          <PlanCheckoutModal
+            language={language === "en" ? "en" : "vi"}
+            tier={planModalTier}
+            planData={modalPlanData}
+            features={modalFeatures}
+            billingCycle={modalBillingCycle}
+            totalAmount={modalAmount}
+            onBillingCycleChange={setModalBillingCycle}
+            onClose={handleClosePlanModal}
+            onConfirm={handleConfirmPay}
+            confirmLoading={selectPlanLoading}
+            confirmError={selectPlanError}
+            paymentPending={paymentPending}
+            onPaymentSuccess={() => {
+              handleSubscriptionUpdated();
+              setPlanModalOpen(false);
+              setPlanModalTier(undefined);
+            }}
+          />
+        )}
+
+        {/* Cancel Subscription Modal */}
+        {cancelModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+                {language === "en" ? "Cancel Subscription" : "Hủy gói đăng ký"}
+              </h3>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                {language === "en" 
+                  ? "Please tell us why you're canceling. This helps us improve our service." 
+                  : "Vui lòng cho chúng tôi biết lý do hủy. Điều này giúp chúng tôi cải thiện dịch vụ."}
+              </p>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder={language === "en" ? "Reason for cancellation..." : "Lý do hủy..."}
+                className="mt-4 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                rows={4}
+              />
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCancelModalOpen(false);
+                    setCancelReason("");
+                  }}
+                  disabled={cancelLoading}
+                  className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700"
+                >
+                  {language === "en" ? "Keep Plan" : "Giữ gói"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelSubscription}
+                  disabled={!cancelReason.trim() || cancelLoading}
+                  className="flex-1 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 dark:bg-red-600 dark:hover:bg-red-700"
+                >
+                  {cancelLoading 
+                    ? language === "en" ? "Canceling..." : "Đang hủy..."
+                    : language === "en" ? "Cancel Plan" : "Hủy gói"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </TenantAdminLayout>
@@ -556,7 +787,7 @@ function PlanCheckoutModal({
   onConfirm: () => Promise<void>;
   confirmLoading: boolean;
   confirmError: string | null;
-  paymentPending: SelectPlanResponse | null;
+  paymentPending: SelectPlanResponse | undefined;
   onPaymentSuccess: () => void;
 }) {
   const isTrial = tier === "TRIAL";
@@ -580,43 +811,37 @@ function PlanCheckoutModal({
 
   const cycleText =
     billingCycle === "YEARLY"
-      ? language === "en"
-        ? "year"
-        : "năm"
+      ? language === "en" ? "year" : "năm"
       : billingCycle === "QUARTERLY"
-        ? language === "en"
-          ? "quarter"
-          : "quý"
-        : language === "en"
-          ? "month"
-          : "tháng";
+        ? language === "en" ? "quarter" : "quý"
+        : language === "en" ? "month" : "tháng";
 
   return (
     <div
-      className={`fixed inset-0 z-[80] flex items-center justify-center bg-zinc-900/55 p-4 backdrop-blur-sm transition-opacity duration-200 dark:bg-black/70 ${
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm transition-opacity duration-200 ${
         modalVisible ? "opacity-100" : "opacity-0"
       }`}
     >
       <div
-        className={`${pricingFont.className} max-h-[92vh] w-full max-w-5xl overflow-auto rounded-3xl border border-zinc-200 bg-linear-to-b from-white to-zinc-50 shadow-[0_35px_80px_rgba(15,23,42,0.25)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:border-zinc-700 dark:bg-zinc-950 dark:bg-none dark:shadow-2xl ${
+        className={`${pricingFont.className} max-h-[92vh] w-full max-w-4xl overflow-auto rounded-2xl border border-zinc-200 bg-white shadow-2xl transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-900 ${
           modalVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-[0.98] opacity-0"
         }`}
       >
         <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
           <div>
             <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
-              {language === "en" ? "Confirm Subscription Plan" : "Xác nhận gói đăng ký"}
+              {language === "en" ? "Confirm Subscription" : "Xác nhận đăng ký"}
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {language === "en"
-                ? "Review plan details and payment before creating transaction"
-                : "Xem lại thông tin gói và thanh toán trước khi tạo giao dịch"}
+                ? "Review plan details before proceeding"
+                : "Xem lại thông tin gói trước khi tiếp tục"}
             </p>
           </div>
           <button
             type="button"
             onClick={handleStartClose}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             {language === "en" ? "Close" : "Đóng"}
           </button>
@@ -633,121 +858,90 @@ function PlanCheckoutModal({
             />
           </div>
         ) : (
-          <div className="grid gap-6 p-6 lg:grid-cols-[1.4fr_1fr]">
-            <section className="rounded-2xl border border-zinc-200 bg-white p-5 text-zinc-900 shadow-sm shadow-zinc-200/70 dark:border-zinc-800 dark:bg-[#111111] dark:text-zinc-100 dark:shadow-none">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-500">
-                {language === "en" ? "Plan" : "Hạng gói"}
-              </p>
-              <h4 className="mt-1 text-4xl font-bold">
+          <div className="grid gap-6 p-6 lg:grid-cols-2">
+            <section className="rounded-xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-950">
+              <h4 className="text-2xl font-bold text-zinc-900 dark:text-white">
                 {tierDisplayName(tier, language)}
               </h4>
               {isTrial ? (
                 <>
-                  <p className="mt-3 text-[2.4rem] font-extrabold leading-none text-zinc-950 dark:text-zinc-50">
+                  <p className="mt-3 text-3xl font-bold text-zinc-900 dark:text-white">
                     {language === "en" ? "Free" : "Miễn phí"}
                   </p>
-                  <p className="mt-1 text-xs font-medium text-zinc-500 dark:text-zinc-500">
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                     {language === "en" ? "for 14 days" : "trong 14 ngày"}
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="mt-3 text-[2.4rem] font-extrabold leading-none text-zinc-950 dark:text-zinc-50">
+                  <p className="mt-3 text-3xl font-bold text-zinc-900 dark:text-white">
                     {formatAmount(totalAmount, planData?.currency, language)}
                   </p>
-                  <p className="mt-1 text-xs font-medium text-zinc-500 dark:text-zinc-500">/{cycleText}</p>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">/{cycleText}</p>
                 </>
               )}
 
-              {planData?.description ? (
+              {planData?.description && (
                 <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">{planData.description}</p>
-              ) : null}
+              )}
 
-              <ul className="mt-5 space-y-2.5 text-sm text-zinc-700 dark:text-zinc-200">
-                {features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <span className="mt-1.5 text-[10px] text-zinc-400 dark:text-zinc-500">●</span>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
+              {features.length > 0 && (
+                <ul className="mt-6 space-y-2">
+                  {features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                      <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
-            <section className="rounded-2xl border border-zinc-200 bg-white p-5 text-zinc-900 shadow-sm shadow-zinc-200/70 dark:border-zinc-800 dark:bg-[#111111] dark:text-zinc-100 dark:shadow-none">
-              <h4 className="text-base font-semibold text-zinc-900 dark:text-white">
-                {isTrial
-                  ? language === "en"
-                    ? "Trial Activation"
-                    : "Kích hoạt dùng thử"
-                  : language === "en"
-                    ? "Payment Setup"
-                    : "Thiết lập thanh toán"}
-              </h4>
-
-              <div className="mt-4 space-y-4">
-                {!isTrial && (
-                  <div>
-                    <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
-                      {language === "en" ? "Billing cycle" : "Chu kỳ thanh toán"}
-                    </label>
-                    <select
-                      value={billingCycle}
-                      onChange={(e) => onBillingCycleChange(e.target.value as BillingCycle)}
-                      className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                    >
-                      <option value="MONTHLY">{language === "en" ? "Monthly" : "Tháng"}</option>
-                      <option value="QUARTERLY">{language === "en" ? "Quarterly" : "Quý"}</option>
-                      <option value="YEARLY">{language === "en" ? "Yearly" : "Năm"}</option>
-                    </select>
-                  </div>
-                )}
-
-                {isTrial && (
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-300">
-                    {language === "en"
-                      ? "Trial plan lasts 14 days and does not require billing cycle."
-                      : "Gói dùng thử có thời hạn 14 ngày và không cần chọn chu kỳ thanh toán."}
-                  </div>
-                )}
-
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
-                  <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
-                    {isTrial
-                      ? language === "en"
-                        ? "Activation cost"
-                        : "Chi phí kích hoạt"
-                      : language === "en"
-                        ? "Total amount"
-                        : "Tổng thanh toán"}
-                  </p>
-                  <p className="mt-2 text-3xl font-extrabold text-emerald-600 dark:text-emerald-300">
-                    {formatAmount(totalAmount, planData?.currency, language)}
-                  </p>
+            <section className="space-y-4">
+              {!isTrial && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    {language === "en" ? "Billing cycle" : "Chu kỳ thanh toán"}
+                  </label>
+                  <select
+                    value={billingCycle}
+                    onChange={(e) => onBillingCycleChange(e.target.value as BillingCycle)}
+                    className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  >
+                    <option value="MONTHLY">{language === "en" ? "Monthly" : "Hàng tháng"}</option>
+                    <option value="QUARTERLY">{language === "en" ? "Quarterly" : "Hàng quý"}</option>
+                    <option value="YEARLY">{language === "en" ? "Yearly" : "Hàng năm"}</option>
+                  </select>
                 </div>
+              )}
 
-                {confirmError && (
-                  <p className="text-sm text-red-600 dark:text-red-400">{confirmError}</p>
-                )}
-
-                <button
-                  type="button"
-                  disabled={confirmLoading}
-                  onClick={() => void onConfirm()}
-                  className="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-400 disabled:opacity-60 dark:text-black"
-                >
-                  {confirmLoading
-                    ? language === "en"
-                      ? "Processing..."
-                      : "Đang xử lý..."
-                    : isTrial
-                      ? language === "en"
-                        ? "Activate 14-day trial"
-                        : "Kích hoạt dùng thử 14 ngày"
-                    : language === "en"
-                      ? "Confirm and Continue"
-                      : "Xác nhận và tiếp tục"}
-                </button>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-900/20">
+                <p className="text-xs uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
+                  {language === "en" ? "Total amount" : "Tổng thanh toán"}
+                </p>
+                <p className="mt-2 text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                  {formatAmount(totalAmount, planData?.currency, language)}
+                </p>
               </div>
+
+              {confirmError && (
+                <p className="text-sm text-red-600 dark:text-red-400">{confirmError}</p>
+              )}
+
+              <button
+                type="button"
+                disabled={confirmLoading}
+                onClick={() => void onConfirm()}
+                className="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+              >
+                {confirmLoading
+                  ? language === "en" ? "Processing..." : "Đang xử lý..."
+                  : isTrial
+                  ? language === "en" ? "Activate Trial" : "Kích hoạt dùng thử"
+                  : language === "en" ? "Confirm & Pay" : "Xác nhận & Thanh toán"}
+              </button>
             </section>
           </div>
         )}
@@ -781,31 +975,16 @@ function PaymentPendingSection({
         : `${data.amount.toLocaleString(locale)} ${data.currency}`;
   const statusText =
     status === "SUCCESS"
-      ? language === "en"
-        ? "Payment successful"
-        : "Thanh toán thành công"
+      ? language === "en" ? "Payment successful" : "Thanh toán thành công"
       : status === "PENDING"
-        ? language === "en"
-          ? "Waiting for confirmation"
-          : "Đang chờ xác nhận"
+        ? language === "en" ? "Waiting for confirmation" : "Đang chờ xác nhận"
         : status;
 
-  // Debug QR URL
-  useEffect(() => {
-    console.log("Payment data:", data);
-    console.log("QR Image URL:", data.qr_image_url);
-  }, [data]);
-
-  // Build QR URL from bank info if template variables not replaced
   const getQRImageUrl = () => {
     if (!data.qr_image_url) return null;
     
-    // Check if URL has template variables
     if (data.qr_image_url.includes('${')) {
-      console.warn("QR URL has template variables, building from bank info");
-      
-      // Extract bank code from bank_name or use default
-      const bankCode = data.bank_name === "TPBANK" ? "970423" : "970423"; // Default to TPBANK
+      const bankCode = data.bank_name === "TPBANK" ? "970423" : "970423";
       const bankAccount = data.bank_account || "";
       const accountName = data.account_name || "";
       const amount = data.amount || 0;
@@ -838,8 +1017,8 @@ function PaymentPendingSection({
   }, [data.payment_id, data.polling_interval_seconds, polling, onSuccess]);
 
   return (
-    <section className={`${compact ? "" : "mb-8"} rounded-3xl border-2 border-emerald-200 bg-white p-6 shadow-xl dark:border-emerald-800 dark:bg-zinc-950`}>
-      <div className="flex items-center justify-between mb-4">
+    <section className={`${compact ? "" : "mb-8"} rounded-xl border border-emerald-200 bg-emerald-50/50 p-6 dark:border-emerald-900/50 dark:bg-emerald-900/10`}>
+      <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
           {language === "en" ? "Waiting for payment" : "Đang chờ thanh toán"}
         </h3>
@@ -847,7 +1026,7 @@ function PaymentPendingSection({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
+            className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 hover:bg-white/50 dark:hover:bg-zinc-800/50"
           >
             {language === "en" ? "Close" : "Đóng"}
           </button>
@@ -855,52 +1034,42 @@ function PaymentPendingSection({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* QR Code Section */}
         {qrImageUrl && !qrLoadFailed ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <p className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
               {language === "en" ? "Scan QR code to pay" : "Quét mã QR để thanh toán"}
             </p>
             <div className="relative">
               <Image
-                src={qrImageUrl} 
+                src={qrImageUrl}
                 alt={language === "en" ? "Payment QR code" : "QR thanh toán"}
                 width={256}
                 height={256}
                 unoptimized
                 className="h-64 w-64 rounded-xl border-2 border-emerald-500 bg-white p-2 object-contain shadow-lg"
                 onError={() => {
-                  console.error("QR Image failed to load:", qrImageUrl);
                   setFailedQrUrl(qrImageUrl);
                 }}
               />
             </div>
             <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
               {language === "en"
-                ? "Use your banking app to scan this QR code"
-                : "Sử dụng app ngân hàng để quét mã QR"}
+                ? "Use your banking app to scan"
+                : "Sử dụng app ngân hàng để quét"}
             </p>
-            {data.qr_image_url?.includes('${') && (
-              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                {language === "en"
-                  ? "Warning: QR URL was generated from bank transfer details"
-                  : "Cảnh báo: URL được tạo từ thông tin ngân hàng"}
-              </p>
-            )}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-800 dark:bg-amber-950/30">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/50 dark:bg-amber-900/20">
             <p className="text-center text-sm text-amber-800 dark:text-amber-200">
               {language === "en"
-                ? "Warning: Unable to load QR code. Please make a manual transfer."
-                : "Cảnh báo: Không thể tải mã QR. Vui lòng chuyển khoản thủ công."}
+                ? "QR code unavailable. Please transfer manually."
+                : "Mã QR không khả dụng. Vui lòng chuyển khoản thủ công."}
             </p>
           </div>
         )}
 
-        {/* Payment Info Section */}
         <div className="space-y-4">
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
               {language === "en" ? "Transaction code" : "Mã giao dịch"}
             </p>
@@ -909,7 +1078,7 @@ function PaymentPendingSection({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
               {language === "en" ? "Amount" : "Số tiền"}
             </p>
@@ -919,9 +1088,9 @@ function PaymentPendingSection({
           </div>
 
           {data.bank_account && (
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <p className="mb-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                {language === "en" ? "Bank transfer details" : "Thông tin chuyển khoản"}
+                {language === "en" ? "Bank details" : "Thông tin ngân hàng"}
               </p>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -929,11 +1098,11 @@ function PaymentPendingSection({
                   <span className="font-semibold text-zinc-900 dark:text-zinc-50">{data.bank_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-600 dark:text-zinc-400">{language === "en" ? "Account number:" : "Số tài khoản:"}</span>
+                  <span className="text-zinc-600 dark:text-zinc-400">{language === "en" ? "Account:" : "Số TK:"}</span>
                   <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-50">{data.bank_account}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-600 dark:text-zinc-400">{language === "en" ? "Account holder:" : "Chủ tài khoản:"}</span>
+                  <span className="text-zinc-600 dark:text-zinc-400">{language === "en" ? "Name:" : "Chủ TK:"}</span>
                   <span className="font-semibold text-zinc-900 dark:text-zinc-50">{data.account_name}</span>
                 </div>
               </div>
@@ -941,11 +1110,11 @@ function PaymentPendingSection({
           )}
 
           {status && (
-            <div className={`rounded-2xl border p-4 ${
+            <div className={`rounded-xl border p-4 ${
               status === "SUCCESS" 
-                ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30" 
+                ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-900/20" 
                 : status === "PENDING"
-                ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                ? "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-900/20"
                 : "border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
             }`}>
               <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
@@ -964,14 +1133,6 @@ function PaymentPendingSection({
           )}
         </div>
       </div>
-
-      {!data.qr_image_url && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-          {language === "en"
-            ? "Warning: QR code is unavailable. Please make a manual transfer using the details above."
-            : "Cảnh báo: Mã QR không khả dụng. Vui lòng chuyển khoản thủ công theo thông tin bên trên."}
-        </div>
-      )}
     </section>
   );
 }

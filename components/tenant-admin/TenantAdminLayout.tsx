@@ -206,7 +206,7 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
 
   return (
     <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col bg-linear-to-br from-zinc-100 via-white to-zinc-100 dark:from-black dark:via-black dark:to-black">
-      <div className="sticky top-0 z-70 border-b border-zinc-200/80 bg-transparent px-3 py-2 dark:border-zinc-800 sm:px-5 lg:pl-72 lg:pr-8">
+      <div className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/80 backdrop-blur-sm px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-5 lg:pl-72 lg:pr-8">
         <DashboardHeader
           title={t.tenantAdmin}
           onMenuClick={() => setSidebarOpen(true)}
@@ -221,7 +221,7 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
         />
       </div>
 
-      <div className="relative flex min-h-0 flex-1 px-3 py-4 sm:px-5 sm:py-5 lg:pr-8 lg:pl-0 lg:py-6">
+      <div className="relative flex min-h-0 flex-1 px-3 pt-0 pb-4 sm:px-5 sm:pb-5 lg:pr-8 lg:pl-0 lg:pb-6">
         <TenantAdminSidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
         <main className="min-w-0 flex-1 px-0 py-2 sm:px-3 lg:border-l lg:border-zinc-200/80 lg:px-4 lg:pl-72 dark:lg:border-zinc-800 xl:pl-72">

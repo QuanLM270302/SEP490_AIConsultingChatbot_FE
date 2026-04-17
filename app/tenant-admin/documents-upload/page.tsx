@@ -11,7 +11,45 @@ import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/know
 import type { DepartmentResponse, RoleResponse } from "@/lib/api/tenant-admin";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { FileText, Upload, FolderTree, Tag } from "lucide-react";
+import Link from "next/link";
+
+function DocumentsNavigation() {
+  const pathname = usePathname();
+  const { language } = useLanguageStore();
+  const t = translations[language];
+
+  const navItems = [
+    { href: "/tenant-admin/documents", label: t.documents, icon: FileText },
+    { href: "/tenant-admin/documents-upload", label: language === "en" ? "Upload" : "Đăng tải", icon: Upload },
+    { href: "/tenant-admin/categories", label: t.categories, icon: FolderTree },
+    { href: "/tenant-admin/tags", label: t.tags, icon: Tag },
+  ];
+
+  return (
+    <div className="flex gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+      {navItems.map((item) => {
+        const isActive = pathname === item.href;
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+              isActive
+                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-white"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function DocumentsUploadPage() {
   const router = useRouter();
@@ -105,18 +143,21 @@ export default function DocumentsUploadPage() {
 
   return (
     <TenantAdminLayout>
-      <div className="space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
             {isEn ? "Upload Document" : "Tải lên tài liệu"}
           </h1>
-          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+          <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-400">
             {isEn
               ? "Upload a new document to your knowledge base"
               : "Tải lên tài liệu mới vào cơ sở tri thức"}
           </p>
         </div>
+
+        {/* Navigation */}
+        <DocumentsNavigation />
 
         {/* Error Message */}
         {error && (
