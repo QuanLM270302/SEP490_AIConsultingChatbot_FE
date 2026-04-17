@@ -21,7 +21,7 @@ export function AppLogo({
   return (
     <span
       className={twMerge(
-        "inline-flex shrink-0 items-center justify-center rounded-xl border border-white/60 bg-white/85 p-1 shadow-md shadow-emerald-500/10 ring-1 ring-zinc-200/70 backdrop-blur dark:border-zinc-700/70 dark:bg-zinc-900/80 dark:ring-zinc-700/60",
+        "inline-flex shrink-0 items-center justify-center",
         className
       )}
       style={{ width: size, height: size }}
@@ -30,7 +30,7 @@ export function AppLogo({
       <img
         src={LOGO_URL}
         alt={alt}
-        className={twMerge("h-full w-full rounded-lg object-contain", imageClassName)}
+        className={twMerge("h-full w-full object-contain", imageClassName)}
         loading="lazy"
       />
     </span>
