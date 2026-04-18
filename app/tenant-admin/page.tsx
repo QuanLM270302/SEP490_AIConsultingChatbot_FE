@@ -99,13 +99,19 @@ export default function TenantAdminPage() {
           </p>
         </div>
 
-        {/* Stats */}
+        {/* Charts: organization KPIs */}
         <OrganizationStats />
 
-        {/* AI Usage Chart */}
+        {/* Charts: people & departments */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <EmployeeOverview />
+          <DepartmentOverview />
+        </div>
+
+        {/* AI usage */}
         <AIUsageChart data={llmUsage} loading={llmLoading} error={llmError} />
 
-        {/* Quick Links */}
+        {/* Quick Links (kept as cards, not charts) */}
         <div>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
             {t.quickActions}
@@ -133,12 +139,6 @@ export default function TenantAdminPage() {
               </Link>
             ))}
           </div>
-        </div>
-
-        {/* Overview Cards */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <EmployeeOverview />
-          <DepartmentOverview />
         </div>
       </div>
     </TenantAdminLayout>

@@ -35,6 +35,7 @@ import { X } from "lucide-react";
 interface Category {
   id: string;
   name: string;
+  code: string;
   status: "ACTIVE" | "INACTIVE";
   parentId: string | null;
   children?: Category[];
@@ -45,6 +46,7 @@ function transformCategory(cat: DocumentCategoryResponse): Category {
   return {
     id: cat.id,
     name: cat.name,
+    code: cat.code,
     status: cat.isActive === false ? "INACTIVE" : "ACTIVE", // Backend uses isActive boolean
     parentId: cat.parentId || null,
     children: cat.children?.map(transformCategory),
@@ -75,7 +77,7 @@ function CategoryModal({
   useEffect(() => {
     if (category) {
       setName(category.name);
-      setCode(""); // Code không có trong response, để trống
+      setCode(category.code);
       setDescription(""); // Description không có trong response
       setParentId(category.parentId || "");
     } else {
@@ -96,7 +98,7 @@ function CategoryModal({
         // Update
         await updateCategory(category.id, {
           name: name.trim(),
-          code: code.trim() || undefined,
+          code: code.trim() || category.code,
           description: description.trim() || undefined,
           parentId: parentId || null,
           isActive: category.status === "ACTIVE",

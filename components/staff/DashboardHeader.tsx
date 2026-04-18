@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Menu, User, LogOut, Settings, Sun, Moon, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/api/auth";
@@ -167,10 +168,12 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
         </div>
       </div>
 
-      {isSettingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {isSettingsOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-zinc-900/70 backdrop-blur-sm" onClick={() => setIsSettingsOpen(false)} />
-          <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl dark:bg-zinc-900">
+          <div className="relative my-auto w-full max-w-md max-h-[min(90dvh,40rem)] overflow-y-auto rounded-3xl bg-white shadow-2xl dark:bg-zinc-900">
             <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t.settings}</h3>
@@ -242,8 +245,9 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+        )}
     </div>
   );
 }

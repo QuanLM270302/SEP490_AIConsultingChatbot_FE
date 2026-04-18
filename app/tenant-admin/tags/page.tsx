@@ -33,6 +33,7 @@ import { X } from "lucide-react";
 interface Tag {
   id: string;
   name: string;
+  code: string;
   status: "ACTIVE" | "INACTIVE";
   documentCount?: number;
 }
@@ -42,6 +43,7 @@ function transformTag(tag: DocumentTagResponse): Tag {
   return {
     id: tag.id,
     name: tag.name,
+    code: tag.code,
     status: tag.isActive === false ? "INACTIVE" : "ACTIVE", // Backend uses isActive boolean
     documentCount: undefined, // API doesn't return this yet
   };
@@ -68,7 +70,7 @@ function TagModal({
   useEffect(() => {
     if (tag) {
       setName(tag.name);
-      setCode(""); // Code không có trong response
+      setCode(tag.code);
       setDescription(""); // Description không có trong response
     } else {
       setName("");
@@ -87,7 +89,7 @@ function TagModal({
         // Update
         await updateTag(tag.id, {
           name: name.trim(),
-          code: code.trim() || undefined,
+          code: code.trim() || tag.code,
           description: description.trim() || undefined,
           isActive: tag.status === "ACTIVE",
         });
