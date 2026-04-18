@@ -142,7 +142,15 @@ export default function ChatbotNewPage() {
   );
 
   return (
-    <div className="flex h-dvh min-h-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+    <div className="relative flex h-dvh min-h-0 overflow-hidden bg-zinc-100 dark:bg-[#060607]">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_-8%,rgba(139,92,246,0.14),transparent_55%)] dark:bg-[radial-gradient(ellipse_85%_50%_at_50%_-10%,rgba(124,58,237,0.22),transparent_50%)]"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_100%_60%,rgba(16,185,129,0.06),transparent_45%)] dark:bg-[radial-gradient(ellipse_55%_45%_at_100%_55%,rgba(16,185,129,0.1),transparent_50%)]"
+        aria-hidden
+      />
       <NavigationSidebar
         activeView={activeView}
         onViewChange={handleViewChange}
