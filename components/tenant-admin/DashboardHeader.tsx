@@ -80,18 +80,17 @@ export function DashboardHeader({
   }, [isUserMenuOpen]);
 
   const handleLogout = async () => {
+    const token = getAccessToken();
     try {
-      const token = getAccessToken();
       if (token) {
         await logout(token);
       }
+    } catch {
+      // Ignore API/logout transport failures; client-side sign-out still proceeds.
+    } finally {
       clearAuth();
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      // Clear auth anyway
-      clearAuth();
-      router.push("/login");
+      router.replace("/login");
+      router.refresh();
     }
   };
 

@@ -92,9 +92,11 @@ export function AppHeader() {
     const token = getAccessToken();
     try {
       if (token) await logout(token);
+    } catch {
+      // Ignore API/logout transport failures; client-side sign-out still proceeds.
     } finally {
       clearAuth();
-      router.push("/login");
+      router.replace("/login");
       router.refresh();
     }
   };

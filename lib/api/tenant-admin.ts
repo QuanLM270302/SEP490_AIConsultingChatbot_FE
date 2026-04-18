@@ -62,6 +62,8 @@ export interface UserResponse {
   status?: string;
   isActive?: boolean;
   createdAt?: string;
+  /** Additional user-specific permissions. */
+  permissions?: string[];
 }
 
 export interface DepartmentResponse {

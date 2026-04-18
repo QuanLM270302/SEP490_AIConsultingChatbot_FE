@@ -18,7 +18,7 @@ interface DashboardHeaderProps {
   onMenuClick: () => void;
 }
 
-export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
+export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -65,17 +65,17 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
   }, [isUserMenuOpen]);
 
   const handleLogout = async () => {
+    const token = getAccessToken();
     try {
-      const token = getAccessToken();
       if (token) {
         await logout(token);
       }
+    } catch {
+      // Ignore API/logout transport failures; client-side sign-out still proceeds.
+    } finally {
       clearAuth();
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      clearAuth();
-      router.push("/login");
+      router.replace("/login");
+      router.refresh();
     }
   };
 
