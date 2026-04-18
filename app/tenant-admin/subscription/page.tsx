@@ -7,6 +7,9 @@ import { SubscriptionTabs } from "@/components/subscription/SubscriptionTabs";
 import { BillingHistory } from "@/components/tenant-admin/BillingHistory";
 import {
   getAvailableSubscriptionPlans,
+  getUpcomingRenewalPayment,
+  createUpcomingRenewalPayment,
+  sendUpcomingPaymentReminderEmail,
   getMySubscription,
   selectPlan,
   cancelSubscription,
@@ -17,6 +20,7 @@ import { Be_Vietnam_Pro } from "next/font/google";
 import type {
   BillingCycle,
   MySubscriptionResponse,
+  UpcomingRenewalPaymentResponse,
   SelectPlanResponse,
   SubscriptionTier,
   TenantSubscriptionPlanResponse,
@@ -26,7 +30,7 @@ import { useLanguageStore } from "@/lib/language-store";
 import { notifyTenantSubscriptionUpdated } from "@/lib/subscription-sync";
 import { translations } from "@/lib/translations";
 
-type TabId = "plans" | "billing" | "history";
+type TabId = "plans" | "history" | "upcoming";
 
 const TIER_LABEL_VI: Record<SubscriptionTier, string> = {
   TRIAL: "Dùng thử",
@@ -44,6 +48,7 @@ const TIER_LABEL_EN: Record<SubscriptionTier, string> = {
 const TIER_ORDER: SubscriptionTier[] = ["TRIAL", "STARTER", "STANDARD", "ENTERPRISE"];
 const FALLBACK_PLAN_CARDS: SubscriptionTier[] = ["STARTER", "STANDARD", "ENTERPRISE"];
 const POPULAR_TIER: SubscriptionTier = "STANDARD";
+const UPCOMING_RENEWAL_DAYS = 7;
 
 const PLAN_FEATURES_VI: Record<SubscriptionTier, string[]> = {
   TRIAL: [
@@ -188,6 +193,23 @@ function formatDate(dateStr: string | undefined, lang: "vi" | "en"): string {
   }
 }
 
+function daysUntilDate(dateStr: string | undefined): number | null {
+  if (!dateStr) return null;
+  const targetDate = new Date(dateStr);
+  if (Number.isNaN(targetDate.getTime())) return null;
+
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const targetStart = new Date(
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate()
+  );
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  return Math.round((targetStart.getTime() - todayStart.getTime()) / msPerDay);
+}
+
 export default function TenantAdminSubscriptionPage() {
   const [activeTab, setActiveTab] = useState<TabId>("plans");
   const [subscription, setSubscription] = useState<MySubscriptionResponse | null>(null);
@@ -207,6 +229,13 @@ export default function TenantAdminSubscriptionPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
   const [autoRenewLoading, setAutoRenewLoading] = useState(false);
+  const [upcomingPayment, setUpcomingPayment] = useState<UpcomingRenewalPaymentResponse | null>(null);
+  const [upcomingPaymentLoading, setUpcomingPaymentLoading] = useState(false);
+  const [upcomingPaymentActionLoading, setUpcomingPaymentActionLoading] = useState(false);
+  const [upcomingPaymentError, setUpcomingPaymentError] = useState<string | null>(null);
+  const [upcomingReminderLoading, setUpcomingReminderLoading] = useState(false);
+  const [upcomingReminderMessage, setUpcomingReminderMessage] = useState<string | null>(null);
+  const [showUpcomingPaymentQr, setShowUpcomingPaymentQr] = useState(false);
   const { language } = useLanguageStore();
   const t = translations[language];
 
@@ -315,6 +344,8 @@ export default function TenantAdminSubscriptionPage() {
     loadSubscription();
     loadAvailablePlans();
     setPaymentPending(undefined);
+    setShowUpcomingPaymentQr(false);
+    setUpcomingReminderMessage(null);
     if (activeTab === "history") loadPayments();
   };
 
@@ -343,6 +374,9 @@ export default function TenantAdminSubscriptionPage() {
     setAutoRenewLoading(true);
     try {
       await toggleAutoRenew(!subscription.autoRenew);
+      setUpcomingPaymentError(null);
+      setUpcomingReminderMessage(null);
+      setShowUpcomingPaymentQr(false);
       loadSubscription({ silent: true });
     } catch (e) {
       console.error("Failed to toggle auto-renew:", e);
@@ -369,23 +403,107 @@ export default function TenantAdminSubscriptionPage() {
   const currentPlanData = subscription ? planMap.get(subscription.tier) : undefined;
   const currentPlanFeatures = parsePlanFeatures(currentPlanData?.features);
   const hasActiveSubscription = subscription && (subscription.status === "ACTIVE" || subscription.status === "TRIAL");
+  const daysUntilSubscriptionEnd = useMemo(
+    () => daysUntilDate(subscription?.endDate),
+    [subscription?.endDate]
+  );
+  const hasUpcomingData = Boolean(
+    subscription &&
+      subscription.status === "ACTIVE" &&
+      subscription.autoRenew &&
+      daysUntilSubscriptionEnd === UPCOMING_RENEWAL_DAYS
+  );
+
+  const upcomingPaymentPending = useMemo<SelectPlanResponse | undefined>(() => {
+    if (!upcomingPayment?.payment_id || !upcomingPayment.transaction_code) return undefined;
+    return {
+      payment_id: upcomingPayment.payment_id,
+      subscription_id: upcomingPayment.subscription_id,
+      transaction_code: upcomingPayment.transaction_code,
+      amount: upcomingPayment.amount ?? subscription?.price ?? 0,
+      currency: upcomingPayment.currency ?? subscription?.currency ?? "VND",
+      qr_image_url: upcomingPayment.qr_image_url,
+      qr_content: upcomingPayment.qr_content,
+      expires_at: upcomingPayment.expires_at,
+      tier: upcomingPayment.tier ?? subscription?.tier ?? "STARTER",
+      billing_cycle: upcomingPayment.billing_cycle ?? subscription?.billingCycle ?? "MONTHLY",
+      bank_account: upcomingPayment.bank_account,
+      bank_name: upcomingPayment.bank_name,
+      account_name: upcomingPayment.account_name,
+      polling_interval_seconds: upcomingPayment.polling_interval_seconds,
+    };
+  }, [upcomingPayment, subscription?.billingCycle, subscription?.currency, subscription?.price, subscription?.tier]);
+
+  useEffect(() => {
+    if (!hasUpcomingData) {
+      setUpcomingPayment(null);
+      setUpcomingPaymentError(null);
+      setUpcomingReminderMessage(null);
+      setShowUpcomingPaymentQr(false);
+      return;
+    }
+
+    setUpcomingPaymentLoading(true);
+    setUpcomingPaymentError(null);
+    getUpcomingRenewalPayment()
+      .then((data) => setUpcomingPayment(data))
+      .catch((e) => {
+        setUpcomingPayment(null);
+        setUpcomingPaymentError(e instanceof Error ? e.message : language === "en" ? "Cannot load upcoming payment" : "Không tải được giao dịch sắp thanh toán");
+      })
+      .finally(() => setUpcomingPaymentLoading(false));
+  }, [hasUpcomingData, language]);
+
+  const handleUpcomingPaymentAction = async () => {
+    if (showUpcomingPaymentQr) {
+      setShowUpcomingPaymentQr(false);
+      return;
+    }
+    if (upcomingPaymentPending) {
+      setShowUpcomingPaymentQr(true);
+      return;
+    }
+
+    setUpcomingPaymentActionLoading(true);
+    setUpcomingPaymentError(null);
+    try {
+      const data = await createUpcomingRenewalPayment();
+      setUpcomingPayment(data);
+      setShowUpcomingPaymentQr(true);
+    } catch (e) {
+      setUpcomingPaymentError(e instanceof Error ? e.message : language === "en" ? "Cannot create upcoming payment" : "Không tạo được giao dịch sắp thanh toán");
+    } finally {
+      setUpcomingPaymentActionLoading(false);
+    }
+  };
+
+  const handleSendUpcomingReminder = async () => {
+    setUpcomingReminderLoading(true);
+    setUpcomingPaymentError(null);
+    setUpcomingReminderMessage(null);
+    try {
+      const data = await sendUpcomingPaymentReminderEmail();
+      setUpcomingPayment(data);
+      setUpcomingReminderMessage(
+        data.message ?? (language === "en" ? "Reminder email sent." : "Đã gửi email nhắc thanh toán.")
+      );
+    } catch (e) {
+      setUpcomingPaymentError(e instanceof Error ? e.message : language === "en" ? "Cannot send reminder email" : "Không gửi được email nhắc thanh toán");
+    } finally {
+      setUpcomingReminderLoading(false);
+    }
+  };
 
   return (
     <TenantAdminLayout>
       <div className="space-y-6 text-zinc-900 dark:text-zinc-100">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
-            {t.tenantAdminSubscription}
-          </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            {t.subscriptionPageDescription}
-          </p>
-        </div>
-
         {/* Tabs */}
         <section className="mb-6">
-          <SubscriptionTabs activeTab={activeTab} onTabChange={setActiveTab} />
+          <SubscriptionTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            language={language === "en" ? "en" : "vi"}
+          />
         </section>
 
         {/* Plans Tab */}
@@ -671,21 +789,159 @@ export default function TenantAdminSubscriptionPage() {
           </>
         )}
 
-        {/* Billing Tab */}
-        {activeTab === "billing" && (
-          <section className="rounded-3xl border-2 border-zinc-200 bg-white p-8 text-sm text-zinc-700 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
-            <h2 className="mb-3 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              {t.billingInfo}
-            </h2>
-            <p>
-              {t.billingInfoDescription}
-            </p>
-          </section>
-        )}
-
         {/* History Tab */}
         {activeTab === "history" && (
           <BillingHistory payments={payments} loading={paymentsLoading} />
+        )}
+
+        {/* Upcoming Tab */}
+        {activeTab === "upcoming" && (
+          <section className="rounded-3xl border border-emerald-200 bg-white p-6 shadow-lg dark:border-emerald-900/40 dark:bg-zinc-900">
+            {hasUpcomingData && subscription ? (
+              <>
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
+                      {language === "en" ? "Upcoming Renewal Transaction" : "Giao dịch sắp thanh toán"}
+                    </h2>
+                  </div>
+                  {upcomingPayment?.payment_available && upcomingPayment?.status ? (
+                    <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                      {upcomingPayment.status}
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-zinc-600 dark:text-zinc-400">{language === "en" ? "Plan:" : "Gói:"}</span>
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {tierDisplayName(subscription.tier, language === "en" ? "en" : "vi")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-zinc-600 dark:text-zinc-400">{language === "en" ? "Cycle:" : "Chu kỳ:"}</span>
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {subscription.billingCycle === "YEARLY"
+                          ? language === "en"
+                            ? "Yearly"
+                            : "Hàng năm"
+                          : subscription.billingCycle === "QUARTERLY"
+                            ? language === "en"
+                              ? "Quarterly"
+                              : "Hàng quý"
+                            : language === "en"
+                              ? "Monthly"
+                              : "Hàng tháng"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-zinc-600 dark:text-zinc-400">{language === "en" ? "Amount:" : "Số tiền:"}</span>
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {formatAmount(
+                          (upcomingPayment?.amount as number | null | undefined) ?? subscription.price ?? null,
+                          upcomingPayment?.currency ?? subscription.currency,
+                          language === "en" ? "en" : "vi"
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-zinc-600 dark:text-zinc-400">{language === "en" ? "Next billing:" : "Kỳ thanh toán:"}</span>
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {formatDate(
+                          (upcomingPayment?.next_billing_date as string | undefined) ?? subscription.nextBillingDate,
+                          language === "en" ? "en" : "vi"
+                        )}
+                      </span>
+                    </div>
+                    {typeof daysUntilSubscriptionEnd === "number" ? (
+                      <div className="flex justify-between gap-3">
+                        <span className="text-zinc-600 dark:text-zinc-400">
+                          {language === "en" ? "Days remaining:" : "Số ngày còn lại:"}
+                        </span>
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                          {daysUntilSubscriptionEnd}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {upcomingPaymentLoading ? (
+                    <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                      {language === "en" ? "Loading upcoming transaction..." : "Đang tải giao dịch sắp thanh toán..."}
+                    </p>
+                  ) : null}
+
+                  {upcomingPaymentError ? (
+                    <p className="mt-3 text-xs font-medium text-red-600 dark:text-red-400">{upcomingPaymentError}</p>
+                  ) : null}
+
+                  {upcomingReminderMessage ? (
+                    <p className="mt-3 text-xs font-medium text-emerald-700 dark:text-emerald-300">{upcomingReminderMessage}</p>
+                  ) : null}
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleUpcomingPaymentAction()}
+                      disabled={upcomingPaymentLoading || upcomingPaymentActionLoading}
+                      className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      {upcomingPaymentActionLoading
+                        ? language === "en"
+                          ? "Preparing..."
+                          : "Đang chuẩn bị..."
+                        : showUpcomingPaymentQr
+                          ? language === "en"
+                            ? "Hide QR"
+                            : "Ẩn QR"
+                          : upcomingPaymentPending
+                            ? language === "en"
+                              ? "Show QR"
+                              : "Xem QR"
+                            : language === "en"
+                              ? "Pay now"
+                              : "Thanh toán ngay"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleSendUpcomingReminder()}
+                      disabled={upcomingReminderLoading}
+                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    >
+                      {upcomingReminderLoading
+                        ? language === "en"
+                          ? "Sending..."
+                          : "Đang gửi..."
+                        : language === "en"
+                          ? "Send reminder email"
+                          : "Gửi email nhắc thanh toán"}
+                    </button>
+                  </div>
+
+                  {showUpcomingPaymentQr && upcomingPaymentPending ? (
+                    <div className="mt-4">
+                      <PaymentPendingSection
+                        data={upcomingPaymentPending}
+                        language={language === "en" ? "en" : "vi"}
+                        onClose={() => setShowUpcomingPaymentQr(false)}
+                        onSuccess={handleSubscriptionUpdated}
+                        compact
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 text-center dark:border-zinc-800 dark:bg-zinc-950">
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  {language === "en" ? "No upcoming renewal transaction yet." : "Chưa có"}
+                </p>
+              </div>
+            )}
+          </section>
         )}
 
         {/* Plan Selection Modal */}
