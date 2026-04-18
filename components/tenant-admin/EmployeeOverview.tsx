@@ -10,51 +10,8 @@ import { isAuthExpiredErrorMessage } from "@/lib/auth-session-events";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { useAppTheme } from "@/lib/use-app-theme";
-import { tenantLegendLabels, tenantTooltipBase } from "@/lib/tenant-chart-tooltip";
-import type { ArcElement, Chart as ChartModel, ChartData, ChartOptions, Plugin } from "chart.js";
-
-function employeePercentPlugin(isDark: boolean): Plugin<"doughnut"> {
-  return {
-    id: "employeeOverviewPercentLabels",
-    afterDatasetsDraw(chart: ChartModel<"doughnut">) {
-      const meta = chart.getDatasetMeta(0);
-      if (!meta?.data?.length) return;
-      const raw = chart.data.datasets[0].data as number[];
-      const sum = raw.reduce((a, b) => a + Number(b), 0);
-      if (!sum) return;
-
-      const pctFirst = Math.round((Number(raw[0]) / sum) * 100);
-      const pctForIndex = (i: number) => (i === 0 ? pctFirst : Math.max(0, 100 - pctFirst));
-
-      const ctx = chart.ctx;
-      ctx.save();
-      meta.data.forEach((element, i) => {
-        const v = Number(raw[i]);
-        if (v <= 0) return;
-        const arc = element as ArcElement;
-        const span = arc.endAngle - arc.startAngle;
-        if (span < 0.12) return;
-
-        const pct = pctForIndex(i);
-        const angle = (arc.startAngle + arc.endAngle) / 2;
-        const r = (arc.innerRadius + arc.outerRadius) / 2;
-        const x = arc.x + Math.cos(angle) * r;
-        const y = arc.y + Math.sin(angle) * r;
-
-        ctx.font = "600 13px ui-sans-serif, system-ui, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.lineJoin = "round";
-        ctx.strokeStyle = isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.9)";
-        ctx.lineWidth = 4;
-        ctx.strokeText(`${pct}%`, x, y);
-        ctx.fillStyle = i === 0 ? "#ecfdf5" : isDark ? "#fafafa" : "#18181b";
-        ctx.fillText(`${pct}%`, x, y);
-      });
-      ctx.restore();
-    },
-  };
-}
+import { tenantTooltipBase } from "@/lib/tenant-chart-tooltip";
+import type { ChartData, ChartOptions } from "chart.js";
 
 export function EmployeeOverview() {
   const { language } = useLanguageStore();
@@ -116,31 +73,7 @@ export function EmployeeOverview() {
       },
       plugins: {
         legend: {
-          position: "bottom",
-          labels: {
-            ...tenantLegendLabels(isDark),
-            generateLabels: (chart) => {
-              const labels = chart.data.labels ?? [];
-              const ds = chart.data.datasets[0];
-              const values = (ds.data ?? []) as number[];
-              const sum = values.reduce((a, b) => a + Number(b), 0);
-              const colors = (ds.backgroundColor ?? []) as string[];
-              const pctFirst = sum > 0 ? Math.round((Number(values[0]) / sum) * 100) : 0;
-              return labels.map((label, i) => {
-                const v = Number(values[i]);
-                const pct = sum <= 0 ? 0 : i === 0 ? pctFirst : Math.max(0, 100 - pctFirst);
-                return {
-                  text: `${String(label)} · ${pct}%`,
-                  fillStyle: colors[i] ?? "#71717a",
-                  strokeStyle: colors[i] ?? "#71717a",
-                  lineWidth: 0,
-                  hidden: false,
-                  index: i,
-                  datasetIndex: 0,
-                };
-              });
-            },
-          },
+          display: false,
         },
         tooltip: {
           ...tenantTooltipBase(isDark),
@@ -168,8 +101,6 @@ export function EmployeeOverview() {
     }),
     [isDark],
   );
-
-  const percentPlugin = useMemo(() => employeePercentPlugin(isDark), [isDark]);
 
   if (loading) {
     return (
@@ -215,7 +146,7 @@ export function EmployeeOverview() {
       </div>
       <div className="flex flex-col items-stretch gap-6 sm:flex-row">
         <div className="mx-auto h-56 w-full max-w-[16rem] shrink-0 sm:mx-0">
-          <Chart type="doughnut" data={chartData} options={chartOptions} plugins={[percentPlugin]} />
+          <Chart type="doughnut" data={chartData} options={chartOptions} />
         </div>
         <div className="flex flex-1 flex-col justify-center gap-4 rounded-2xl bg-white/60 p-5 text-sm dark:bg-zinc-900/50">
           <div>
