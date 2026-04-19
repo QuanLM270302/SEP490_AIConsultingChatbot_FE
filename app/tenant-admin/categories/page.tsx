@@ -9,6 +9,8 @@ import {
   FolderTree,
   Tag,
   Plus,
+  Ban,
+  Check,
   ChevronRight,
   ChevronDown,
   Edit2,
@@ -19,6 +21,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useConfirmDialog } from "@/components/ui";
 import { 
   listCategoriesTree,
   listCategoriesManage,
@@ -38,6 +41,16 @@ interface Category {
   status: "ACTIVE" | "INACTIVE";
   parentId: string | null;
   children?: Category[];
+}
+
+function hasActiveDescendants(category: Category): boolean {
+  if (!category.children || category.children.length === 0) {
+    return false;
+  }
+
+  return category.children.some(
+    (child) => child.status === "ACTIVE" || hasActiveDescendants(child)
+  );
 }
 
 // Transform API response to local Category type
@@ -264,6 +277,8 @@ function CategoryTreeItem({
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showActions, setShowActions] = useState(false);
+  const { language } = useLanguageStore();
+  const isEn = language === "en";
   const hasChildren = category.children && category.children.length > 0;
 
   return (
@@ -334,17 +349,27 @@ function CategoryTreeItem({
               </button>
               <button 
                 onClick={() => onToggleStatus(category)}
-                className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
+                className={`flex h-7 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium transition ${
                   category.status === "ACTIVE"
                     ? "text-zinc-500 hover:bg-amber-100 hover:text-amber-600 dark:text-zinc-400 dark:hover:bg-amber-950/30 dark:hover:text-amber-400"
                     : "text-zinc-500 hover:bg-emerald-100 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400"
                 }`}
-                title={category.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                title={
+                  category.status === "ACTIVE"
+                    ? isEn ? "Deactivate" : "Vô hiệu hóa"
+                    : isEn ? "Activate" : "Kích hoạt"
+                }
               >
                 {category.status === "ACTIVE" ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <>
+                    <Ban className="h-3.5 w-3.5" />
+                    <span>{isEn ? "Deactivate" : "Vô hiệu hóa"}</span>
+                  </>
                 ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    <span>{isEn ? "Activate" : "Kích hoạt"}</span>
+                  </>
                 )}
               </button>
               <button 
@@ -428,6 +453,7 @@ export default function CategoriesPage() {
   const { language } = useLanguageStore();
   const t = translations[language];
   const isEn = language === "en";
+  const { confirm: confirmAction, confirmDialog } = useConfirmDialog();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -488,7 +514,16 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(isEn ? "Delete this category permanently?" : "Xóa vĩnh viễn danh mục này?")) return;
+    const ok = await confirmAction({
+      title: isEn ? "Delete category permanently?" : "Xóa vĩnh viễn danh mục?",
+      description: isEn
+        ? "This action cannot be undone."
+        : "Hành động này không thể hoàn tác.",
+      confirmText: isEn ? "Delete" : "Xóa",
+      cancelText: isEn ? "Cancel" : "Hủy",
+      tone: "danger",
+    });
+    if (!ok) return;
     
     setDeletingId(id);
     try {
@@ -503,6 +538,39 @@ export default function CategoriesPage() {
   };
 
   const handleToggleStatus = async (category: Category) => {
+    if (category.status === "ACTIVE" && hasActiveDescendants(category)) {
+      alert(
+        isEn
+          ? "Cannot deactivate this category while it still has active sub-categories. Please deactivate or move child categories first."
+          : "Không thể vô hiệu hóa danh mục này khi vẫn còn danh mục con đang active. Vui lòng vô hiệu hóa hoặc di chuyển danh mục con trước."
+      );
+      return;
+    }
+
+    if (category.status === "ACTIVE") {
+      const ok = await confirmAction({
+        title: isEn ? "Deactivate category?" : "Vô hiệu hóa danh mục?",
+        description: isEn
+          ? "This category will be hidden from active lists."
+          : "Danh mục sẽ ẩn khỏi danh sách active.",
+        confirmText: isEn ? "Deactivate" : "Vô hiệu hóa",
+        cancelText: isEn ? "Cancel" : "Hủy",
+        tone: "warning",
+      });
+      if (!ok) return;
+    } else {
+      const ok = await confirmAction({
+        title: isEn ? "Activate category?" : "Kích hoạt danh mục?",
+        description: isEn
+          ? "This category will appear again in active lists."
+          : "Danh mục sẽ xuất hiện lại trong danh sách active.",
+        confirmText: isEn ? "Activate" : "Kích hoạt",
+        cancelText: isEn ? "Cancel" : "Hủy",
+        tone: "default",
+      });
+      if (!ok) return;
+    }
+
     try {
       if (category.status === "ACTIVE") {
         await deactivateCategory(category.id);
@@ -511,8 +579,9 @@ export default function CategoriesPage() {
       }
       await loadCategories();
     } catch (e) {
-      alert(isEn ? "Failed to update status" : "Cập nhật trạng thái thất bại");
-      console.error(e);
+      const fallbackMessage = isEn ? "Failed to update status" : "Cập nhật trạng thái thất bại";
+      const errorMessage = e instanceof Error && e.message ? e.message : fallbackMessage;
+      alert(errorMessage);
     }
   };
 
@@ -591,6 +660,8 @@ export default function CategoriesPage() {
           allCategories={categories}
           onSuccess={loadCategories}
         />
+
+        {confirmDialog}
       </div>
   );
 }
