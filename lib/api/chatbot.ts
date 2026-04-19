@@ -1,5 +1,6 @@
 import { fetchWithAuth } from "@/lib/api/fetchWithAuth";
 import { CHATBOT_BASE } from "@/lib/api/config";
+import { isRatingMessageId } from "@/lib/chatMessageId";
 import type { ChatRequest, ChatResponse, ConversationSummary, ChatHistoryResponse } from "@/types/chatbot";
 
 export class ChatApiError extends Error {
@@ -74,10 +75,19 @@ export async function chat(request: ChatRequest): Promise<ChatResponse> {
   throw new Error("Invalid chat response");
 }
 
+/** Parsed body from POST .../messages/{id}/rate (ChatMessageResponse) */
+export type RateMessageResult = {
+  messageId?: string;
+  rating?: number | null;
+};
+
 export async function rateMessage(
   messageId: string,
   rating: "helpful" | "not-helpful"
-): Promise<void> {
+): Promise<RateMessageResult> {
+  if (!isRatingMessageId(messageId)) {
+    throw new Error("Invalid assistant message id for rating (expected server UUID).");
+  }
   const numericRating = rating === "helpful" ? 5 : 1;
   console.log(`📤 Sending rating request: POST ${CHATBOT_BASE}/messages/${messageId}/rate`, {
     rating: numericRating,
@@ -90,12 +100,27 @@ export async function rateMessage(
       body: JSON.stringify({ rating: numericRating }),
     }
   );
+  const rawBody = await res.text().catch(() => "");
+  const parsedBody = parseBody(rawBody);
   if (!res.ok) {
-    const errorText = await res.text().catch(() => "Unknown error");
+    const errorText =
+      typeof parsedBody === "string" && parsedBody.trim()
+        ? parsedBody.trim()
+        : (extractErrorMessage(parsedBody) ?? rawBody) || "Unknown error";
     console.error(`❌ Rating API failed (${res.status}):`, errorText);
     throw new Error(`Failed to submit rating: ${errorText}`);
   }
   console.log("✅ Rating API success");
+  if (parsedBody && typeof parsedBody === "object") {
+    const r = parsedBody as Record<string, unknown>;
+    const rid = r.messageId;
+    const rt = r.rating;
+    return {
+      messageId: typeof rid === "string" ? rid : undefined,
+      rating: typeof rt === "number" ? rt : rt === null ? null : undefined,
+    };
+  }
+  return {};
 }
 
 export async function chatbotHealth(): Promise<string> {
