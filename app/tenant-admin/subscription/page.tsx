@@ -300,6 +300,12 @@ export default function TenantAdminSubscriptionPage() {
     const apiPlanCards = Array.from(planMap.keys());
     return apiPlanCards.length > 0 ? apiPlanCards : FALLBACK_PLAN_CARDS;
   }, [planMap]);
+  const planGridColumnsClass =
+    planCards.length >= 4
+      ? "xl:grid-cols-4"
+      : planCards.length === 3
+        ? "xl:grid-cols-3"
+        : "xl:grid-cols-2";
 
   const modalPlanData = planModalTier ? planMap.get(planModalTier) : undefined;
   const modalFeatures = useMemo(() => {
@@ -674,7 +680,7 @@ export default function TenantAdminSubscriptionPage() {
                   {language === "en" ? "Loading available plans..." : "Đang tải danh sách gói..."}
                 </p>
               )}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              <div className={`grid grid-cols-1 gap-5 md:grid-cols-2 ${planGridColumnsClass}`}>
               {planCards.map((tier) => {
                 const isPressing = pressedTier === tier;
                 const isPopular = tier === POPULAR_TIER;
