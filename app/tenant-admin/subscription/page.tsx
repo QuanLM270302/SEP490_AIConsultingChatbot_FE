@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { SubscriptionTabs } from "@/components/subscription/SubscriptionTabs";
 import { BillingHistory } from "@/components/tenant-admin/BillingHistory";
 import {
@@ -495,7 +494,6 @@ export default function TenantAdminSubscriptionPage() {
   };
 
   return (
-    <TenantAdminLayout>
       <div className="space-y-6 text-zinc-900 dark:text-zinc-100">
         {/* Tabs */}
         <section className="mb-6">
@@ -1013,7 +1011,6 @@ export default function TenantAdminSubscriptionPage() {
           </div>
         )}
       </div>
-    </TenantAdminLayout>
   );
 }
 
@@ -1392,3 +1389,4 @@ function PaymentPendingSection({
     </section>
   );
 }
+

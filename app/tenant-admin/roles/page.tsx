@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { getPermissionLabel } from "@/lib/permission-labels";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { AnimatedSegmentedControl, ErrorNotice, useConfirmDialog } from "@/components/ui";
 import {
   createTenantRole,
@@ -211,7 +210,7 @@ export default function TenantAdminRolesPage() {
   };
 
   return (
-    <TenantAdminLayout>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
@@ -583,7 +582,7 @@ export default function TenantAdminRolesPage() {
       )}
 
       {confirmDialog}
-    </TenantAdminLayout>
+    </>
   );
 }
 
@@ -838,3 +837,4 @@ function EditRoleModal({
     </div>
   );
 }
+

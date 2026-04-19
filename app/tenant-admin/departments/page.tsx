@@ -1,7 +1,6 @@
  "use client";
 
 import { useState } from "react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { DepartmentsTable } from "@/components/tenant-admin/DepartmentsTable";
 import { Filter, Plus } from "lucide-react";
 import { createTenantDepartment } from "@/lib/api/tenant-admin";
@@ -17,7 +16,7 @@ export default function DepartmentsPage() {
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
 
   return (
-    <TenantAdminLayout>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
@@ -69,7 +68,7 @@ export default function DepartmentsPage() {
           }}
         />
       )}
-    </TenantAdminLayout>
+    </>
   );
 }
 
@@ -173,3 +172,4 @@ function CreateDepartmentModal({
     </div>
   );
 }
+

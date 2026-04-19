@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { Menu, User, LogOut, Settings, Sun, Moon, Globe, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -162,58 +163,65 @@ export function DashboardHeader({
             </svg>
           </button>
 
-          {/* Dropdown Menu */}
-          {isUserMenuOpen && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-              {/* User Info */}
-              <div className="border-b border-zinc-200 bg-linear-to-br from-emerald-50 to-white px-4 py-3 dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-900">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-emerald-600">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">{displayName}</p>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400">{displayEmail}</p>
+          <AnimatePresence>
+            {isUserMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute right-0 top-full z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                {/* User Info */}
+                <div className="border-b border-zinc-200 bg-linear-to-br from-emerald-50 to-white px-4 py-3 dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-900">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-emerald-600">
+                      <User className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-white">{displayName}</p>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">{displayEmail}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Menu Items */}
-              <div className="p-2">
-                <button
-                  onClick={() => {
-                    router.push("/profile");
-                    setIsUserMenuOpen(false);
-                  }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                >
-                  <User className="h-4 w-4" />
-                  <span>{t.profile}</span>
-                </button>
+                {/* Menu Items */}
+                <div className="p-2">
+                  <button
+                    onClick={() => {
+                      router.push("/profile");
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    <User className="h-4 w-4" />
+                    <span>{t.profile}</span>
+                  </button>
 
-                <button
-                  onClick={() => {
-                    setIsSettingsOpen(true);
-                    setIsUserMenuOpen(false);
-                  }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>{t.settings}</span>
-                </button>
+                  <button
+                    onClick={() => {
+                      setIsSettingsOpen(true);
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>{t.settings}</span>
+                  </button>
 
-                <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-800" />
+                  <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-800" />
 
-                <button
-                  onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>{t.logout}</span>
-                </button>
-              </div>
-            </div>
-          )}
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>{t.logout}</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

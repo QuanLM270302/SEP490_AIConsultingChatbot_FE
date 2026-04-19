@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import {
@@ -518,7 +517,6 @@ export default function CategoriesPage() {
   };
 
   return (
-    <TenantAdminLayout>
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Header */}
         <div>
@@ -594,6 +592,6 @@ export default function CategoriesPage() {
           onSuccess={loadCategories}
         />
       </div>
-    </TenantAdminLayout>
   );
 }
+
