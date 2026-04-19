@@ -103,106 +103,106 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 shrink-0 border-b border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="flex h-14 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-      <div className="flex min-w-0 shrink-0 items-center gap-5 sm:gap-7">
-        <Link
-          href={homeHref}
-          className="flex items-center gap-2.5 text-lg font-semibold text-zinc-900 dark:text-zinc-50"
-        >
-          <ChatBubbleLeftRightIcon className="h-6 w-6 text-green-500" />
-          <span className="hidden leading-none sm:inline">Internal Consultant AI</span>
-        </Link>
-        <nav className="hidden items-center gap-1.5 md:flex">
-          {allowedLinks.map(({ href, label }) => {
-            const isActive = pathname === href || pathname.startsWith(href + "/");
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`rounded-xl px-3.5 py-1.5 text-sm font-medium leading-none transition ${
-                  isActive
-                    ? "bg-green-500 text-white"
-                    : "rounded-full border border-emerald-500/60 bg-emerald-50 px-4 py-1.5 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
-                }`}
-              >
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-      <div className="relative flex shrink-0 items-center gap-2" ref={menuRef}>
-        <button
-          type="button"
-          onClick={() => setIsUserMenuOpen((prev) => !prev)}
-          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm transition ${
-            theme === "dark"
-              ? "border-emerald-500/35 bg-zinc-950/90 text-white hover:border-emerald-400 hover:bg-zinc-900"
-              : "border-emerald-500/45 bg-white text-zinc-900 hover:border-emerald-500 hover:bg-emerald-50"
-          }`}
-        >
-          <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white">
-            <User className="h-4 w-4 text-white" />
-          </div>
-          <span className={`max-w-36 truncate text-xs font-semibold ${theme === "dark" ? "text-white" : "text-zinc-900"}`}>{displayName}</span>
-          <svg
-            className={`h-4 w-4 transition-transform ${theme === "dark" ? "text-zinc-300" : "text-zinc-500"} ${isUserMenuOpen ? "rotate-180" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+      <div className="flex h-14 w-full min-w-0 items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-7">
+          <Link
+            href={homeHref}
+            className="flex min-w-0 items-center gap-2.5 text-lg font-semibold text-zinc-900 dark:text-zinc-50"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+            <ChatBubbleLeftRightIcon className="h-6 w-6 text-green-500" />
+            <span className="hidden max-w-[11rem] truncate leading-none sm:inline lg:max-w-none">Internal Consultant AI</span>
+          </Link>
+          <nav className="hidden items-center gap-1.5 md:flex">
+            {allowedLinks.map(({ href, label }) => {
+              const isActive = pathname === href || pathname.startsWith(href + "/");
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`rounded-xl px-3.5 py-1.5 text-sm font-medium leading-none transition ${
+                    isActive
+                      ? "bg-green-500 text-white"
+                      : "rounded-full border border-emerald-500/60 bg-emerald-50 px-4 py-1.5 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+        <div className="relative flex shrink-0 items-center gap-2" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setIsUserMenuOpen((prev) => !prev)}
+            className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 shadow-sm transition sm:px-3 ${
+              theme === "dark"
+                ? "border-emerald-500/35 bg-zinc-950/90 text-white hover:border-emerald-400 hover:bg-zinc-900"
+                : "border-emerald-500/45 bg-white text-zinc-900 hover:border-emerald-500 hover:bg-emerald-50"
+            }`}
+          >
+            <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white">
+              <User className="h-4 w-4 text-white" />
+            </div>
+            <span className={`hidden max-w-36 truncate text-xs font-semibold sm:inline ${theme === "dark" ? "text-white" : "text-zinc-900"}`}>{displayName}</span>
+            <svg
+              className={`hidden h-4 w-4 transition-transform sm:block ${theme === "dark" ? "text-zinc-300" : "text-zinc-500"} ${isUserMenuOpen ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
 
-        {isUserMenuOpen && (
-          <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="border-b border-zinc-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-900">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600">
-                  <User className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{displayName}</p>
-                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{displayEmail}</p>
+          {isUserMenuOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="border-b border-zinc-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-900">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600">
+                    <User className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{displayName}</p>
+                    <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{displayEmail}</p>
+                  </div>
                 </div>
               </div>
+              <div className="p-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    router.push("/profile");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  <User className="h-4 w-4" />
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    setIsSettingsOpen(true);
+                  }}
+                  className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
+              </div>
             </div>
-            <div className="p-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsUserMenuOpen(false);
-                  router.push("/profile");
-                }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                <User className="h-4 w-4" />
-                Profile
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsUserMenuOpen(false);
-                  setIsSettingsOpen(true);
-                }}
-                className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
       </div>
 
       {isSettingsOpen && (

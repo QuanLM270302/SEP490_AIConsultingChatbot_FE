@@ -162,6 +162,18 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
             {loading ? "Signing in…" : "Login"}
           </button>
 
+          {mode === "login" && (
+            <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+              Need an organization account?{" "}
+              <Link
+                href="/register"
+                className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+              >
+                Apply now
+              </Link>
+            </p>
+          )}
+
           {mode === "login" && <AuthHomePlainLink variant="bar" forceEnglish />}
 
         </form>

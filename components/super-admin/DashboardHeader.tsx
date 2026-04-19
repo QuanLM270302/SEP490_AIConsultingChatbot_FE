@@ -83,11 +83,11 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   };
 
   return (
-    <div className="mb-6 flex items-center justify-between">
+    <div className="mb-6 flex min-w-0 items-center justify-between gap-2 sm:gap-3">
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           type="button"
-          className="rounded-2xl bg-white p-3 text-zinc-700 shadow-sm shadow-green-100/60 dark:bg-zinc-950 dark:text-zinc-400 lg:hidden"
+          className="rounded-2xl bg-white p-2.5 text-zinc-700 shadow-sm shadow-green-100/60 dark:bg-zinc-950 dark:text-zinc-400 sm:p-3 lg:hidden"
           onClick={onMenuClick}
         >
           <span className="sr-only">{t.openSidebar}</span>
@@ -95,21 +95,21 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         </button>
       </div>
 
-      <div className="flex flex-1 items-center justify-end gap-3">
+      <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
         {/* User Menu Dropdown */}
-        <div className="relative" ref={menuRef}>
+        <div className="relative shrink-0" ref={menuRef}>
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 shadow-sm shadow-green-100/60 transition hover:bg-zinc-50 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+            className="flex items-center gap-2 rounded-2xl bg-white px-2.5 py-2 shadow-sm shadow-green-100/60 transition hover:bg-zinc-50 sm:px-3 dark:bg-zinc-950 dark:hover:bg-zinc-900"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600">
               <User className="h-4 w-4 text-white" />
             </div>
-            <span className="hidden text-sm font-semibold text-zinc-900 dark:text-white lg:block">
+            <span className="hidden text-sm font-semibold text-zinc-900 dark:text-white xl:block">
               {displayName}
             </span>
             <svg
-              className={`hidden h-4 w-4 text-zinc-400 transition-transform lg:block ${
+              className={`hidden h-4 w-4 text-zinc-400 transition-transform xl:block ${
                 isUserMenuOpen ? "rotate-180" : ""
               }`}
               fill="none"

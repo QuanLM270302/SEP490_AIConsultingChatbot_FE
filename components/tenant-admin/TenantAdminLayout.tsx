@@ -205,8 +205,8 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
   }, [onboardingOverview]);
 
   return (
-    <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col bg-linear-to-br from-zinc-100 via-white to-zinc-100 dark:from-black dark:via-black dark:to-black">
-      <div className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/80 backdrop-blur-sm px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-5 lg:pl-72 lg:pr-8">
+    <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col overflow-x-hidden bg-linear-to-br from-zinc-100 via-white to-zinc-100 dark:from-black dark:via-black dark:to-black">
+      <div className="sticky top-0 z-50 min-w-0 border-b border-zinc-200/80 bg-white/80 backdrop-blur-sm px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-5 lg:pl-72 lg:pr-8">
         <DashboardHeader
           title={t.tenantAdmin}
           onMenuClick={() => setSidebarOpen(true)}
