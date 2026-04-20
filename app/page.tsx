@@ -484,14 +484,14 @@ export default function Home() {
         transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
       >
       {/* HERO SECTION */}
-      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center px-6 py-16 text-center sm:py-20">
+      <div className="relative z-10 mx-auto flex min-h-[calc(72vh-5rem)] max-w-6xl items-start px-6 pt-10 pb-12 text-center sm:pt-14 sm:pb-14">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="w-full"
         >
-          <h1 className="mb-6 text-5xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-6xl lg:text-7xl">
+          <h1 className="mb-4 text-5xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-6xl lg:text-7xl">
             {homeText.findAnything}{" "}
             <span className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
               {homeText.answerEverything}
@@ -499,7 +499,7 @@ export default function Home() {
             <br />
             {homeText.insideCompany}
           </h1>
-          <p className="mx-auto mb-10 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
+          <p className="mx-auto mb-7 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
             {homeText.heroDescription}
           </p>
 
@@ -556,7 +556,7 @@ export default function Home() {
         onViewportEnter={() => setIsRagFlowInView(true)}
         onViewportLeave={() => setIsRagFlowInView(false)}
         viewport={{ amount: 0.25 }}
-        className="relative z-10 border-t border-zinc-200/40 py-20 dark:border-zinc-800/40"
+        className="relative z-10 border-t border-zinc-200/40 py-14 sm:py-16 dark:border-zinc-800/40"
       >
       <div className="mx-auto max-w-6xl px-6">
         <motion.div
@@ -673,7 +673,7 @@ export default function Home() {
       </motion.section>
 
       {/* FEATURES SECTION */}
-      <div className="relative z-10 mx-auto max-w-6xl px-6 py-16">
+      <div className="relative z-10 mx-auto max-w-6xl px-6 py-12 sm:py-14">
         <div className="mb-12 text-center">
           <h2 className="mb-3 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
             {homeText.featureHeading}
@@ -726,7 +726,7 @@ export default function Home() {
       </div>
 
       {/* CTA SECTION */}
-      <div className="relative z-10 mx-auto max-w-4xl px-6 py-20">
+      <div className="relative z-10 mx-auto max-w-4xl px-6 py-14 sm:py-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

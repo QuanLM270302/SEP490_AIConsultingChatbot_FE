@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import {
-  Search,
   MessageSquare,
   Users,
+  FileText,
   User,
   LogOut,
   ClipboardCheck,
   LayoutDashboard,
+  Settings,
   Sun,
   Moon,
 } from "lucide-react";
@@ -25,6 +26,8 @@ interface NavigationSidebarProps {
   activeView: ChatbotNavView;
   onViewChange: (view: ChatbotNavView) => void;
   onToggleHistory: () => void;
+  canViewDocuments?: boolean;
+  canViewAnalytics?: boolean;
   showOnboardingShortcut?: boolean;
   onboardingLoading?: boolean;
   onboardingTotal?: number;
@@ -37,6 +40,8 @@ export function NavigationSidebar({
   activeView,
   onViewChange,
   onToggleHistory,
+  canViewDocuments = true,
+  canViewAnalytics = true,
   showOnboardingShortcut = false,
   onboardingLoading = false,
   onboardingTotal = 0,
@@ -44,7 +49,7 @@ export function NavigationSidebar({
   onboardingHasIncomplete = false,
   onOpenOnboarding,
 }: NavigationSidebarProps) {
-  const { language } = useLanguageStore();
+  const { language, toggleLanguage } = useLanguageStore();
   const { theme, toggleTheme } = useAppTheme();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -53,6 +58,7 @@ export function NavigationSidebar({
     currentUser?.email?.split("@")[0] || "User"
   );
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -77,8 +83,12 @@ export function NavigationSidebar({
     caption: string;
   }[] = [
     { id: "chat", icon: MessageSquare, caption: isEn ? "Chat" : "Trò chuyện" },
-    { id: "search", icon: Search, caption: isEn ? "Documents" : "Tài liệu" },
-    { id: "analytics", icon: Users, caption: isEn ? "Analytics" : "Phân tích" },
+    ...(canViewDocuments
+      ? [{ id: "search" as const, icon: FileText, caption: isEn ? "Documents" : "Tài liệu" }]
+      : []),
+    ...(canViewAnalytics
+      ? [{ id: "analytics" as const, icon: Users, caption: isEn ? "Analytics" : "Phân tích" }]
+      : []),
   ];
 
   const handleLogout = async () => {
@@ -212,26 +222,14 @@ export function NavigationSidebar({
         <div className="flex flex-col items-center gap-1">
           <button
             type="button"
-            onClick={toggleTheme}
+            onClick={() => setShowSettingsModal(true)}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
-            title={
-              theme === "dark"
-                ? isEn
-                  ? "Light mode"
-                  : "Chế độ sáng"
-                : isEn
-                  ? "Dark mode"
-                  : "Chế độ tối"
-            }
+            title={isEn ? "Settings" : "Cài đặt"}
           >
-            {theme === "dark" ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
+            <Settings className="h-5 w-5" />
           </button>
           <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
-            {isEn ? "Theme" : "Giao diện"}
+            {isEn ? "Settings" : "Cài đặt"}
           </span>
         </div>
 
@@ -287,6 +285,54 @@ export function NavigationSidebar({
           ) : null}
         </div>
       </div>
+
+      {showSettingsModal ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                {isEn ? "Chatbot settings" : "Cài đặt chatbot"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(false)}
+                className="rounded-lg px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                {isEn ? "Close" : "Đóng"}
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-800/60">
+                <span className="text-sm text-zinc-700 dark:text-zinc-200">
+                  {isEn ? "Theme" : "Giao diện"}
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                >
+                  {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                  {theme === "dark" ? (isEn ? "Light mode" : "Chế độ sáng") : (isEn ? "Dark mode" : "Chế độ tối")}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-800/60">
+                <span className="text-sm text-zinc-700 dark:text-zinc-200">
+                  {isEn ? "Language" : "Ngôn ngữ"}
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleLanguage}
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                >
+                  {language === "en" ? "EN" : "VI"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </aside>
   );
 }

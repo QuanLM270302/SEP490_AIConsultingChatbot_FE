@@ -12,8 +12,10 @@ import {
   markMyOnboardingModuleCompleted,
   updateMyOnboardingProgress,
 } from "@/lib/api/onboarding";
+import { getCurrentUserPermissions, getProfile } from "@/lib/api/profile";
 import type { OnboardingMyOverviewResponse } from "@/types/onboarding";
-import { getStoredUser } from "@/lib/auth-store";
+import { getAccessToken, getStoredUser } from "@/lib/auth-store";
+import { tryRefreshAuth } from "@/lib/auth-store";
 
 function applyOptimisticModuleComplete(
   overview: OnboardingMyOverviewResponse | null,
@@ -50,6 +52,45 @@ function applyOptimisticModuleComplete(
   };
 }
 
+function decodePermissionsFromJwt(token: string | null): string[] {
+  if (!token) return [];
+  try {
+    const payloadBase64 = token.split(".")[1];
+    if (!payloadBase64) return [];
+    const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const payloadText = atob(padded);
+    const payload = JSON.parse(payloadText) as Record<string, unknown>;
+    const candidates = [
+      payload.permissions,
+      payload.authorities,
+      payload.scopes,
+      payload.scope,
+    ];
+    for (const entry of candidates) {
+      if (Array.isArray(entry)) {
+        return entry.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+      }
+      if (typeof entry === "string" && entry.trim().length > 0) {
+        return entry
+          .split(/[,\s]+/)
+          .map((v) => v.trim())
+          .filter(Boolean);
+      }
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+function extractPermissionCodes(authorities: string[] | undefined): string[] {
+  if (!authorities || authorities.length === 0) return [];
+  return authorities
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0 && !value.startsWith("ROLE_"));
+}
+
 export default function ChatbotNewPage() {
   const [activeView, setActiveView] = useState<"chat" | "search" | "analytics">("chat");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -57,10 +98,63 @@ export default function ChatbotNewPage() {
   /** Bumps when navigating from chat so SearchView picks up a new initialQuery reliably */
   const [searchNavKey, setSearchNavKey] = useState(0);
   const currentUser = getStoredUser();
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const isEmployeeUser = useMemo(
     () => (currentUser?.roles ?? []).some((role) => role.includes("EMPLOYEE")),
     [currentUser?.roles]
   );
+  const roleCodes = useMemo(
+    () => (currentUser?.roles ?? []).map((role) => role.toUpperCase()),
+    [currentUser?.roles]
+  );
+  const isPrivilegedRole = useMemo(
+    () =>
+      roleCodes.some(
+        (role) =>
+          role.includes("TENANT_ADMIN") ||
+          role.includes("SUPER_ADMIN") ||
+          role.includes("STAFF")
+      ),
+    [roleCodes]
+  );
+
+  const hasPermission = useCallback(
+    (code: string) => {
+      if (isPrivilegedRole) return true;
+      const normalized = code.toUpperCase();
+      const perms = userPermissions.map((p) => p.toUpperCase());
+      if (perms.includes(normalized)) return true;
+      if (normalized.startsWith("DOCUMENT_") && perms.includes("DOCUMENT_ALL")) return true;
+      if (normalized.startsWith("ANALYTICS_") && perms.includes("ANALYTICS_EXPORT")) return true;
+      return false;
+    },
+    [isPrivilegedRole, userPermissions]
+  );
+  const normalizedPermissions = useMemo(
+    () => userPermissions.map((permission) => permission.toUpperCase()),
+    [userPermissions]
+  );
+  const hasDocumentAll = normalizedPermissions.includes("DOCUMENT_ALL");
+  const hasAnyDocumentPermission =
+    hasDocumentAll ||
+    normalizedPermissions.includes("DOCUMENT_READ") ||
+    normalizedPermissions.includes("DOCUMENT_WRITE") ||
+    normalizedPermissions.includes("DOCUMENT_DELETE");
+  const canViewDocuments = hasAnyDocumentPermission;
+  const canViewAnalytics = hasPermission("ANALYTICS_VIEW");
+  const documentPermissionTabs = useMemo(() => {
+    const tabs: string[] = [];
+    if (hasDocumentAll || normalizedPermissions.includes("DOCUMENT_READ")) {
+      tabs.push("DOCUMENT_READ");
+    }
+    if (hasDocumentAll || normalizedPermissions.includes("DOCUMENT_WRITE")) {
+      tabs.push("DOCUMENT_WRITE");
+    }
+    if (hasDocumentAll || normalizedPermissions.includes("DOCUMENT_DELETE")) {
+      tabs.push("DOCUMENT_DELETE");
+    }
+    return tabs;
+  }, [hasDocumentAll, normalizedPermissions]);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [onboardingOverview, setOnboardingOverview] =
     useState<OnboardingMyOverviewResponse | null>(null);
@@ -85,6 +179,85 @@ export default function ChatbotNewPage() {
       setIsHistoryOpen(false);
     }
   }, []);
+
+  const loadPermissions = useCallback(async () => {
+    await tryRefreshAuth();
+    let resolvedPermissions: string[] = [];
+    const latestStoredUser = getStoredUser();
+    const storedAuthorities = extractPermissionCodes(latestStoredUser?.roles);
+    if (storedAuthorities.length > 0) {
+      resolvedPermissions = storedAuthorities;
+    }
+
+    try {
+      const permissions = await getCurrentUserPermissions();
+      if (permissions.length > 0) {
+        resolvedPermissions = permissions;
+      }
+    } catch {
+      // fallback below
+    }
+
+    if (resolvedPermissions.length === 0) {
+      try {
+        const profile = await getProfile();
+        const profilePermissions = (profile.permissions ?? []).filter(Boolean);
+        if (profilePermissions.length > 0) {
+          resolvedPermissions = profilePermissions;
+        }
+      } catch {
+        // fallback below
+      }
+    }
+
+    if (resolvedPermissions.length === 0) {
+      const jwtPermissions = decodePermissionsFromJwt(getAccessToken());
+      if (jwtPermissions.length > 0) {
+        resolvedPermissions = jwtPermissions;
+      }
+    }
+
+    setUserPermissions(resolvedPermissions);
+  }, []);
+
+  useEffect(() => {
+    void loadPermissions();
+  }, [loadPermissions]);
+
+  useEffect(() => {
+    const PERMISSION_SYNC_MS = 5000;
+    const intervalId = window.setInterval(() => {
+      void loadPermissions();
+    }, PERMISSION_SYNC_MS);
+
+    const syncOnReturn = () => {
+      if (document.visibilityState === "visible") {
+        void loadPermissions();
+      }
+    };
+    const syncOnFocus = () => {
+      void loadPermissions();
+    };
+
+    document.addEventListener("visibilitychange", syncOnReturn);
+    window.addEventListener("focus", syncOnFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", syncOnReturn);
+      window.removeEventListener("focus", syncOnFocus);
+    };
+  }, [loadPermissions]);
+
+  useEffect(() => {
+    if (activeView === "analytics" && !canViewAnalytics) {
+      setActiveView("chat");
+      return;
+    }
+    if (activeView === "search" && !canViewDocuments) {
+      setActiveView("chat");
+    }
+  }, [activeView, canViewAnalytics, canViewDocuments]);
 
   const loadOnboarding = useCallback(
     async (autoOpenIfIncomplete: boolean) => {
@@ -155,6 +328,8 @@ export default function ChatbotNewPage() {
         activeView={activeView}
         onViewChange={handleViewChange}
         onToggleHistory={handleChatNavClick}
+        canViewDocuments={canViewDocuments}
+        canViewAnalytics={canViewAnalytics}
         showOnboardingShortcut={isEmployeeUser}
         onboardingLoading={isOnboardingLoading}
         onboardingTotal={onboardingSummary.total}
@@ -179,7 +354,11 @@ export default function ChatbotNewPage() {
             />
           )}
           {activeView === "search" && (
-            <SearchView key={`${searchNavKey}-${searchQuery}`} initialQuery={searchQuery} />
+            <SearchView
+              key={`${searchNavKey}-${searchQuery}`}
+              initialQuery={searchQuery}
+              permissionTabs={documentPermissionTabs}
+            />
           )}
           {activeView === "analytics" && <ChatbotAnalyticsView />}
         </div>

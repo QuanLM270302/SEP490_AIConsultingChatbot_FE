@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -41,6 +42,13 @@ import { clearAuth, refreshAuth, tryRefreshAuth } from "@/lib/auth-store";
 import type { DocumentVersionResponse } from "@/types/knowledge";
 import { getProfile } from "@/lib/api/profile";
 import { cn } from "@/lib/utils/cn";
+
+const DocumentUploadSection = dynamic(
+  () => import("@/components/tenant-admin/DocumentUploadSection").then((m) => m.DocumentUploadSection)
+);
+const DocumentsTab = dynamic(
+  () => import("@/components/tenant-admin/DocumentsTab").then((m) => m.DocumentsTab)
+);
 
 /** Một dòng / một đoạn theo ký tự xuống dòng từ API (giữ đúng cấu trúc file gốc). */
 function PreviewPlainText({ text }: { text: string }) {
@@ -124,9 +132,11 @@ function HighlightMatches({ text, query }: { text: string; query: string }) {
 
 export interface SearchViewProps {
   initialQuery?: string;
+  permissionTabs?: string[];
 }
 
 type SortMode = "newest" | "title_az" | "title_za";
+type DocumentPermissionTab = "DOCUMENT_READ" | "DOCUMENT_WRITE" | "DOCUMENT_DELETE";
 
 function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "—";
@@ -172,7 +182,7 @@ function getErrorTraceId(error: unknown): string | null {
   return typeof traceId === "string" && traceId.trim().length > 0 ? traceId.trim() : null;
 }
 
-export function SearchView({ initialQuery }: SearchViewProps) {
+export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProps) {
   const router = useRouter();
   const { language } = useLanguageStore();
   const [query, setQuery] = useState("");
@@ -199,6 +209,17 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   const [listSyncing, setListSyncing] = useState(false);
   const debounceSyncRef = useRef<number | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("newest");
+  const normalizedPermissionTabs = useMemo<DocumentPermissionTab[]>(
+    () =>
+      permissionTabs.filter((code): code is DocumentPermissionTab =>
+        code === "DOCUMENT_READ" || code === "DOCUMENT_WRITE" || code === "DOCUMENT_DELETE"
+      ),
+    [permissionTabs]
+  );
+  const [activePermissionTab, setActivePermissionTab] = useState<DocumentPermissionTab | null>(
+    normalizedPermissionTabs[0] ?? null
+  );
+  const canReadDocuments = normalizedPermissionTabs.includes("DOCUMENT_READ");
 
   const t = useMemo(
     () => ({
@@ -208,10 +229,6 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         language === "en"
           ? "No documents match your search."
           : "Không có tài liệu phù hợp.",
-      noAccess:
-        language === "en"
-          ? "You do not have permission to view documents."
-          : "Bạn chưa có quyền xem tài liệu.",
       listEmpty:
         language === "en" ? "No documents found." : "Không có tài liệu.",
       details: language === "en" ? "Details" : "Chi tiết",
@@ -220,18 +237,8 @@ export function SearchView({ initialQuery }: SearchViewProps) {
       download: language === "en" ? "Download" : "Tải xuống",
       versions: language === "en" ? "Versions" : "Xem phiên bản",
       setRag: language === "en" ? "Set as RAG active" : "Đặt làm bản RAG active",
-      refreshSession:
-        language === "en" ? "Refresh login session" : "Làm mới phiên đăng nhập",
       syncingHint:
         language === "en" ? "Syncing permissions & list…" : "Đang đồng bộ quyền & danh sách…",
-      permissionHint403:
-        language === "en"
-          ? "If access was just granted, we refresh your session automatically — no need to sign out. You can also use the button below."
-          : "Nếu vừa được cấp quyền, hệ thống tự làm mới phiên — không cần đăng xuất. Bạn vẫn có thể bấm nút bên dưới.",
-      permissionPolling403:
-        language === "en"
-          ? "Checking for updated access…"
-          : "Đang kiểm tra quyền mới…",
       permPreview:
         language === "en"
           ? "You do not have permission to preview this document inline."
@@ -311,9 +318,68 @@ export function SearchView({ initialQuery }: SearchViewProps) {
       previewBadgePdf: language === "en" ? "PDF" : "PDF",
       previewBadgeOther: language === "en" ? "Preview" : "Xem trước",
       tagsLabel: language === "en" ? "Tags" : "Thẻ",
+      permissionRead: language === "en" ? "View documents" : "Xem tài liệu",
+      permissionWrite: language === "en" ? "Upload / edit" : "Tải lên / chỉnh sửa",
+      permissionDelete: language === "en" ? "Delete documents" : "Xóa tài liệu",
+      permissionNone:
+        language === "en"
+          ? "No document permissions assigned yet"
+          : "Chưa được cấp quyền tài liệu",
+      permissionTabsTitle:
+        language === "en" ? "Document workspace tabs" : "Tab thao tác tài liệu",
+      permissionReadDesc:
+        language === "en"
+          ? "Browse, search, and preview available documents."
+          : "Duyệt, tìm kiếm và xem trước tài liệu được cấp quyền.",
+      permissionWriteDesc:
+        language === "en"
+          ? "Upload and update your document knowledge base."
+          : "Tải lên và cập nhật kho tài liệu nội bộ.",
+      permissionDeleteDesc:
+        language === "en"
+          ? "Manage delete/restore actions with admin-style interface."
+          : "Quản lý xóa/khôi phục theo giao diện admin.",
     }),
     [language]
   );
+
+  const permissionTabConfig = useMemo(() => {
+    const map: Record<string, string> = {
+      DOCUMENT_READ: t.permissionRead,
+      DOCUMENT_WRITE: t.permissionWrite,
+      DOCUMENT_DELETE: t.permissionDelete,
+    };
+    const descriptions: Record<string, string> = {
+      DOCUMENT_READ: t.permissionReadDesc,
+      DOCUMENT_WRITE: t.permissionWriteDesc,
+      DOCUMENT_DELETE: t.permissionDeleteDesc,
+    };
+    return normalizedPermissionTabs
+      .filter((code, index, arr) => arr.indexOf(code) === index)
+      .map((code) => ({
+        code,
+        label: map[code] ?? code,
+        description: descriptions[code] ?? "",
+      }));
+  }, [
+    normalizedPermissionTabs,
+    t.permissionDelete,
+    t.permissionDeleteDesc,
+    t.permissionRead,
+    t.permissionReadDesc,
+    t.permissionWrite,
+    t.permissionWriteDesc,
+  ]);
+
+  useEffect(() => {
+    if (normalizedPermissionTabs.length === 0) {
+      setActivePermissionTab(null);
+      return;
+    }
+    setActivePermissionTab((current) =>
+      current && normalizedPermissionTabs.includes(current) ? current : normalizedPermissionTabs[0]
+    );
+  }, [normalizedPermissionTabs]);
 
   useEffect(() => {
     if (!initialQuery) return;
@@ -327,6 +393,13 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   }, []);
 
   const loadList = useCallback((options?: { silent?: boolean }) => {
+    if (!canReadDocuments) {
+      setDocuments([]);
+      setDocumentsErrorStatus(null);
+      setListLoading(false);
+      setListSyncing(false);
+      return;
+    }
     const silent = options?.silent ?? false;
 
     void (async () => {
@@ -386,7 +459,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         else setListLoading(false);
       }
     })();
-  }, [router]);
+  }, [canReadDocuments, router]);
 
   /** Làm mới JWT từ DB rồi tải lại list — dùng khi admin vừa đổi quyền (mọi máy qua polling + khi quay lại tab). */
   const syncPermissionsAndList = useCallback(async () => {
@@ -397,6 +470,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   /** Làm mới JWT trước khi gọi API lần đầu — giảm 403 do token cũ sau khi admin cấp quyền. */
   useEffect(() => {
     let cancelled = false;
+    if (!canReadDocuments || activePermissionTab !== "DOCUMENT_READ") return;
     void (async () => {
       await tryRefreshAuth();
       if (!cancelled) loadList();
@@ -404,29 +478,32 @@ export function SearchView({ initialQuery }: SearchViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [loadList]);
+  }, [activePermissionTab, canReadDocuments, loadList]);
 
   const LIVE_POLL_MS = 10_000;
   const FAST_RETRY_403_MS = 4_500;
   const VISIBILITY_DEBOUNCE_MS = 450;
 
   useEffect(() => {
+    if (!canReadDocuments || activePermissionTab !== "DOCUMENT_READ") return;
     const id = window.setInterval(() => {
       void syncPermissionsAndList();
     }, LIVE_POLL_MS);
     return () => window.clearInterval(id);
-  }, [syncPermissionsAndList]);
+  }, [activePermissionTab, canReadDocuments, syncPermissionsAndList]);
 
   /** Khi đang hiển thị lỗi 403, thử đồng bộ thường xuyên hơn cho đến khi thành công. */
   useEffect(() => {
+    if (!canReadDocuments || activePermissionTab !== "DOCUMENT_READ") return;
     if (documentsErrorStatus !== 403) return;
     const id = window.setInterval(() => {
       void syncPermissionsAndList();
     }, FAST_RETRY_403_MS);
     return () => window.clearInterval(id);
-  }, [documentsErrorStatus, syncPermissionsAndList]);
+  }, [activePermissionTab, canReadDocuments, documentsErrorStatus, syncPermissionsAndList]);
 
   useEffect(() => {
+    if (!canReadDocuments || activePermissionTab !== "DOCUMENT_READ") return;
     const schedule = () => {
       if (debounceSyncRef.current) window.clearTimeout(debounceSyncRef.current);
       debounceSyncRef.current = window.setTimeout(() => {
@@ -451,7 +528,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("pageshow", onPageShow);
     };
-  }, [syncPermissionsAndList]);
+  }, [activePermissionTab, canReadDocuments, syncPermissionsAndList]);
 
   useEffect(() => {
     if (!selected) {
@@ -625,22 +702,6 @@ export function SearchView({ initialQuery }: SearchViewProps) {
     }
   };
 
-  const handleRefreshSessionAndReload = () => {
-    void (async () => {
-      const ok = await tryRefreshAuth();
-      if (ok) {
-        loadList({ silent: false });
-        return;
-      }
-      const okStrict = await refreshAuth();
-      if (okStrict) loadList({ silent: false });
-      else {
-        setDocuments([]);
-        setDocumentsErrorStatus(403);
-      }
-    })();
-  };
-
   const handleVersionPreview = async (documentId: string, versionId: string) => {
     await loadPreview(documentId, versionId);
   };
@@ -685,7 +746,6 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   };
 
   const listMessage = () => {
-    if (documentsErrorStatus === 403) return t.noAccess;
     if (!listLoading && documents.length === 0 && !documentsErrorStatus) return t.listEmpty;
     return null;
   };
@@ -699,37 +759,92 @@ export function SearchView({ initialQuery }: SearchViewProps) {
               className="flex min-w-0 flex-1 flex-row flex-nowrap items-baseline gap-x-2 overflow-x-auto text-left [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-x-3"
               title={
                 language === "en"
-                  ? "Filter by title or tag — select a card to preview."
-                  : "Lọc theo tiêu đề hoặc thẻ — chọn thẻ để xem trước."
+                  ? "Access document workspace based on your assigned permissions."
+                  : "Truy cập không gian tài liệu theo quyền đã được cấp."
               }
             >
               <h1 className="shrink-0 text-lg font-semibold tracking-tight text-zinc-900 sm:text-xl dark:text-white">
-                {language === "en" ? "Document search" : "Tìm kiếm tài liệu"}
+                {language === "en" ? "Documents" : "Tài liệu"}
               </h1>
               <p className="shrink-0 whitespace-nowrap text-xs leading-normal text-zinc-500 sm:text-[13px]">
                 {language === "en"
-                  ? "Filter by title or tag — select a card to preview."
-                  : "Lọc theo tiêu đề hoặc thẻ — chọn thẻ để xem trước."}
+                  ? "Access document workspace based on your assigned permissions."
+                  : "Truy cập không gian tài liệu theo quyền đã được cấp."}
               </p>
             </div>
             {listSyncing ? (
               <span
                 className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-emerald-400/95"
-                title={documentsErrorStatus === 403 ? t.permissionPolling403 : t.syncingHint}
+                title={t.syncingHint}
               >
                 <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                <span className="hidden sm:inline">
-                  {documentsErrorStatus === 403 ? t.permissionPolling403 : t.syncingHint}
-                </span>
+                <span className="hidden sm:inline">{t.syncingHint}</span>
               </span>
             ) : null}
           </div>
-          <form
-            className="mt-3 flex w-full flex-col gap-3 sm:flex-row sm:items-stretch"
-            onSubmit={(e) => {
-              e.preventDefault();
-            }}
-          >
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2.5 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+              {t.permissionTabsTitle}
+            </div>
+            {permissionTabConfig.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {permissionTabConfig.map((tab) => {
+                  const isActive = activePermissionTab === tab.code;
+                  return (
+                    <button
+                      key={tab.code}
+                      type="button"
+                      onClick={() => setActivePermissionTab(tab.code)}
+                      className={`rounded-lg border px-3 py-2 text-left transition ${
+                        isActive
+                          ? "border-emerald-400 bg-emerald-500 text-white shadow-sm"
+                          : "border-zinc-300 bg-white text-zinc-700 hover:border-emerald-400 hover:bg-emerald-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:border-emerald-600 dark:hover:bg-zinc-700"
+                      }`}
+                    >
+                      <div className="text-xs font-semibold">{tab.label}</div>
+                      <div
+                        className={`mt-0.5 text-[11px] ${
+                          isActive ? "text-white/90" : "text-zinc-500 dark:text-zinc-400"
+                        }`}
+                      >
+                        {tab.description}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                {t.permissionNone}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {activePermissionTab === null ? (
+        <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
+          <div className="w-full max-w-xl rounded-2xl border border-zinc-200 bg-zinc-50 p-8 text-center dark:border-zinc-800 dark:bg-zinc-900/60">
+            <FileText className="mx-auto h-10 w-10 text-zinc-400 dark:text-zinc-500" />
+            <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300">{t.permissionNone}</p>
+          </div>
+        </div>
+      ) : activePermissionTab === "DOCUMENT_WRITE" ? (
+        <div className="scrollbar-chat-hidden flex-1 overflow-y-auto px-4 py-8 sm:px-6">
+          <div className="mx-auto w-full max-w-6xl">
+            <DocumentUploadSection />
+          </div>
+        </div>
+      ) : activePermissionTab === "DOCUMENT_DELETE" ? (
+        <div className="scrollbar-chat-hidden flex-1 overflow-y-auto px-4 py-8 sm:px-6">
+          <div className="mx-auto w-full max-w-6xl">
+            <DocumentsTab mode="library" />
+          </div>
+        </div>
+      ) : (
+      <div className="scrollbar-chat-hidden flex-1 overflow-y-auto scroll-smooth px-4 py-8 sm:px-6">
+        {canReadDocuments ? (
+          <div className="mx-auto mb-5 flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-stretch">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
               <input
@@ -765,11 +880,8 @@ export function SearchView({ initialQuery }: SearchViewProps) {
                 />
               </div>
             </div>
-          </form>
-        </div>
-      </div>
-
-      <div className="scrollbar-chat-hidden flex-1 overflow-y-auto scroll-smooth px-4 py-8 sm:px-6">
+          </div>
+        ) : null}
         {listLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
@@ -779,29 +891,6 @@ export function SearchView({ initialQuery }: SearchViewProps) {
             <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-10 text-center shadow-lg dark:border-zinc-800 dark:bg-zinc-900/60 dark:shadow-black/20">
               <FileText className="mx-auto h-10 w-10 text-zinc-400 dark:text-zinc-600" />
               <p className="mt-4 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">{listMessage()}</p>
-              {documentsErrorStatus === 403 ? (
-                <>
-                  <p className="mt-3 text-xs leading-relaxed text-zinc-500">{t.permissionHint403}</p>
-                  {listSyncing ? (
-                    <p className="mt-3 inline-flex items-center justify-center gap-2 text-xs text-emerald-400/90">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                      {t.permissionPolling403}
-                    </p>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={handleRefreshSessionAndReload}
-                    disabled={listLoading}
-                    className="mt-4 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-                  >
-                    {listLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      t.refreshSession
-                    )}
-                  </button>
-                </>
-              ) : null}
             </div>
           </div>
         ) : filtered.length === 0 ? (
@@ -865,6 +954,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
           </div>
         )}
       </div>
+      )}
 
       {selected && typeof document !== "undefined"
         ? createPortal(
