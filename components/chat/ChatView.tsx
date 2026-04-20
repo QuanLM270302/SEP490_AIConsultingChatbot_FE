@@ -121,6 +121,8 @@ export function ChatView({
   const handleSelectChat = (chatId: string) => {
     setCurrentChatId(chatId);
     getConversationHistory(chatId).then((history) => {
+      console.log("📥 Conversation history loaded:", history);
+      
       if (!history?.messages?.length) {
         setMessages([]);
         setConversationId(chatId);
@@ -128,19 +130,42 @@ export function ChatView({
       }
       const built: Message[] = [];
       const msgs = history.messages;
+      
+      console.log("📋 Raw messages from API:", msgs.map(m => ({
+        id: m.id,
+        messageId: m.messageId,
+        role: m.role,
+        rating: m.rating,
+        content: m.content.substring(0, 50)
+      })));
+      
       for (let i = 0; i < msgs.length; i++) {
         if (msgs[i].role === "USER") {
           const userMsg = msgs[i];
           const assistantMsg = msgs[i + 1]?.role === "ASSISTANT" ? msgs[i + 1] : null;
           built.push({
-            id: userMsg.id,
+            id: userMsg.messageId || userMsg.id,
             role: "user",
             content: userMsg.content,
             timestamp: new Date(userMsg.createdAt ?? Date.now()),
           });
           if (assistantMsg) {
+            // Convert rating: 5 = helpful, 1 = not-helpful, null = no rating
+            let rating: "helpful" | "not-helpful" | undefined;
+            if (assistantMsg.rating === 5) {
+              rating = "helpful";
+            } else if (assistantMsg.rating === 1) {
+              rating = "not-helpful";
+            }
+            
+            console.log(`🔄 Converting assistant message rating:`, {
+              messageId: assistantMsg.messageId || assistantMsg.id,
+              rawRating: assistantMsg.rating,
+              convertedRating: rating
+            });
+            
             built.push({
-              id: assistantMsg.id,
+              id: assistantMsg.messageId || assistantMsg.id,
               role: "assistant",
               content: assistantMsg.content,
               sources: (assistantMsg.sources ?? []).map((s) => ({
@@ -149,11 +174,20 @@ export function ChatView({
                 confidence: s.relevanceScore,
               })),
               timestamp: new Date(assistantMsg.createdAt ?? Date.now()),
+              rating,
             });
             i++;
           }
         }
       }
+      
+      console.log("✅ Built messages:", built.map(m => ({
+        id: m.id,
+        role: m.role,
+        rating: m.rating,
+        content: m.content.substring(0, 50)
+      })));
+      
       setMessages(built);
       setSelectedSource(null);
       setConversationId(chatId);
@@ -163,8 +197,16 @@ export function ChatView({
 
   const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
     console.log("🔵 Rating message:", { messageId, rating });
+    console.log("📋 Current messages:", messages.map(m => ({ id: m.id, role: m.role, rating: m.rating })));
+    
     setMessages((prev) =>
-      prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
+      prev.map((msg) => {
+        if (msg.id === messageId) {
+          console.log("✅ Found matching message to update:", msg.id);
+          return { ...msg, rating };
+        }
+        return msg;
+      })
     );
     try {
       await rateMessage(messageId, rating);

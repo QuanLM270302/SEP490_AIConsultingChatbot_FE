@@ -400,6 +400,15 @@ export default function ChatPlatformPage() {
                 for (let i = 0; i < history.messages.length; i += 2) {
                   const userMsg = history.messages[i];
                   const aiMsg = history.messages[i + 1];
+                  
+                  // Convert rating: 5 = helpful, 1 = not-helpful, null = no rating
+                  let rating: "helpful" | "not-helpful" | null = null;
+                  if (aiMsg?.rating === 5) {
+                    rating = "helpful";
+                  } else if (aiMsg?.rating === 1) {
+                    rating = "not-helpful";
+                  }
+                  
                   msgs.push({
                     id: aiMsg?.id ?? userMsg?.id ?? "",
                     question: userMsg?.content ?? "",
@@ -411,7 +420,7 @@ export default function ChatPlatformPage() {
                       confidence: s.relevanceScore,
                     })),
                     timestamp: new Date(aiMsg?.createdAt ?? userMsg?.createdAt ?? new Date()),
-                    rating: (aiMsg?.rating as "helpful" | "not-helpful" | null) ?? null,
+                    rating,
                   });
                 }
                 setMessages(msgs);
