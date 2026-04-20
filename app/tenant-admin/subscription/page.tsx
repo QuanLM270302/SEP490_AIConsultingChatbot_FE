@@ -376,6 +376,21 @@ export default function TenantAdminSubscriptionPage() {
 
   const handleToggleAutoRenew = async () => {
     if (!subscription || autoRenewLoading) return;
+
+    const isTrialSubscription =
+      Boolean(subscription.isTrial) ||
+      subscription.tier === "TRIAL" ||
+      subscription.status === "TRIAL";
+
+    if (isTrialSubscription) {
+      window.alert(
+        language === "en"
+          ? "Auto-renew is not available for free trial plans."
+          : "Gói dùng thử miễn phí không hỗ trợ tự động gia hạn."
+      );
+      return;
+    }
+
     setAutoRenewLoading(true);
     try {
       await toggleAutoRenew(!subscription.autoRenew);
@@ -385,6 +400,13 @@ export default function TenantAdminSubscriptionPage() {
       loadSubscription({ silent: true });
     } catch (e) {
       console.error("Failed to toggle auto-renew:", e);
+      window.alert(
+        e instanceof Error
+          ? e.message
+          : language === "en"
+            ? "Failed to update auto-renew"
+            : "Cập nhật auto-renew thất bại"
+      );
     } finally {
       setAutoRenewLoading(false);
     }
@@ -407,6 +429,10 @@ export default function TenantAdminSubscriptionPage() {
 
   const currentPlanData = subscription ? planMap.get(subscription.tier) : undefined;
   const currentPlanFeatures = parsePlanFeatures(currentPlanData?.features);
+  const isTrialSubscription =
+    Boolean(subscription?.isTrial) ||
+    subscription?.tier === "TRIAL" ||
+    subscription?.status === "TRIAL";
   const hasActiveSubscription = subscription && (subscription.status === "ACTIVE" || subscription.status === "TRIAL");
   const daysUntilSubscriptionEnd = useMemo(
     () => daysUntilDate(subscription?.endDate),
@@ -634,7 +660,7 @@ export default function TenantAdminSubscriptionPage() {
                         </span>
                       </div>
                     )}
-                    {subscription.status !== "TRIAL" && (
+                    {!isTrialSubscription && (
                       <div className="flex items-center justify-between pt-2">
                         <span className="text-zinc-600 dark:text-zinc-400">
                           {language === "en" ? "Auto-renew:" : "Tự động gia hạn:"}

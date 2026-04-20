@@ -267,6 +267,7 @@ export default function Home() {
         [0, "/lottie/yellow-quiz.json"],
         [1, "/lottie/searching.json"],
         [2, "/lottie/security-shield.json"],
+        [3, "/lottie/ai-step4.json"],
       ];
 
       const loadedIcons = await Promise.all(
