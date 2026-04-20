@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, Shield, Database, ArrowRight, CheckCircle2, Moon, Sun } from "lucide-react";
+import Lottie from "lottie-react";
+import { Search, Shield, Database, ArrowRight, CheckCircle2, Moon, Sun, Sparkles, RefreshCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,10 +12,15 @@ import { roleToPath } from "@/lib/auth-routes";
 import { useLanguageStore } from "@/lib/language-store";
 import { AppLogo } from "@/components/brand/AppLogo";
 
+const RAG_FLOW_ICONS = [Search, Database, Shield, Sparkles] as const;
+
 export default function Home() {
   const router = useRouter();
   const [text, setText] = useState("");
   const [qaIndex, setQaIndex] = useState(0);
+  const [ragStepIndex, setRagStepIndex] = useState(0);
+  const [isRagFlowInView, setIsRagFlowInView] = useState(false);
+  const [ragAnimatedIcons, setRagAnimatedIcons] = useState<Record<number, object>>({});
   const { theme, toggleTheme: toggleAppTheme } = useAppTheme();
   const { language, setLanguage } = useLanguageStore();
   const [themeReady, setThemeReady] = useState(false);
@@ -45,6 +51,32 @@ export default function Home() {
               "Join companies using AI to make internal knowledge accessible to everyone.",
             getStarted: "Get started",
             copyright: "© 2026 Internal Consultant AI. All rights reserved.",
+            ragBadge: "Live RAG Flow",
+            ragTitle: "How The RAG Chatbot Works In 4 Steps",
+            ragDescription:
+              "Watch the pipeline move from user query to grounded answer with trusted sources.",
+            ragStatusRunning: "Running",
+            ragStatusDone: "Done",
+            ragStatusWaiting: "Waiting",
+            ragLoopHint: "This flow loops continuously from step 4 back to step 1.",
+            ragSteps: [
+              {
+                title: "Receive user question",
+                desc: "The chatbot captures intent and key entities from the prompt.",
+              },
+              {
+                title: "Retrieve relevant knowledge",
+                desc: "Semantic search pulls top matching chunks from internal documents.",
+              },
+              {
+                title: "Filter by permissions",
+                desc: "Only chunks allowed by role, tenant, and policy continue to context.",
+              },
+              {
+                title: "Generate grounded answer",
+                desc: "The model drafts a response with citations tied to retrieved evidence.",
+              },
+            ],
             features: [
               {
                 title: "AI-powered search",
@@ -61,7 +93,7 @@ export default function Home() {
             ],
           }
         : {
-            brand: "Tư vấn Nội bộ AI",
+            brand: "Internal Consultant AI",
             applyNow: "Đăng ký",
             signIn: "Đăng nhập",
             switchToLight: "Chuyển sang chế độ sáng",
@@ -81,7 +113,33 @@ export default function Home() {
             ctaDescription:
               "Tham gia cùng các doanh nghiệp đang ứng dụng AI để mở rộng khả năng tiếp cận tri thức cho mọi nhân viên.",
             getStarted: "Bắt đầu",
-            copyright: "© 2026 Tư vấn Nội bộ AI. Bảo lưu mọi quyền.",
+            copyright: "© 2026 Internal Consultant AI. Bảo lưu mọi quyền.",
+            ragBadge: "Luồng RAG trực quan",
+            ragTitle: "RAG chatbot vận hành qua 4 bước",
+            ragDescription:
+              "Theo dõi pipeline chạy từ câu hỏi người dùng đến câu trả lời có dẫn nguồn.",
+            ragStatusRunning: "Đang xử lý",
+            ragStatusDone: "Hoàn tất",
+            ragStatusWaiting: "Đang chờ",
+            ragLoopHint: "Luồng chạy tuần hoàn: bước 4 quay lại bước 1.",
+            ragSteps: [
+              {
+                title: "Nhận câu hỏi người dùng",
+                desc: "Chatbot tiếp nhận ý định và các thực thể quan trọng từ câu hỏi.",
+              },
+              {
+                title: "Truy xuất tri thức liên quan",
+                desc: "Tìm kiếm ngữ nghĩa lấy các đoạn tài liệu phù hợp nhất từ kho nội bộ.",
+              },
+              {
+                title: "Lọc theo quyền truy cập",
+                desc: "Chỉ các đoạn dữ liệu đúng vai trò, tenant và chính sách mới được đưa vào ngữ cảnh.",
+              },
+              {
+                title: "Sinh câu trả lời có căn cứ",
+                desc: "Mô hình tạo phản hồi dựa trên dữ liệu truy xuất và gắn dẫn nguồn rõ ràng.",
+              },
+            ],
             features: [
               {
                 title: "Tìm kiếm bằng AI",
@@ -188,6 +246,62 @@ export default function Home() {
   }, [qaData.length]);
 
   useEffect(() => {
+    if (!isRagFlowInView) return;
+
+    const timer = setInterval(() => {
+      setRagStepIndex((prev) => (prev + 1) % homeText.ragSteps.length);
+    }, 3600);
+
+    return () => clearInterval(timer);
+  }, [homeText.ragSteps.length, isRagFlowInView]);
+
+  useEffect(() => {
+    setRagStepIndex(0);
+  }, [language]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRagIcons = async () => {
+      const iconSources: Array<[number, string]> = [
+        [0, "/lottie/yellow-quiz.json"],
+        [1, "/lottie/searching.json"],
+        [2, "/lottie/security-shield.json"],
+      ];
+
+      const loadedIcons = await Promise.all(
+        iconSources.map(async ([index, path]) => {
+          try {
+            const response = await fetch(path);
+            if (!response.ok) return null;
+
+            const data = (await response.json()) as object;
+            return [index, data] as const;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      if (cancelled) return;
+
+      const nextIcons: Record<number, object> = {};
+      loadedIcons.forEach((entry) => {
+        if (entry) {
+          nextIcons[entry[0]] = entry[1];
+        }
+      });
+
+      setRagAnimatedIcons(nextIcons);
+    };
+
+    void loadRagIcons();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     setThemeReady(true);
   }, []);
 
@@ -281,15 +395,15 @@ export default function Home() {
 
       {/* NAVBAR — một hàng mọi kích thước; chữ/nút scale theo màn hình */}
       <nav className="relative z-10 border-b border-zinc-200/50 bg-white/50 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/50">
-        <div className="mx-auto flex max-w-7xl flex-nowrap items-center justify-between gap-2 overflow-x-auto px-3 py-3.5 [scrollbar-width:none] sm:gap-4 sm:px-6 sm:py-4 md:overflow-visible [&::-webkit-scrollbar]:hidden">
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <AppLogo size={34} />
-            <h1 className="whitespace-nowrap text-[clamp(0.6875rem,0.4rem+3.2vw,1.5rem)] font-bold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50">
+        <div className="mx-auto flex w-full max-w-7xl min-w-0 items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 sm:py-4">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <AppLogo size={30} />
+            <h1 className="max-w-[8.5rem] truncate text-xs font-bold leading-tight tracking-tight text-zinc-900 sm:max-w-none sm:text-base dark:text-zinc-50">
               {homeText.brand}
             </h1>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-            <div className="relative inline-flex items-center rounded-lg border border-zinc-300/90 bg-white/95 p-1 shadow-sm dark:border-zinc-700/90 dark:bg-zinc-800/90 sm:rounded-xl">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
+            <div className="relative inline-flex items-center rounded-lg border border-zinc-300/90 bg-white/95 p-0.5 shadow-sm dark:border-zinc-700/90 dark:bg-zinc-800/90 sm:rounded-xl sm:p-1">
               <motion.span
                 aria-hidden
                 layout
@@ -346,13 +460,13 @@ export default function Home() {
             </button>
             <Link
               href="/register"
-              className="rounded-lg border border-zinc-300 bg-white px-2.5 py-2 text-[11px] font-medium leading-none text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
+              className="hidden rounded-lg border border-zinc-300 bg-white px-2.5 py-2 text-[11px] font-medium leading-none text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:inline-flex sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
             >
               {homeText.applyNow}
             </Link>
             <Link
               href="/login"
-              className="rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-medium leading-none text-white shadow-md shadow-emerald-500/25 transition hover:bg-emerald-600 sm:rounded-xl sm:px-5 sm:py-2.5 sm:text-sm sm:shadow-lg sm:shadow-emerald-500/30"
+              className="rounded-lg bg-emerald-500 px-2.5 py-2 text-[11px] font-medium leading-none text-white shadow-md shadow-emerald-500/25 transition hover:bg-emerald-600 sm:rounded-xl sm:px-5 sm:py-2.5 sm:text-sm sm:shadow-lg sm:shadow-emerald-500/30"
             >
               {homeText.signIn}
             </Link>
@@ -369,11 +483,12 @@ export default function Home() {
         transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
       >
       {/* HERO SECTION */}
-      <div className="relative z-10 mx-auto max-w-6xl px-6 py-20 text-center">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center px-6 py-16 text-center sm:py-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
+          className="w-full"
         >
           <h1 className="mb-6 text-5xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-6xl lg:text-7xl">
             {homeText.findAnything}{" "}
@@ -434,6 +549,127 @@ export default function Home() {
           </motion.div>
         </motion.div>
       </div>
+
+      {/* RAG FLOW SECTION */}
+      <motion.section
+        onViewportEnter={() => setIsRagFlowInView(true)}
+        onViewportLeave={() => setIsRagFlowInView(false)}
+        viewport={{ amount: 0.25 }}
+        className="relative z-10 border-t border-zinc-200/40 py-20 dark:border-zinc-800/40"
+      >
+      <div className="mx-auto max-w-6xl px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-10 text-center"
+        >
+          <span className="inline-flex items-center rounded-full border border-emerald-300/70 bg-emerald-100/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/35 dark:text-emerald-300">
+            {homeText.ragBadge}
+          </span>
+          <h2 className="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+            {homeText.ragTitle}
+          </h2>
+          <p className="mx-auto mt-2 max-w-3xl text-zinc-600 dark:text-zinc-400">
+            {homeText.ragDescription}
+          </p>
+        </motion.div>
+
+        <div className="grid gap-6 md:grid-cols-4 lg:gap-8">
+          {homeText.ragSteps.map((step, index) => {
+            const Icon = RAG_FLOW_ICONS[index] ?? Search;
+            const isActive = isRagFlowInView && ragStepIndex === index;
+            const isDone = isRagFlowInView && ragStepIndex > index;
+            const animatedIconData = ragAnimatedIcons[index];
+            const useLottieIcon = animatedIconData !== undefined;
+
+            return (
+              <motion.article
+                key={step.title}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                animate={
+                  isActive
+                    ? { y: -5, scale: 1.01, boxShadow: "0 14px 40px rgba(16,185,129,0.22)" }
+                    : { y: 0, scale: 1, boxShadow: "0 8px 28px rgba(15,23,42,0.08)" }
+                }
+                whileHover={{ y: -2 }}
+                transition={{ delay: index * 0.08, type: "spring", stiffness: 120, damping: 18, mass: 0.85 }}
+                className="relative overflow-visible rounded-3xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-zinc-100 px-2 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                    {index + 1}
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      isActive
+                        ? "bg-emerald-500 text-white"
+                        : isDone
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                    } transition-colors duration-500`}
+                  >
+                    {isActive
+                      ? homeText.ragStatusRunning
+                      : isDone
+                        ? homeText.ragStatusDone
+                        : homeText.ragStatusWaiting}
+                  </span>
+                </div>
+
+                <motion.div
+                  animate={
+                    isActive
+                      ? { scale: [1, 1.08, 1], rotate: [0, -3, 3, 0] }
+                      : { scale: 1, rotate: 0 }
+                  }
+                  transition={{ duration: isActive ? 1.65 : 0.45, repeat: isActive ? Infinity : 0, ease: [0.22, 1, 0.36, 1] }}
+                  className="mb-5 flex w-full items-center justify-center text-emerald-600 dark:text-emerald-300"
+                >
+                  {useLottieIcon ? (
+                    <Lottie
+                      key={`${index}-${isActive ? "active" : "idle"}`}
+                      animationData={animatedIconData}
+                      loop={isActive}
+                      autoplay={isActive}
+                      className="h-28 w-28 sm:h-32 sm:w-32"
+                    />
+                  ) : (
+                    <Icon className="h-14 w-14 sm:h-16 sm:w-16" />
+                  )}
+                </motion.div>
+
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{step.title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">{step.desc}</p>
+
+                {index < homeText.ragSteps.length - 1 && (
+                  <motion.div
+                    animate={isRagFlowInView ? { x: [-10, 0, 10], opacity: [0.2, 1, 0.2] } : { x: 0, opacity: 0.2 }}
+                    transition={{ duration: 3.2, repeat: isRagFlowInView ? Infinity : 0, ease: [0.22, 1, 0.36, 1], delay: index * 0.4 }}
+                    className="pointer-events-none absolute -right-7 top-1/2 hidden -translate-y-1/2 text-emerald-500 md:block lg:-right-9"
+                  >
+                    <ArrowRight className="h-5 w-5" />
+                  </motion.div>
+                )}
+              </motion.article>
+            );
+          })}
+        </div>
+
+        <div className="mt-5 flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-300">
+          <motion.span
+            animate={isRagFlowInView ? { rotate: [0, 360] } : { rotate: 0 }}
+            transition={{ duration: 4.2, repeat: isRagFlowInView ? Infinity : 0, ease: "linear" }}
+            className="inline-flex"
+          >
+            <RefreshCcw className="h-4 w-4" />
+          </motion.span>
+          <p className="text-xs font-medium">{homeText.ragLoopHint}</p>
+        </div>
+      </div>
+      </motion.section>
 
       {/* FEATURES SECTION */}
       <div className="relative z-10 mx-auto max-w-6xl px-6 py-16">

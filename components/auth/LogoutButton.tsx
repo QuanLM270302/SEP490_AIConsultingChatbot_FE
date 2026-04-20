@@ -24,12 +24,14 @@ export function LogoutButton({ labelClassName }: LogoutButtonProps) {
     setLoading(true);
     try {
       if (token) await logout(token);
+    } catch {
+      // Ignore API/logout transport failures; client-side sign-out still proceeds.
     } finally {
       clearAuth();
-      router.push("/login");
+      router.replace("/login");
       router.refresh();
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const label = loading ? (language === "en" ? "Signing out..." : "Đang đăng xuất...") : t.logout;

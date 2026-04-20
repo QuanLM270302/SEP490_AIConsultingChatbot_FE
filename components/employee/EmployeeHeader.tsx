@@ -1,16 +1,15 @@
-import Link from "next/link";
-import { HandRaisedIcon, StarIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
+import { HandRaisedIcon, StarIcon } from "@heroicons/react/24/outline";
 
 export function EmployeeHeader() {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+      <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="flex flex-wrap items-center gap-2.5 text-2xl font-bold tracking-tight text-zinc-900 sm:gap-3 sm:text-3xl lg:text-4xl dark:text-zinc-50">
             Chào mừng trở lại!{" "}
             <HandRaisedIcon className="h-8 w-8 text-green-500" />
           </h1>
-          <p className="mt-2 text-lg text-zinc-600 dark:text-zinc-400">
+          <p className="mt-2 text-sm text-zinc-600 sm:text-base lg:text-lg dark:text-zinc-400">
             Hệ thống tư vấn nội bộ AI của bạn
           </p>
         </div>

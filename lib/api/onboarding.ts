@@ -122,21 +122,17 @@ export async function getMyOnboardingModuleAttachment(
 }
 
 export async function getStaffOnboardingModules(
-  tenantId: string,
   includeInactive: boolean = false
 ): Promise<OnboardingModuleResponse[]> {
   const params = new URLSearchParams({ includeInactive: String(includeInactive) });
-  const res = await fetchWithAuth(
-    `${STAFF_ONBOARDING_BASE}/tenants/${tenantId}/modules?${params.toString()}`
-  );
+  const res = await fetchWithAuth(`${STAFF_ONBOARDING_BASE}/modules?${params.toString()}`);
   return parseResponseOrThrow<OnboardingModuleResponse[]>(res, "Khong tai duoc danh sach onboarding modules");
 }
 
 export async function createStaffOnboardingModule(
-  tenantId: string,
   payload: CreateOnboardingModuleRequest
 ): Promise<OnboardingModuleResponse> {
-  const res = await fetchWithAuth(`${STAFF_ONBOARDING_BASE}/tenants/${tenantId}/modules`, {
+  const res = await fetchWithAuth(`${STAFF_ONBOARDING_BASE}/modules`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -145,36 +141,28 @@ export async function createStaffOnboardingModule(
 }
 
 export async function updateStaffOnboardingModule(
-  tenantId: string,
   moduleId: string,
   payload: UpdateOnboardingModuleRequest
 ): Promise<OnboardingModuleResponse> {
-  const res = await fetchWithAuth(
-    `${STAFF_ONBOARDING_BASE}/tenants/${tenantId}/modules/${moduleId}`,
-    {
+  const res = await fetchWithAuth(`${STAFF_ONBOARDING_BASE}/modules/${moduleId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-    }
-  );
+  });
   return parseResponseOrThrow<OnboardingModuleResponse>(res, "Khong cap nhat duoc onboarding module");
 }
 
 export async function uploadStaffOnboardingModuleAttachment(
-  tenantId: string,
   moduleId: string,
   file: File
 ): Promise<OnboardingModuleResponse> {
   const form = new FormData();
   form.append("file", file);
 
-  const res = await fetchWithAuth(
-    `${STAFF_ONBOARDING_BASE}/tenants/${tenantId}/modules/${moduleId}/attachment`,
-    {
-      method: "POST",
-      body: form,
-    }
-  );
+  const res = await fetchWithAuth(`${STAFF_ONBOARDING_BASE}/modules/${moduleId}/attachment`, {
+    method: "POST",
+    body: form,
+  });
 
   return parseResponseOrThrow<OnboardingModuleResponse>(
     res,
@@ -183,10 +171,9 @@ export async function uploadStaffOnboardingModuleAttachment(
 }
 
 export async function deactivateStaffOnboardingModule(
-  tenantId: string,
   moduleId: string
 ): Promise<{ message: string }> {
-  const res = await fetchWithAuth(`${STAFF_ONBOARDING_BASE}/tenants/${tenantId}/modules/${moduleId}`, {
+  const res = await fetchWithAuth(`${STAFF_ONBOARDING_BASE}/modules/${moduleId}`, {
     method: "DELETE",
   });
   return parseResponseOrThrow<{ message: string }>(res, "Khong vo hieu hoa duoc onboarding module");

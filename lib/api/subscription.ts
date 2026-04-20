@@ -73,6 +73,30 @@ export interface SelectPlanResponse {
   polling_interval_seconds?: number;
 }
 
+export interface UpcomingRenewalPaymentResponse {
+  subscription_id: string;
+  tier?: string;
+  billing_cycle?: string;
+  amount?: number;
+  currency?: string;
+  next_billing_date?: string;
+  auto_renew?: boolean;
+  payment_available?: boolean;
+  payment_id?: string;
+  status?: string;
+  transaction_code?: string;
+  qr_image_url?: string;
+  qr_content?: string;
+  expires_at?: string;
+  created_at?: string;
+  is_expired?: boolean;
+  polling_interval_seconds?: number;
+  bank_account?: string;
+  bank_name?: string;
+  account_name?: string;
+  message?: string;
+}
+
 export interface TrialSelectPlanResponse {
   message: string;
   subscription_id: string;
@@ -169,4 +193,32 @@ export async function toggleAutoRenew(autoRenew: boolean): Promise<{ message: st
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || "Cập nhật auto-renew thất bại");
   return data;
+}
+
+/** GET /api/v1/subscriptions/upcoming-payment */
+export async function getUpcomingRenewalPayment(): Promise<UpcomingRenewalPaymentResponse> {
+  const res = await fetchWithAuth(`${SUBSCRIPTIONS_BASE}/upcoming-payment`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Không tải được giao dịch sắp thanh toán");
+  return data as UpcomingRenewalPaymentResponse;
+}
+
+/** POST /api/v1/subscriptions/upcoming-payment */
+export async function createUpcomingRenewalPayment(): Promise<UpcomingRenewalPaymentResponse> {
+  const res = await fetchWithAuth(`${SUBSCRIPTIONS_BASE}/upcoming-payment`, {
+    method: "POST",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Không tạo được mã thanh toán");
+  return data as UpcomingRenewalPaymentResponse;
+}
+
+/** POST /api/v1/subscriptions/upcoming-payment/reminder-email */
+export async function sendUpcomingPaymentReminderEmail(): Promise<UpcomingRenewalPaymentResponse> {
+  const res = await fetchWithAuth(`${SUBSCRIPTIONS_BASE}/upcoming-payment/reminder-email`, {
+    method: "POST",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Không gửi được email nhắc thanh toán");
+  return data as UpcomingRenewalPaymentResponse;
 }

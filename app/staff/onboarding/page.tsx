@@ -8,7 +8,6 @@ import {
   uploadStaffOnboardingModuleAttachment,
   updateStaffOnboardingModule,
 } from "@/lib/api/onboarding";
-import { getTenants, type Tenant } from "@/lib/api/staff";
 import { useLanguageStore } from "@/lib/language-store";
 import type {
   OnboardingModuleResponse,
@@ -21,7 +20,6 @@ import {
   Loader2,
   BookOpenCheck,
   RotateCcw,
-  Globe2,
 } from "lucide-react";
 
 type EditorState = {
@@ -135,15 +133,14 @@ export default function StaffOnboardingPage() {
     () => ({
       title: isEn ? "Staff Onboarding Content Center" : "Trung tâm nội dung onboarding (Staff)",
       subtitle: isEn
-        ? "Staff manages onboarding content at system scope."
-        : "Staff quản lý nội dung onboarding trên toàn hệ thống.",
+        ? "Staff manages shared onboarding content for all tenants."
+        : "Staff quản lý bộ onboarding dùng chung cho tất cả tenant.",
       createModule: isEn ? "Create module" : "Tạo module mới",
-      applyAll: isEn ? "Apply to all tenants" : "Áp dụng cho tất cả tenant",
       totalModules: isEn ? "Total modules" : "Tổng module",
       activeModules: isEn ? "Active modules" : "Module hoạt động",
       inactiveModules: isEn ? "Inactive modules" : "Module tạm ẩn",
       loadingModules: isEn ? "Loading onboarding modules..." : "Đang tải module onboarding...",
-      noModules: isEn ? "No modules available for source tenant." : "Chưa có module nào cho tenant nguồn.",
+      noModules: isEn ? "No onboarding modules available yet." : "Chưa có module onboarding nào.",
       edit: isEn ? "Edit" : "Sửa",
       deactivate: isEn ? "Deactivate" : "Vô hiệu hóa",
       reactivate: isEn ? "Reactivate" : "Kích hoạt lại",
@@ -155,19 +152,21 @@ export default function StaffOnboardingPage() {
       editorCreateTitle: isEn ? "Create onboarding module" : "Tạo module onboarding",
       editorUpdateTitle: isEn ? "Update onboarding module" : "Cập nhật module onboarding",
       editorHint: isEn
-        ? "Content is rendered based on user language setting."
-        : "Nội dung sẽ hiển thị theo language setting của từng người dùng.",
+        ? "Content is rendered based on each user's language setting."
+        : "Nội dung sẽ hiển thị theo cài đặt ngôn ngữ của từng người dùng.",
       formTitle: isEn ? "Title" : "Tiêu đề",
       formSummary: isEn ? "Summary" : "Tóm tắt",
       formDisplayOrder: isEn ? "Display order" : "Thứ tự hiển thị",
       formEstimatedMinutes: isEn ? "Estimated minutes" : "Thời lượng (phút)",
       formActive: isEn ? "Active" : "Hoạt động",
-      formPermissions: isEn ? "Required permissions (comma separated)" : "Quyền yêu cầu (phân tách bằng dấu phẩy)",
+      formPermissions: isEn
+        ? "Required permissions (comma separated)"
+        : "Quyền yêu cầu (phân tách bằng dấu phẩy)",
       formDetailFile: isEn ? "Detail file (.txt or .pdf)" : "File chi tiết module (.txt hoặc .pdf)",
       formCurrentFile: isEn ? "Current file" : "File hiện tại",
-      formWillUpload: isEn ? "Will upload on save" : "Sẽ upload khi lưu",
-      contentVi: isEn ? "Vietnamese content" : "Nội dung Tiếng Việt",
-      contentEn: isEn ? "English content" : "English Content",
+      formWillUpload: isEn ? "Will upload on save" : "Sẽ tải lên khi lưu",
+      contentVi: isEn ? "Vietnamese content" : "Nội dung tiếng Việt",
+      contentEn: isEn ? "English content" : "Nội dung tiếng Anh",
       cancel: isEn ? "Cancel" : "Hủy",
       saveChanges: isEn ? "Save changes" : "Lưu thay đổi",
       createNow: isEn ? "Create module" : "Tạo module",
@@ -176,63 +175,25 @@ export default function StaffOnboardingPage() {
         ? "Are you sure you want to deactivate this module?"
         : "Bạn có chắc muốn vô hiệu hóa module này?",
       confirmDeactivate: isEn ? "Confirm deactivation" : "Xác nhận vô hiệu hóa",
-      confirmApplyAllTitle: isEn
-        ? "Confirm apply onboarding system-wide"
-        : "Xác nhận áp dụng onboarding toàn hệ thống",
-      confirmApplyAllBody: isEn
-        ? "Apply current onboarding modules to all other eligible tenants."
-        : "Áp dụng các module onboarding hiện tại cho toàn bộ tenant hợp lệ còn lại.",
-      confirmApplyAllAction: isEn ? "Confirm apply" : "Xác nhận áp dụng",
-      attachmentNote: isEn
-        ? "Attachment files are not auto-copied across tenants."
-        : "File đính kèm .txt/.pdf chưa được sao chép tự động giữa các tenant.",
-      sourceTenantMissing: isEn
-        ? "No source tenant found for system-wide onboarding sync."
-        : "Không tìm thấy tenant nguồn để đồng bộ nội dung onboarding toàn hệ thống.",
       emptyTitleContent: isEn
         ? "Title and content must not be empty."
         : "Tiêu đề và nội dung không được để trống.",
       txtPdfOnly: isEn
         ? "Only .txt or .pdf detail files are supported."
         : "Chỉ hỗ trợ file chi tiết .txt hoặc .pdf.",
-      max10mb: isEn
-        ? "Detail file size must be <= 10MB."
-        : "File chi tiết không được vượt quá 10MB.",
-      saveFailed: isEn ? "Failed to save onboarding module" : "Không lưu được onboarding module",
+      max10mb: isEn ? "Detail file size must be <= 10MB." : "File chi tiết không được vượt quá 10MB.",
+      saveFailed: isEn ? "Failed to save onboarding module" : "Không lưu được module onboarding",
       deactivateFailed: isEn ? "Failed to deactivate module" : "Không thể vô hiệu hóa module",
       reactivateFailed: isEn ? "Failed to reactivate module" : "Không thể kích hoạt lại module",
-      loadTenantsFailed: isEn ? "Failed to load tenants" : "Không tải được danh sách tenant",
       loadModulesFailed: isEn ? "Failed to load onboarding modules" : "Không tải được module onboarding",
-      applyNoTarget: isEn
-        ? "No eligible tenant found for onboarding sync."
-        : "Không có tenant hợp lệ để áp dụng nội dung onboarding.",
-      applyFailed: isEn
-        ? "Failed to apply onboarding to all tenants"
-        : "Không thể áp dụng onboarding cho tất cả tenant",
       deactivatedNotice: isEn ? "Module deactivated" : "Đã vô hiệu hóa module",
-      syncPartialError: isEn
-        ? "Synchronization finished with some tenant failures."
-        : "Đồng bộ chưa hoàn tất cho một số tenant.",
-      skippedRejected: isEn
-        ? "Skipped rejected tenants"
-        : "Bỏ qua tenant ở trạng thái REJECTED",
-      created: isEn ? "Created" : "Tạo mới",
-      updated: isEn ? "Updated" : "Cập nhật",
-      syncTenantFailed: isEn ? "Tenant failed" : "Tenant lỗi",
-      syncSuccess: isEn
-        ? "Applied modules to tenants successfully."
-        : "Đã áp dụng module cho các tenant thành công.",
     }),
     [isEn]
   );
 
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [selectedTenantId, setSelectedTenantId] = useState<string>("");
-
   const [modules, setModules] = useState<OnboardingModuleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [syncingAllTenants, setSyncingAllTenants] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -243,62 +204,23 @@ export default function StaffOnboardingPage() {
   const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
   const [deactivateTarget, setDeactivateTarget] =
     useState<OnboardingModuleResponse | null>(null);
-  const [confirmApplyAllOpen, setConfirmApplyAllOpen] = useState(false);
 
   const activeCount = useMemo(
     () => modules.filter((item) => item.isActive).length,
     [modules]
   );
 
-  const canApplyAllTenants = useMemo(
-    () => Boolean(selectedTenantId) && modules.length > 0 && tenants.length > 1,
-    [selectedTenantId, modules.length, tenants.length]
-  );
-
-  const applyTargetCount = useMemo(
-    () =>
-      tenants.filter(
-        (tenant) => tenant.id !== selectedTenantId && tenant.status !== "REJECTED"
-      ).length,
-    [tenants, selectedTenantId]
-  );
-
-  const normalizeTitle = (value: string) => value.trim().toLowerCase();
-
-  const loadTenants = useCallback(async () => {
-    try {
-      const data = await getTenants();
-      setTenants(data);
-      if (!selectedTenantId && data.length > 0) {
-        const active = data.find((item) => item.status === "ACTIVE");
-        setSelectedTenantId(active?.id ?? data[0].id);
-      }
-    } catch {
-      setError(text.loadTenantsFailed);
-    }
-  }, [selectedTenantId, text.loadTenantsFailed]);
-
   const loadModules = useCallback(async () => {
-    if (!selectedTenantId) {
-      setModules([]);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
-      const data = await getStaffOnboardingModules(selectedTenantId, true);
+      const data = await getStaffOnboardingModules(true);
       setModules([...data].sort((a, b) => a.displayOrder - b.displayOrder));
     } catch {
       setError(text.loadModulesFailed);
     } finally {
       setLoading(false);
     }
-  }, [selectedTenantId, text.loadModulesFailed]);
-
-  useEffect(() => {
-    void loadTenants();
-  }, [loadTenants]);
+  }, [text.loadModulesFailed]);
 
   useEffect(() => {
     void loadModules();
@@ -336,12 +258,6 @@ export default function StaffOnboardingPage() {
 
   const submitEditor = async (event: React.FormEvent) => {
     event.preventDefault();
-
-    if (!selectedTenantId) {
-      setError(text.sourceTenantMissing);
-      return;
-    }
-
     setSaving(true);
 
     try {
@@ -362,7 +278,7 @@ export default function StaffOnboardingPage() {
       let savedModule: OnboardingModuleResponse;
 
       if (!editorState.id) {
-        savedModule = await createStaffOnboardingModule(selectedTenantId, {
+        savedModule = await createStaffOnboardingModule({
           title: payloadBase.title,
           summary: payloadBase.summary,
           displayOrder: payloadBase.displayOrder,
@@ -371,11 +287,7 @@ export default function StaffOnboardingPage() {
           content: payloadBase.content,
         });
       } else {
-        savedModule = await updateStaffOnboardingModule(
-          selectedTenantId,
-          editorState.id,
-          payloadBase
-        );
+        savedModule = await updateStaffOnboardingModule(editorState.id, payloadBase);
       }
 
       if (attachmentFile) {
@@ -387,11 +299,7 @@ export default function StaffOnboardingPage() {
           throw new Error(text.max10mb);
         }
 
-        await uploadStaffOnboardingModuleAttachment(
-          selectedTenantId,
-          savedModule.id,
-          attachmentFile
-        );
+        await uploadStaffOnboardingModuleAttachment(savedModule.id, attachmentFile);
       }
 
       closeEditor();
@@ -409,11 +317,11 @@ export default function StaffOnboardingPage() {
   };
 
   const confirmDeactivateModule = async () => {
-    if (!selectedTenantId || !deactivateTarget) return;
+    if (!deactivateTarget) return;
 
     setSaving(true);
     try {
-      await deactivateStaffOnboardingModule(selectedTenantId, deactivateTarget.id);
+      await deactivateStaffOnboardingModule(deactivateTarget.id);
       setNotice(`${text.deactivatedNotice}: ${deactivateTarget.title}`);
       setDeactivateModalOpen(false);
       setDeactivateTarget(null);
@@ -426,145 +334,15 @@ export default function StaffOnboardingPage() {
   };
 
   const reactivateModule = async (module: OnboardingModuleResponse) => {
-    if (!selectedTenantId) return;
-
     setSaving(true);
     try {
-      await updateStaffOnboardingModule(selectedTenantId, module.id, { isActive: true });
+      await updateStaffOnboardingModule(module.id, { isActive: true });
       await loadModules();
     } catch {
       setError(text.reactivateFailed);
     } finally {
       setSaving(false);
     }
-  };
-
-  const applyModulesToAllTenants = async () => {
-    if (!selectedTenantId) {
-      setError(text.sourceTenantMissing);
-      return;
-    }
-
-    const targets = tenants.filter(
-      (tenant) => tenant.id !== selectedTenantId && tenant.status !== "REJECTED"
-    );
-
-    if (targets.length === 0) {
-      setError(text.applyNoTarget);
-      return;
-    }
-
-    setSaving(true);
-    setSyncingAllTenants(true);
-
-    try {
-      const sourceModules = [...modules].sort(
-        (a, b) => a.displayOrder - b.displayOrder
-      );
-
-      let createdCount = 0;
-      let updatedCount = 0;
-      let successTenantCount = 0;
-      const failedTenants: string[] = [];
-      const rejectedCount = tenants.filter(
-        (tenant) => tenant.id !== selectedTenantId && tenant.status === "REJECTED"
-      ).length;
-
-      for (const target of targets) {
-        try {
-          const existing = await getStaffOnboardingModules(target.id, true);
-          const existingByTitle = new Map(
-            existing.map((module) => [normalizeTitle(module.title), module])
-          );
-          const existingByOrder = new Map(
-            existing.map((module) => [String(module.displayOrder), module])
-          );
-
-          for (const source of sourceModules) {
-            const payload: UpdateOnboardingModuleRequest = {
-              title: source.title,
-              summary: source.summary ?? undefined,
-              content: source.content,
-              displayOrder: source.displayOrder,
-              estimatedMinutes: source.estimatedMinutes,
-              requiredPermissions: source.requiredPermissions,
-              isActive: source.isActive,
-            };
-
-            const matched =
-              existingByTitle.get(normalizeTitle(source.title)) ??
-              existingByOrder.get(String(source.displayOrder));
-
-            if (matched) {
-              await updateStaffOnboardingModule(target.id, matched.id, payload);
-              updatedCount += 1;
-            } else {
-              const created = await createStaffOnboardingModule(target.id, {
-                title: source.title,
-                summary: source.summary ?? undefined,
-                content: source.content,
-                displayOrder: source.displayOrder,
-                estimatedMinutes: source.estimatedMinutes,
-                requiredPermissions: source.requiredPermissions,
-              });
-              createdCount += 1;
-              existingByTitle.set(normalizeTitle(created.title), created);
-              existingByOrder.set(String(created.displayOrder), created);
-            }
-          }
-
-          successTenantCount += 1;
-        } catch (targetError) {
-          failedTenants.push(
-            `${target.name}: ${
-              targetError instanceof Error ? targetError.message : "Unknown error"
-            }`
-          );
-        }
-      }
-
-      const parts: string[] = [
-        `${text.syncSuccess} ${successTenantCount}/${targets.length}`,
-        `${text.created}: ${createdCount}. ${text.updated}: ${updatedCount}.`,
-      ];
-
-      if (rejectedCount > 0) {
-        parts.push(`${text.skippedRejected}: ${rejectedCount}.`);
-      }
-
-      if (failedTenants.length > 0) {
-        parts.push(`${text.syncTenantFailed}: ${failedTenants.join(" | ")}`);
-      }
-
-      parts.push(text.attachmentNote);
-      setNotice(parts.join(" "));
-
-      if (failedTenants.length > 0) {
-        setError(text.syncPartialError);
-      }
-
-      await loadModules();
-    } catch {
-      setError(text.applyFailed);
-    } finally {
-      setSaving(false);
-      setSyncingAllTenants(false);
-      setConfirmApplyAllOpen(false);
-    }
-  };
-
-  const openApplyAllConfirm = () => {
-    if (!selectedTenantId) {
-      setError(text.sourceTenantMissing);
-      return;
-    }
-
-    if (applyTargetCount === 0) {
-      setError(text.applyNoTarget);
-      return;
-    }
-
-    setConfirmApplyAllOpen(true);
   };
 
   const titleForDisplay = (raw: string) => {
@@ -589,54 +367,13 @@ export default function StaffOnboardingPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={openApplyAllConfirm}
-            disabled={!canApplyAllTenants || saving || loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
-          >
-            {syncingAllTenants ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Globe2 className="h-4 w-4" />
-            )}
-            {text.applyAll}
-          </button>
-
-          <button
-            type="button"
             onClick={openCreate}
-            disabled={!selectedTenantId}
             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Plus className="h-4 w-4" />
             {text.createModule}
           </button>
         </div>
-      </div>
-
-      {/* Tenant Selector */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-          {isEn ? "Source Tenant (for module management)" : "Tenant nguồn (để quản lý module)"}
-        </label>
-        <select
-          value={selectedTenantId}
-          onChange={(e) => setSelectedTenantId(e.target.value)}
-          className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-        >
-          <option value="">{isEn ? "Select a tenant..." : "Chọn tenant..."}</option>
-          {tenants.map((tenant) => (
-            <option key={tenant.id} value={tenant.id}>
-              {tenant.name} ({tenant.status})
-            </option>
-          ))}
-        </select>
-        {selectedTenantId && (
-          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-            {isEn 
-              ? "Modules will be created/managed for this tenant. Use 'Apply to all tenants' to sync to others."
-              : "Module sẽ được tạo/quản lý cho tenant này. Dùng 'Áp dụng cho tất cả tenant' để đồng bộ sang tenant khác."}
-          </p>
-        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -756,33 +493,6 @@ export default function StaffOnboardingPage() {
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{text.editorHint}</p>
 
             <form onSubmit={submitEditor} className="mt-5 space-y-4">
-              {/* Tenant Selector - only show when creating new module */}
-              {!editorState.id && (
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-500">
-                    {isEn ? "Target Tenant *" : "Tenant đích *"}
-                  </label>
-                  <select
-                    value={selectedTenantId}
-                    onChange={(e) => setSelectedTenantId(e.target.value)}
-                    required
-                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-                  >
-                    <option value="">{isEn ? "Select tenant..." : "Chọn tenant..."}</option>
-                    {tenants.map((tenant) => (
-                      <option key={tenant.id} value={tenant.id}>
-                        {tenant.name} ({tenant.status})
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    {isEn 
-                      ? "Module will be created for this tenant"
-                      : "Module sẽ được tạo cho tenant này"}
-                  </p>
-                </div>
-              )}
-
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-500">{text.formTitle}</label>
@@ -1016,51 +726,6 @@ export default function StaffOnboardingPage() {
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {text.confirmDeactivate}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmApplyAllOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4">
-          <div
-            className="absolute inset-0"
-            onClick={() => {
-              if (!syncingAllTenants) {
-                setConfirmApplyAllOpen(false);
-              }
-            }}
-          />
-          <div className="relative w-full max-w-lg rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{text.confirmApplyAllTitle}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{text.confirmApplyAllBody}</p>
-            <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
-              {modules.length} module / {applyTargetCount} tenant
-            </p>
-            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{text.attachmentNote}</p>
-
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!syncingAllTenants) {
-                    setConfirmApplyAllOpen(false);
-                  }
-                }}
-                disabled={syncingAllTenants}
-                className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              >
-                {text.cancel}
-              </button>
-              <button
-                type="button"
-                onClick={() => void applyModulesToAllTenants()}
-                disabled={syncingAllTenants}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-              >
-                {syncingAllTenants ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {text.confirmApplyAllAction}
               </button>
             </div>
           </div>

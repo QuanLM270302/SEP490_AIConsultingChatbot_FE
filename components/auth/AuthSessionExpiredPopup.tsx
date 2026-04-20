@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { LogIn, ShieldAlert } from "lucide-react";
 import { clearAuth } from "@/lib/auth-store";
@@ -10,7 +10,7 @@ import {
 } from "@/lib/auth-session-events";
 import { useLanguageStore } from "@/lib/language-store";
 
-const CLOSE_ANIMATION_MS = 220;
+const AUTO_REDIRECT_MS = 600;
 
 function isPublicPath(pathname: string): boolean {
   return (
@@ -27,6 +27,7 @@ export function AuthSessionExpiredPopup() {
   const router = useRouter();
   const pathname = usePathname();
   const { language } = useLanguageStore();
+  const redirectTimeoutRef = useRef<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
@@ -51,24 +52,22 @@ export function AuthSessionExpiredPopup() {
     };
   }, [language]);
 
-  const closeWithAnimation = useCallback((onClosed?: () => void) => {
-    setVisible(false);
-    window.setTimeout(() => {
-      setMounted(false);
-      setReason(null);
-      onClosed?.();
-    }, CLOSE_ANIMATION_MS);
+  const clearRedirectTimeout = useCallback(() => {
+    if (redirectTimeoutRef.current === null) return;
+    window.clearTimeout(redirectTimeoutRef.current);
+    redirectTimeoutRef.current = null;
   }, []);
 
   const handleSignInAgain = useCallback(() => {
-    closeWithAnimation(() => {
-      clearAuth();
-      router.replace("/login?reason=session-expired");
-    });
-  }, [closeWithAnimation, router]);
+    clearRedirectTimeout();
+    clearAuth();
+    router.replace("/login?reason=session-expired");
+    router.refresh();
+  }, [clearRedirectTimeout, router]);
 
   useEffect(() => {
     if (!pathname || isPublicPath(pathname)) {
+      clearRedirectTimeout();
       const frame = window.requestAnimationFrame(() => {
         setMounted(false);
         setVisible(false);
@@ -92,6 +91,11 @@ export function AuthSessionExpiredPopup() {
       window.requestAnimationFrame(() => {
         setVisible(true);
       });
+
+      clearRedirectTimeout();
+      redirectTimeoutRef.current = window.setTimeout(() => {
+        handleSignInAgain();
+      }, AUTO_REDIRECT_MS);
     };
 
     window.addEventListener(
@@ -100,12 +104,13 @@ export function AuthSessionExpiredPopup() {
     );
 
     return () => {
+      clearRedirectTimeout();
       window.removeEventListener(
         AUTH_SESSION_EXPIRED_EVENT,
         onSessionExpired as EventListener
       );
     };
-  }, [pathname]);
+  }, [pathname, clearRedirectTimeout, handleSignInAgain]);
 
   if (!mounted) return null;
 

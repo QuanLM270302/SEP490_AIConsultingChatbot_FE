@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { getChatbotConfig, updateChatbotConfig, type ChatbotMode } from "@/lib/api/chatbot-config";
 import { getTenantFeedback, type FeedbackAnalytics } from "@/lib/api/feedback";
 import { useLanguageStore } from "@/lib/language-store";
@@ -83,7 +82,6 @@ export default function AIInsightsPage() {
   };
 
   return (
-    <TenantAdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -332,6 +330,6 @@ export default function AIInsightsPage() {
           )}
         </div>
       </div>
-    </TenantAdminLayout>
   );
 }
+

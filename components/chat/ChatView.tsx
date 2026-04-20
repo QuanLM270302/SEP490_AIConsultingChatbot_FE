@@ -20,6 +20,8 @@ import { ChatHistorySidebarNew } from "./ChatHistorySidebarNew";
 import { getStoredUser } from "@/lib/auth-store";
 import { getProfile } from "@/lib/api/profile";
 import { chat, ChatApiError, getConversationHistory, rateMessage } from "@/lib/api/chatbot";
+import { isRatingMessageId, resolveServerMessageId } from "@/lib/chatMessageId";
+import { mapServerRatingToUi } from "@/lib/chatRating";
 import { listTagsActive } from "@/lib/api/tags";
 import type { DocumentTagResponse } from "@/types/knowledge";
 
@@ -230,10 +232,17 @@ export function ChatView({
       })
     );
     try {
-      await rateMessage(messageId, rating);
+      const result = await rateMessage(messageId, rating);
+      const ui = mapServerRatingToUi(result.rating) ?? rating;
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, rating: ui } : msg))
+      );
       console.log("✅ Rating submitted successfully");
     } catch (e) {
       console.error("❌ Rating submission failed:", e);
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, rating: previousRating } : msg))
+      );
     }
   };
 
@@ -280,6 +289,7 @@ export function ChatView({
 
       // Fetch conversation history to get real message IDs from backend
       let realMessageId = (Date.now() + 1).toString(); // fallback
+      let assistantServerRating: Message["rating"] | undefined = undefined;
       if (response.conversationId) {
         try {
           console.log("🔍 Fetching conversation history for ID:", response.conversationId);
@@ -292,14 +302,16 @@ export function ChatView({
               .reverse()
               .find((m) => m.role === "ASSISTANT");
             console.log("🤖 Last assistant message:", lastAssistantMsg);
-            // Backend uses 'messageId' field, not 'id'
-            const msgId = (lastAssistantMsg as any)?.messageId || lastAssistantMsg?.id;
+            const msgId = lastAssistantMsg ? resolveServerMessageId(lastAssistantMsg) : undefined;
             if (msgId) {
               realMessageId = msgId;
               console.log("✅ Got real message ID from backend:", realMessageId);
             } else {
               console.warn("⚠️ No assistant message ID found in history");
             }
+            assistantServerRating = lastAssistantMsg
+              ? mapServerRatingToUi(lastAssistantMsg.rating)
+              : undefined;
           } else {
             console.warn("⚠️ History is empty or invalid");
           }
@@ -320,6 +332,7 @@ export function ChatView({
           confidence: s.relevanceScore,
         })),
         timestamp: new Date(),
+        ...(assistantServerRating ? { rating: assistantServerRating } : {}),
       };
       setMessages((prev) => [...prev, aiMessage]);
     } catch (err) {
@@ -513,7 +526,7 @@ export function ChatView({
                             ))}
                           </div>
                         ) : null}
-                        {message.role === "assistant" && (
+                        {message.role === "assistant" && isRatingMessageId(message.id) && (
                           <div className="mt-3 flex gap-2">
                             <button
                               type="button"

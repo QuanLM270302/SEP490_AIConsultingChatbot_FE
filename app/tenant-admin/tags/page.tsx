@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import {
@@ -13,12 +12,13 @@ import {
   Edit2,
   Trash2,
   Hash,
-  ChevronDown,
-  ChevronRight,
+  Ban,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useConfirmDialog } from "@/components/ui";
 import { 
   listTagsManage, 
   deleteTag, 
@@ -34,6 +34,7 @@ interface Tag {
   id: string;
   name: string;
   code: string;
+  description?: string | null;
   status: "ACTIVE" | "INACTIVE";
   documentCount?: number;
 }
@@ -44,10 +45,17 @@ function transformTag(tag: DocumentTagResponse): Tag {
     id: tag.id,
     name: tag.name,
     code: tag.code,
+    description: tag.description ?? null,
     status: tag.isActive === false ? "INACTIVE" : "ACTIVE", // Backend uses isActive boolean
     documentCount: undefined, // API doesn't return this yet
   };
 }
+
+type TagFormErrors = {
+  name?: string;
+  code?: string;
+  description?: string;
+};
 
 function TagModal({
   isOpen,
@@ -65,47 +73,99 @@ function TagModal({
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
+  const [errors, setErrors] = useState<TagFormErrors>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const baseFieldClass =
+    "w-full rounded-lg border bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 dark:bg-zinc-900 dark:text-white";
+  const normalFieldClass =
+    "border-zinc-300 focus:border-emerald-500 focus:ring-emerald-500/20 dark:border-zinc-700";
+  const errorFieldClass =
+    "border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:border-red-500";
+
+  const getFieldClassName = (hasError: boolean) =>
+    `${baseFieldClass} ${hasError ? errorFieldClass : normalFieldClass}`;
+
+  const validateForm = (): TagFormErrors => {
+    const nextErrors: TagFormErrors = {};
+    const trimmedName = name.trim();
+    const trimmedCode = code.trim();
+
+    if (!trimmedName) {
+      nextErrors.name = isEn ? "Name is required" : "Tên là bắt buộc";
+    }
+
+    if (!trimmedCode) {
+      nextErrors.code = isEn ? "Code is required" : "Mã là bắt buộc";
+    } else if (/\s/.test(code)) {
+      nextErrors.code = isEn
+        ? "Code cannot contain spaces"
+        : "Mã không được chứa khoảng trắng";
+    }
+
+    if (description.trim().length > 1000) {
+      nextErrors.description = isEn
+        ? "Description must be at most 1000 characters"
+        : "Mô tả tối đa 1000 ký tự";
+    }
+
+    return nextErrors;
+  };
 
   useEffect(() => {
     if (tag) {
       setName(tag.name);
       setCode(tag.code);
-      setDescription(""); // Description không có trong response
+      setDescription(tag.description ?? "");
     } else {
       setName("");
       setCode("");
       setDescription("");
     }
+
+    setErrors({});
+    setSubmitError(null);
   }, [tag]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+
+    const nextErrors = validateForm();
+    setErrors(nextErrors);
+    setSubmitError(null);
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
+    const trimmedName = name.trim();
+    const normalizedCode = code.trim().toUpperCase();
+    const normalizedDescription = description.trim();
 
     setSaving(true);
     try {
       if (tag) {
         // Update
         await updateTag(tag.id, {
-          name: name.trim(),
-          code: code.trim() || tag.code,
-          description: description.trim() || undefined,
+          name: trimmedName,
+          code: normalizedCode || tag.code,
+          description: normalizedDescription || null,
           isActive: tag.status === "ACTIVE",
         });
       } else {
         // Create
         await createTag({
-          name: name.trim(),
-          code: code.trim() || "AUTO",
-          description: description.trim() || undefined,
+          name: trimmedName,
+          code: normalizedCode || "AUTO",
+          description: normalizedDescription || null,
         });
       }
       onSuccess();
       onClose();
     } catch (e) {
-      alert(isEn ? "Failed to save tag" : "Lưu tag thất bại");
-      console.error(e);
+      const fallbackMessage = isEn ? "Failed to save tag" : "Lưu tag thất bại";
+      const message = e instanceof Error && e.message ? e.message : fallbackMessage;
+      setSubmitError(message);
     } finally {
       setSaving(false);
     }
@@ -142,25 +202,50 @@ function TagModal({
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setName(value);
+                  if (errors.name) {
+                    setErrors((prev) => ({ ...prev, name: undefined }));
+                  }
+                }}
+                aria-invalid={errors.name ? "true" : "false"}
+                className={getFieldClassName(!!errors.name)}
                 placeholder={isEn ? "Enter tag name" : "Nhập tên tag"}
               />
+              {errors.name ? (
+                <p className="mt-1 text-xs text-red-500">{errors.name}</p>
+              ) : null}
             </div>
 
             {/* Code */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-zinc-900 dark:text-white">
-                {isEn ? "Code" : "Mã"}
+                {isEn ? "Code" : "Mã"} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setCode(value);
+
+                  setErrors((prev) => ({
+                    ...prev,
+                    code: /\s/.test(value)
+                      ? isEn
+                        ? "Code cannot contain spaces"
+                        : "Mã không được chứa khoảng trắng"
+                      : undefined,
+                  }));
+                }}
+                aria-invalid={errors.code ? "true" : "false"}
+                className={getFieldClassName(!!errors.code)}
                 placeholder={isEn ? "Auto-generated if empty" : "Tự động tạo nếu để trống"}
               />
+              {errors.code ? (
+                <p className="mt-1 text-xs text-red-500">{errors.code}</p>
+              ) : null}
             </div>
 
             {/* Description */}
@@ -170,13 +255,33 @@ function TagModal({
               </label>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setDescription(value);
+                  setErrors((prev) => ({
+                    ...prev,
+                    description:
+                      value.trim().length > 1000
+                        ? isEn
+                          ? "Description must be at most 1000 characters"
+                          : "Mô tả tối đa 1000 ký tự"
+                        : undefined,
+                  }));
+                }}
                 rows={3}
-                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                aria-invalid={errors.description ? "true" : "false"}
+                className={getFieldClassName(!!errors.description)}
                 placeholder={isEn ? "Enter description (optional)" : "Nhập mô tả (tùy chọn)"}
               />
+              {errors.description ? (
+                <p className="mt-1 text-xs text-red-500">{errors.description}</p>
+              ) : null}
             </div>
           </div>
+
+          {submitError ? (
+            <p className="mt-3 text-sm text-red-500">{submitError}</p>
+          ) : null}
 
           {/* Actions */}
           <div className="mt-6 flex gap-3">
@@ -236,11 +341,6 @@ function TagCard({
         {tag.name}
       </h3>
 
-      {/* ID */}
-      <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-        ID: {tag.id}
-      </p>
-
       {/* Stats */}
       {tag.documentCount !== undefined && (
         <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
@@ -286,9 +386,9 @@ function TagCard({
               title={tag.status === "ACTIVE" ? (isEn ? "Deactivate" : "Vô hiệu hóa") : (isEn ? "Activate" : "Kích hoạt")}
             >
               {tag.status === "ACTIVE" ? (
-                <ChevronDown className="h-4 w-4" />
+                <Ban className="h-4 w-4" />
               ) : (
-                <ChevronRight className="h-4 w-4" />
+                <Check className="h-4 w-4" />
               )}
             </button>
             <button 
@@ -346,6 +446,7 @@ export default function TagsPage() {
   const { language } = useLanguageStore();
   const t = translations[language];
   const isEn = language === "en";
+  const { confirm: confirmAction, confirmDialog } = useConfirmDialog();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -379,7 +480,16 @@ export default function TagsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(isEn ? "Delete this tag permanently?" : "Xóa vĩnh viễn tag này?")) return;
+    const ok = await confirmAction({
+      title: isEn ? "Delete tag permanently?" : "Xóa vĩnh viễn tag?",
+      description: isEn
+        ? "This action cannot be undone."
+        : "Hành động này không thể hoàn tác.",
+      confirmText: isEn ? "Delete" : "Xóa",
+      cancelText: isEn ? "Cancel" : "Hủy",
+      tone: "danger",
+    });
+    if (!ok) return;
     
     setDeletingId(id);
     try {
@@ -394,6 +504,30 @@ export default function TagsPage() {
   };
 
   const handleToggleStatus = async (tag: Tag) => {
+    if (tag.status === "ACTIVE") {
+      const ok = await confirmAction({
+        title: isEn ? "Deactivate tag?" : "Vô hiệu hóa tag?",
+        description: isEn
+          ? "This tag will be hidden from active lists."
+          : "Tag sẽ ẩn khỏi danh sách active.",
+        confirmText: isEn ? "Deactivate" : "Vô hiệu hóa",
+        cancelText: isEn ? "Cancel" : "Hủy",
+        tone: "warning",
+      });
+      if (!ok) return;
+    } else {
+      const ok = await confirmAction({
+        title: isEn ? "Activate tag?" : "Kích hoạt tag?",
+        description: isEn
+          ? "This tag will appear again in active lists."
+          : "Tag sẽ xuất hiện lại trong danh sách active.",
+        confirmText: isEn ? "Activate" : "Kích hoạt",
+        cancelText: isEn ? "Cancel" : "Hủy",
+        tone: "default",
+      });
+      if (!ok) return;
+    }
+
     try {
       if (tag.status === "ACTIVE") {
         await deactivateTag(tag.id);
@@ -408,7 +542,6 @@ export default function TagsPage() {
   };
 
   return (
-    <TenantAdminLayout>
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Header */}
         <div>
@@ -482,7 +615,9 @@ export default function TagsPage() {
           tag={editingTag}
           onSuccess={loadTags}
         />
+
+        {confirmDialog}
       </div>
-    </TenantAdminLayout>
   );
 }
+

@@ -11,7 +11,7 @@ import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import { useAppTheme } from "@/lib/use-app-theme";
 import { tenantTooltipBase } from "@/lib/tenant-chart-tooltip";
-import type { ChartData, ChartOptions } from "chart.js";
+import type { ArcElement, ChartData, ChartOptions, Plugin } from "chart.js";
 
 export function EmployeeOverview() {
   const { language } = useLanguageStore();
@@ -55,6 +55,112 @@ export function EmployeeOverview() {
 
   const pctActive = total > 0 ? Math.round((active / total) * 100) : 0;
   const pctRest = total > 0 ? Math.max(0, 100 - pctActive) : 0;
+
+  const percentageLabelPlugin = useMemo<Plugin<"doughnut">>(
+    () => ({
+      id: "employee-overview-percent-labels",
+      afterDatasetsDraw(chart) {
+        const dataset = chart.data.datasets[0];
+        if (!dataset) return;
+
+        const values = (dataset.data as Array<number | string>).map((value) => Number(value));
+        const totalValue = values.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
+        if (totalValue <= 0) return;
+
+        const meta = chart.getDatasetMeta(0);
+        const { ctx } = chart;
+
+        const drawRoundedRect = (
+          x: number,
+          y: number,
+          width: number,
+          height: number,
+          radius: number,
+        ) => {
+          const r = Math.min(radius, width / 2, height / 2);
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.lineTo(x + width - r, y);
+          ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+          ctx.lineTo(x + width, y + height - r);
+          ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+          ctx.lineTo(x + r, y + height);
+          ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+          ctx.lineTo(x, y + r);
+          ctx.quadraticCurveTo(x, y, x + r, y);
+          ctx.closePath();
+        };
+
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "700 12px Geist, Inter, Segoe UI, Roboto, sans-serif";
+
+        meta.data.forEach((element, index) => {
+          const value = values[index] ?? 0;
+          if (!Number.isFinite(value) || value <= 0) return;
+
+          const arc = element as ArcElement;
+          const { x, y, startAngle, endAngle, innerRadius, outerRadius } = arc.getProps(
+            ["x", "y", "startAngle", "endAngle", "innerRadius", "outerRadius"],
+            true,
+          );
+          if (x == null || y == null) return;
+          const angle = (startAngle + endAngle) / 2;
+          const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+          const textX = x + Math.cos(angle) * radius;
+          const textY = y + Math.sin(angle) * radius;
+          const pct = index === 0 ? pctActive : pctRest;
+          if (pct <= 0) return;
+          const label = `${pct}%`;
+
+          const metrics = ctx.measureText(label);
+          const badgePaddingX = 8;
+          const badgeHeight = 22;
+          const badgeWidth = Math.ceil(metrics.width + badgePaddingX * 2);
+          const badgeX = textX - badgeWidth / 2;
+          const badgeY = textY - badgeHeight / 2;
+
+          const strokeColor =
+            index === 0
+              ? isDark
+                ? "rgba(16,185,129,0.62)"
+                : "rgba(5,150,105,0.38)"
+              : isDark
+                ? "rgba(212,212,216,0.42)"
+                : "rgba(63,63,70,0.22)";
+
+          ctx.shadowColor = isDark ? "rgba(0,0,0,0.5)" : "rgba(15,23,42,0.2)";
+          ctx.shadowBlur = 10;
+          ctx.shadowOffsetY = 2;
+          ctx.fillStyle = isDark ? "rgba(24,24,27,0.94)" : "rgba(255,255,255,0.96)";
+          drawRoundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 10);
+          ctx.fill();
+
+          ctx.shadowColor = "transparent";
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetY = 0;
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = 1.2;
+          drawRoundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 10);
+          ctx.stroke();
+
+          ctx.fillStyle =
+            index === 0
+              ? isDark
+                ? "#d1fae5"
+                : "#065f46"
+              : isDark
+                ? "#e4e4e7"
+                : "#3f3f46";
+          ctx.fillText(label, textX, textY + 0.5);
+        });
+
+        ctx.restore();
+      },
+    }),
+    [isDark, pctActive, pctRest],
+  );
 
   const chartOptions = useMemo<ChartOptions<"doughnut">>(
     () => ({
@@ -146,7 +252,7 @@ export function EmployeeOverview() {
       </div>
       <div className="flex flex-col items-stretch gap-6 sm:flex-row">
         <div className="mx-auto h-56 w-full max-w-[16rem] shrink-0 sm:mx-0">
-          <Chart type="doughnut" data={chartData} options={chartOptions} />
+          <Chart type="doughnut" data={chartData} options={chartOptions} plugins={[percentageLabelPlugin]} />
         </div>
         <div className="flex flex-1 flex-col justify-center gap-4 rounded-2xl bg-white/60 p-5 text-sm dark:bg-zinc-900/50">
           <div>
@@ -159,14 +265,12 @@ export function EmployeeOverview() {
             <span className="text-zinc-600 dark:text-zinc-400">{t.activeIn30Days}</span>
             <span className="text-right font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
               <span className="block">{active.toLocaleString()}</span>
-              <span className="text-xs font-medium text-emerald-600/80 dark:text-emerald-400/80">{pctActive}%</span>
             </span>
           </div>
           <div className="flex items-center justify-between gap-4">
             <span className="text-zinc-600 dark:text-zinc-400">{t.employeeChartRestLabel}</span>
             <span className="text-right font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
               <span className="block">{rest.toLocaleString()}</span>
-              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{pctRest}%</span>
             </span>
           </div>
         </div>

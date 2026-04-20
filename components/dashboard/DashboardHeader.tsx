@@ -6,13 +6,13 @@ import {
 
 export function DashboardHeader() {
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-linear-to-r from-green-400 via-green-500 to-green-400 p-6 text-white shadow-lg shadow-green-300/60">
+    <section className="relative overflow-hidden rounded-3xl bg-linear-to-r from-green-400 via-green-500 to-green-400 p-4 text-white shadow-lg shadow-green-300/60 sm:p-6">
       <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <p className="text-sm font-medium opacity-80">
             Internal Consultant AI Platform
           </p>
-          <h1 className="text-2xl font-semibold">General Dashboard</h1>
+          <h1 className="text-xl font-semibold sm:text-2xl">General Dashboard</h1>
           <p className="text-xs opacity-90">
             RAG-powered chatbot platform for employees to get accurate,
             document-grounded answers.
@@ -23,15 +23,15 @@ export function DashboardHeader() {
             Multi-tenant SaaS • Employees, Staff, Platform Admins
           </p>
           <div className="flex flex-wrap gap-2 md:justify-end">
-            <button className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-green-600 shadow-sm shadow-green-200">
+            <button className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-green-600 shadow-sm shadow-green-200 sm:px-4 sm:text-xs">
               <ChatBubbleLeftRightIcon className="h-4 w-4" />
               Ask AI Question
             </button>
-            <button className="inline-flex items-center gap-2 rounded-full bg-green-700/80 px-4 py-1.5 text-xs font-semibold text-white shadow-sm shadow-green-800/70">
+            <button className="inline-flex items-center gap-2 rounded-full bg-green-700/80 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm shadow-green-800/70 sm:px-4 sm:text-xs">
               <DocumentIcon className="h-4 w-4" />
               Upload Documents (Tenant Admin)
             </button>
-            <button className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-xs font-semibold text-white shadow-sm shadow-green-900/40">
+            <button className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm shadow-green-900/40 sm:px-4 sm:text-xs">
               <ShieldCheckIcon className="h-4 w-4" />
               Tenant &amp; Policy Admin
             </button>

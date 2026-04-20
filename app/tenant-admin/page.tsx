@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { OrganizationStats } from "@/components/tenant-admin/OrganizationStats";
 import { AIUsageChart } from "@/components/tenant-admin/AIUsageChart";
 import { EmployeeOverview } from "@/components/tenant-admin/EmployeeOverview";
@@ -40,7 +39,6 @@ export default function TenantAdminPage() {
   }, []);
 
   return (
-    <TenantAdminLayout>
       <div className="space-y-8">
         {/* Header */}
         <div>
@@ -64,6 +62,6 @@ export default function TenantAdminPage() {
         {/* AI usage */}
         <AIUsageChart data={llmUsage} loading={llmLoading} error={llmError} />
       </div>
-    </TenantAdminLayout>
   );
 }
+

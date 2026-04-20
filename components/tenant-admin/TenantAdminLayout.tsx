@@ -5,7 +5,7 @@ import { DashboardHeader } from "./DashboardHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { OnboardingModal } from "@/components/employee/OnboardingModal";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   getMyOnboarding,
   markMyOnboardingModuleCompleted,
@@ -205,8 +205,8 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
   }, [onboardingOverview]);
 
   return (
-    <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col bg-linear-to-br from-zinc-100 via-white to-zinc-100 dark:from-black dark:via-black dark:to-black">
-      <div className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/80 backdrop-blur-sm px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-5 lg:pl-72 lg:pr-8">
+    <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col overflow-x-hidden bg-linear-to-br from-zinc-100 via-white to-zinc-100 dark:from-black dark:via-black dark:to-black">
+      <div className="sticky top-0 z-50 min-w-0 border-b border-zinc-200/80 bg-white/80 backdrop-blur-sm px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-5 lg:pl-72 lg:pr-8">
         <DashboardHeader
           title={t.tenantAdmin}
           onMenuClick={() => setSidebarOpen(true)}
@@ -226,17 +226,14 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
 
         <main className="min-w-0 flex-1 px-0 py-2 sm:px-3 lg:border-l lg:border-zinc-200/80 lg:px-4 lg:pl-72 dark:lg:border-zinc-800 xl:pl-72">
           <div className="mx-auto mt-1 w-full min-w-0 max-w-[min(100%,88rem)] lg:mt-2">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={pathname}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-              >
-                {children}
-              </motion.div>
-            </AnimatePresence>
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {children}
+            </motion.div>
           </div>
         </main>
       </div>

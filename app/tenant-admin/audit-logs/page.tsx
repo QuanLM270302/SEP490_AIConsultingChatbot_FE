@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { getAuditLogs, type AuditLogEntry } from "@/lib/api/audit-logs";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
@@ -98,7 +97,6 @@ export default function AuditLogsPage() {
 
   if (loading) {
     return (
-      <TenantAdminLayout>
         <div className="flex h-full items-center justify-center">
           <div className="text-center">
             <div className="mb-4 inline-flex h-12 w-12 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
@@ -107,12 +105,10 @@ export default function AuditLogsPage() {
             </p>
           </div>
         </div>
-      </TenantAdminLayout>
     );
   }
 
   return (
-    <TenantAdminLayout>
       <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -302,6 +298,6 @@ export default function AuditLogsPage() {
         </div>
       </div>
       </div>
-    </TenantAdminLayout>
   );
 }
+

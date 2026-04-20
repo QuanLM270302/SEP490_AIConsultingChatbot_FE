@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { Menu, User, LogOut, Settings, Sun, Moon, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/api/auth";
@@ -18,7 +19,7 @@ interface DashboardHeaderProps {
   onMenuClick: () => void;
 }
 
-export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
+export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -68,27 +69,26 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
   }, [isUserMenuOpen]);
 
   const handleLogout = async () => {
+    const token = getAccessToken();
     try {
-      const token = getAccessToken();
       if (token) {
         await logout(token);
       }
+    } catch {
+      // Ignore API/logout transport failures; client-side sign-out still proceeds.
+    } finally {
       clearAuth();
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      // Clear auth anyway
-      clearAuth();
-      router.push("/login");
+      router.replace("/login");
+      router.refresh();
     }
   };
 
   return (
-    <div className="mb-6 flex items-center justify-between">
+    <div className="mb-6 flex min-w-0 items-center justify-between gap-2 sm:gap-3">
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           type="button"
-          className="rounded-2xl bg-white p-3 text-zinc-700 shadow-sm shadow-green-100/60 dark:bg-zinc-950 dark:text-zinc-400 lg:hidden"
+          className="rounded-2xl bg-white p-2.5 text-zinc-700 shadow-sm shadow-green-100/60 dark:bg-zinc-950 dark:text-zinc-400 sm:p-3 lg:hidden"
           onClick={onMenuClick}
         >
           <span className="sr-only">{t.openSidebar}</span>
@@ -96,21 +96,21 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
         </button>
       </div>
 
-      <div className="flex flex-1 items-center justify-end gap-3">
+      <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
         {/* User Menu Dropdown */}
-        <div className="relative" ref={menuRef}>
+        <div className="relative shrink-0" ref={menuRef}>
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 shadow-sm shadow-green-100/60 transition hover:bg-zinc-50 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+            className="flex items-center gap-2 rounded-2xl bg-white px-2.5 py-2 shadow-sm shadow-green-100/60 transition hover:bg-zinc-50 sm:px-3 dark:bg-zinc-950 dark:hover:bg-zinc-900"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600">
               <User className="h-4 w-4 text-white" />
             </div>
-            <span className="hidden text-sm font-semibold text-zinc-900 dark:text-white lg:block">
+            <span className="hidden text-sm font-semibold text-zinc-900 dark:text-white xl:block">
               {displayName}
             </span>
             <svg
-              className={`hidden h-4 w-4 text-zinc-400 transition-transform lg:block ${
+              className={`hidden h-4 w-4 text-zinc-400 transition-transform xl:block ${
                 isUserMenuOpen ? "rotate-180" : ""
               }`}
               fill="none"
@@ -121,58 +121,65 @@ export function DashboardHeader({ title, onMenuClick }: DashboardHeaderProps) {
             </svg>
           </button>
 
-          {/* Dropdown Menu */}
-          {isUserMenuOpen && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-              {/* User Info */}
-              <div className="border-b border-zinc-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-900">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">{displayName}</p>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400">{displayEmail}</p>
+          <AnimatePresence>
+            {isUserMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute right-0 top-full z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                {/* User Info */}
+                <div className="border-b border-zinc-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 dark:border-zinc-800 dark:from-emerald-950/20 dark:to-zinc-900">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600">
+                      <User className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-white">{displayName}</p>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">{displayEmail}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Menu Items */}
-              <div className="p-2">
-                <button
-                  onClick={() => {
-                    router.push("/profile");
-                    setIsUserMenuOpen(false);
-                  }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                >
-                  <User className="h-4 w-4" />
-                  <span>{t.profile}</span>
-                </button>
+                {/* Menu Items */}
+                <div className="p-2">
+                  <button
+                    onClick={() => {
+                      router.push("/profile");
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    <User className="h-4 w-4" />
+                    <span>{t.profile}</span>
+                  </button>
 
-                <button
-                  onClick={() => {
-                    setIsSettingsOpen(true);
-                    setIsUserMenuOpen(false);
-                  }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>{t.settings}</span>
-                </button>
+                  <button
+                    onClick={() => {
+                      setIsSettingsOpen(true);
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>{t.settings}</span>
+                  </button>
 
-                <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-800" />
+                  <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-800" />
 
-                <button
-                  onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>{t.logout}</span>
-                </button>
-              </div>
-            </div>
-          )}
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>{t.logout}</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

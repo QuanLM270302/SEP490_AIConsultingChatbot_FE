@@ -1,10 +1,7 @@
 "use client";
 
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
-
 export default function DocumentsLoading() {
   return (
-    <TenantAdminLayout>
       <div className="space-y-6">
         <div className="space-y-2">
           <div className="h-8 w-72 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-800" />
@@ -24,6 +21,6 @@ export default function DocumentsLoading() {
           <div className="h-10 w-56 animate-pulse rounded-xl bg-zinc-200 dark:bg-zinc-800" />
         </div>
       </div>
-    </TenantAdminLayout>
   );
 }
+

@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { FileText, FolderTree, Tag, Upload } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
@@ -67,7 +66,6 @@ export default function DocumentsPage() {
   const t = translations[language];
 
   return (
-    <TenantAdminLayout>
       <div className="mx-auto max-w-6xl space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
@@ -82,6 +80,6 @@ export default function DocumentsPage() {
 
         <DocumentsTab mode="library" />
       </div>
-    </TenantAdminLayout>
   );
 }
+

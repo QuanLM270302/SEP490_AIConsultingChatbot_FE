@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { DocumentUploadCard } from "@/components/tenant-admin/DocumentUploadCard";
 import { listCategoriesFlat } from "@/lib/api/categories";
 import { listTagsActive } from "@/lib/api/tags";
@@ -128,7 +127,6 @@ export default function DocumentsUploadPage() {
 
   if (loading) {
     return (
-      <TenantAdminLayout>
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
@@ -137,12 +135,10 @@ export default function DocumentsUploadPage() {
             </p>
           </div>
         </div>
-      </TenantAdminLayout>
     );
   }
 
   return (
-    <TenantAdminLayout>
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Header */}
         <div>
@@ -185,6 +181,6 @@ export default function DocumentsUploadPage() {
           onUpload={handleUpload}
         />
       </div>
-    </TenantAdminLayout>
   );
 }
+
