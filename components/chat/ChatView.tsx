@@ -199,6 +199,27 @@ export function ChatView({
     console.log("🔵 Rating message:", { messageId, rating });
     console.log("📋 Current messages:", messages.map(m => ({ id: m.id, role: m.role, rating: m.rating })));
     
+    // Check if clicking the same rating - if so, unrate
+    const currentMessage = messages.find(m => m.id === messageId);
+    const isUnrating = currentMessage?.rating === rating;
+    
+    if (isUnrating) {
+      console.log("🔄 Unrating message");
+      // Remove rating
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id === messageId) {
+            console.log("✅ Removing rating from message:", msg.id);
+            return { ...msg, rating: undefined };
+          }
+          return msg;
+        })
+      );
+      // TODO: Call API to remove rating if backend supports it
+      // For now, we'll just update UI
+      return;
+    }
+    
     setMessages((prev) =>
       prev.map((msg) => {
         if (msg.id === messageId) {

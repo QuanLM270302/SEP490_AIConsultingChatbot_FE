@@ -151,6 +151,22 @@ export default function ChatPlatformPage() {
 
   const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
     console.log("🔵 Rating message:", { messageId, rating });
+    
+    // Check if clicking the same rating - if so, unrate
+    const currentMessage = messages.find(m => m.id === messageId);
+    const isUnrating = currentMessage?.rating === rating;
+    
+    if (isUnrating) {
+      console.log("🔄 Unrating message");
+      // Remove rating
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, rating: undefined } : msg))
+      );
+      // TODO: Call API to remove rating if backend supports it
+      // For now, we'll just update UI
+      return;
+    }
+    
     setMessages((prev) =>
       prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
     );

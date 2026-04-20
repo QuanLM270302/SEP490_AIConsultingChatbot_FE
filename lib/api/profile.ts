@@ -78,3 +78,12 @@ export async function verifyAndUpdateContactEmail(
   });
   return handleResponse<MessageResponse>(res);
 }
+
+/** GET /api/v1/profile/permissions — returns current user's permissions */
+export async function getCurrentUserPermissions(): Promise<string[]> {
+  const res = await fetchWithAuth(`${PROFILE_BASE}/permissions`, {
+    method: "GET",
+  });
+  const data = await handleResponse<{ permissions: string[] }>(res);
+  return data.permissions ?? [];
+}
