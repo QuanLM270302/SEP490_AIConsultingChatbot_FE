@@ -235,29 +235,30 @@ export default function TenantAdminSubscriptionPage() {
   const [upcomingReminderLoading, setUpcomingReminderLoading] = useState(false);
   const [upcomingReminderMessage, setUpcomingReminderMessage] = useState<string | null>(null);
   const [showUpcomingPaymentQr, setShowUpcomingPaymentQr] = useState(false);
+  const [successActivatedSubscription, setSuccessActivatedSubscription] = useState<MySubscriptionResponse | null>(null);
   const { language } = useLanguageStore();
   const t = translations[language];
 
-  const loadSubscription = useCallback((options?: { silent?: boolean }) => {
+  const loadSubscription = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
     const tenantId = getStoredUser()?.tenantId ?? null;
     if (!silent) {
       setSubscriptionLoading(true);
     }
-    getMySubscription()
-      .then((data) => {
-        setSubscription(data);
-        notifyTenantSubscriptionUpdated(tenantId, data);
-      })
-      .catch(() => {
-        setSubscription(null);
-        notifyTenantSubscriptionUpdated(tenantId, null);
-      })
-      .finally(() => {
-        if (!silent) {
-          setSubscriptionLoading(false);
-        }
-      });
+    try {
+      const data = await getMySubscription();
+      setSubscription(data);
+      notifyTenantSubscriptionUpdated(tenantId, data);
+      return data;
+    } catch {
+      setSubscription(null);
+      notifyTenantSubscriptionUpdated(tenantId, null);
+      return null;
+    } finally {
+      if (!silent) {
+        setSubscriptionLoading(false);
+      }
+    }
   }, []);
 
   const loadAvailablePlans = useCallback(() => {
@@ -317,7 +318,7 @@ export default function TenantAdminSubscriptionPage() {
   const modalAmount = planModalTier === "TRIAL" ? 0 : getTierAmount(modalPlanData, modalBillingCycle);
 
   useEffect(() => {
-    loadSubscription();
+    void loadSubscription();
     loadAvailablePlans();
   }, [loadAvailablePlans, loadSubscription]);
 
@@ -334,7 +335,7 @@ export default function TenantAdminSubscriptionPage() {
       if ("payment_id" in data && data.payment_id) {
         setPaymentPending(data);
       } else {
-        handleSubscriptionUpdated();
+        void handleSubscriptionUpdated();
         setPlanModalOpen(false);
         setPlanModalTier(undefined);
       }
@@ -345,13 +346,16 @@ export default function TenantAdminSubscriptionPage() {
     }
   };
 
-  const handleSubscriptionUpdated = () => {
-    loadSubscription();
+  const handleSubscriptionUpdated = async (options?: { showSuccessPopup?: boolean }) => {
+    const latestSubscription = await loadSubscription({ silent: true });
     loadAvailablePlans();
     setPaymentPending(undefined);
     setShowUpcomingPaymentQr(false);
     setUpcomingReminderMessage(null);
     if (activeTab === "history") loadPayments();
+    if (options?.showSuccessPopup && latestSubscription) {
+      setSuccessActivatedSubscription(latestSubscription);
+    }
   };
 
   const handleSelectTier = (tier: SubscriptionTier) => {
@@ -397,7 +401,7 @@ export default function TenantAdminSubscriptionPage() {
       setUpcomingPaymentError(null);
       setUpcomingReminderMessage(null);
       setShowUpcomingPaymentQr(false);
-      loadSubscription({ silent: true });
+      void loadSubscription({ silent: true });
     } catch (e) {
       console.error("Failed to toggle auto-renew:", e);
       window.alert(
@@ -417,7 +421,7 @@ export default function TenantAdminSubscriptionPage() {
     setCancelLoading(true);
     try {
       await cancelSubscription(cancelReason);
-      loadSubscription();
+      void loadSubscription();
       setCancelModalOpen(false);
       setCancelReason("");
     } catch (e) {
@@ -957,7 +961,9 @@ export default function TenantAdminSubscriptionPage() {
                         data={upcomingPaymentPending}
                         language={language === "en" ? "en" : "vi"}
                         onClose={() => setShowUpcomingPaymentQr(false)}
-                        onSuccess={handleSubscriptionUpdated}
+                        onSuccess={() => {
+                          void handleSubscriptionUpdated({ showSuccessPopup: true });
+                        }}
                         compact
                       />
                     </div>
@@ -990,10 +996,18 @@ export default function TenantAdminSubscriptionPage() {
             confirmError={selectPlanError}
             paymentPending={paymentPending}
             onPaymentSuccess={() => {
-              handleSubscriptionUpdated();
+              void handleSubscriptionUpdated({ showSuccessPopup: true });
               setPlanModalOpen(false);
               setPlanModalTier(undefined);
             }}
+          />
+        )}
+
+        {successActivatedSubscription && (
+          <SubscriptionActivatedModal
+            language={language === "en" ? "en" : "vi"}
+            subscription={successActivatedSubscription}
+            onClose={() => setSuccessActivatedSubscription(null)}
           />
         )}
 
@@ -1043,6 +1057,128 @@ export default function TenantAdminSubscriptionPage() {
           </div>
         )}
       </div>
+  );
+}
+
+function SubscriptionActivatedModal({
+  language,
+  subscription,
+  onClose,
+}: {
+  language: "vi" | "en";
+  subscription: MySubscriptionResponse;
+  onClose: () => void;
+}) {
+  const cycleLabel =
+    subscription.billingCycle === "YEARLY"
+      ? language === "en"
+        ? "Yearly"
+        : "Hàng năm"
+      : subscription.billingCycle === "QUARTERLY"
+        ? language === "en"
+          ? "Quarterly"
+          : "Hàng quý"
+        : language === "en"
+          ? "Monthly"
+          : "Hàng tháng";
+
+  return (
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-[0_20px_70px_rgba(16,185,129,0.25)] dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-500 px-6 py-6 text-white">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20">
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="mt-3 text-2xl font-bold">
+            {language === "en" ? "Subscription activated successfully" : "Kích hoạt subscription thành công"}
+          </h3>
+          <p className="mt-1 text-sm text-white/90">
+            {language === "en"
+              ? "Your plan is now active. Here are your billing and usage details."
+              : "Gói của bạn đã được kích hoạt. Dưới đây là thông tin thanh toán và hạn mức sử dụng."}
+          </p>
+        </div>
+
+        <div className="space-y-5 px-6 py-6">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <InfoRow
+                label={language === "en" ? "Plan" : "Gói"}
+                value={tierDisplayName(subscription.tier, language)}
+              />
+              <InfoRow
+                label={language === "en" ? "Billing cycle" : "Chu kỳ"}
+                value={cycleLabel}
+              />
+              <InfoRow
+                label={language === "en" ? "Activation date" : "Ngày kích hoạt"}
+                value={formatDate(subscription.startDate, language)}
+              />
+              <InfoRow
+                label={language === "en" ? "End date" : "Ngày hết hạn"}
+                value={formatDate(subscription.endDate, language)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-3 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+              {language === "en" ? "Included usage" : "Hạn mức sử dụng"}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <UsageCard
+                title={language === "en" ? "Max users" : "Người dùng tối đa"}
+                value={subscription.maxUsers}
+              />
+              <UsageCard
+                title={language === "en" ? "Max documents" : "Tài liệu tối đa"}
+                value={subscription.maxDocuments}
+              />
+              <UsageCard
+                title={language === "en" ? "Storage limit (GB)" : "Dung lượng lưu trữ (GB)"}
+                value={subscription.maxStorageGb}
+              />
+              <UsageCard
+                title={language === "en" ? "API calls limit" : "Giới hạn API calls"}
+                value={subscription.maxApiCalls}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+            >
+              {language === "en" ? "Continue" : "Tiếp tục"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">{value}</p>
+    </div>
+  );
+}
+
+function UsageCard({ title, value }: { title: string; value: number | undefined }) {
+  return (
+    <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/60 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+      <p className="text-xs text-zinc-600 dark:text-zinc-400">{title}</p>
+      <p className="mt-1 text-xl font-bold text-emerald-700 dark:text-emerald-300">
+        {value == null ? "—" : value.toLocaleString()}
+      </p>
+    </div>
   );
 }
 

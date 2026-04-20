@@ -139,13 +139,8 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
   }, [isEn]);
 
   useEffect(() => {
-    if (!isDashboardTab) {
-      setShowOnboardingModal(false);
-      return;
-    }
-
     void loadOnboarding({
-      autoOpenIfIncomplete: true,
+      autoOpenIfIncomplete: isDashboardTab,
       oncePerSession: true,
       silent: true,
     });
@@ -217,7 +212,7 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
               ? `${onboardingSummary.completed}/${onboardingSummary.total}`
               : null
           }
-          showOnboardingButton={isDashboardTab}
+          showOnboardingButton
         />
       </div>
 

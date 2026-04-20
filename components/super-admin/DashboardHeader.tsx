@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, User, LogOut, Settings, Sun, Moon, Globe } from "lucide-react";
+import { Menu, User, LogOut, Settings, Sun, Moon, Globe, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/api/auth";
 import { getAccessToken, clearAuth, getStoredUser } from "@/lib/auth-store";
@@ -17,9 +18,15 @@ const SUPER_FALLBACK_EMAIL = "superadmin@system.vn";
 interface DashboardHeaderProps {
   title: string;
   onMenuClick: () => void;
+  onboardingHref?: string;
+  onboardingLabel?: string;
 }
 
-export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+export function DashboardHeader({
+  onMenuClick,
+  onboardingHref = "/super-admin/onboarding",
+  onboardingLabel,
+}: DashboardHeaderProps) {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -97,6 +104,14 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       </div>
 
       <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
+        <Link
+          href={onboardingHref}
+          className="group hidden items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:border-emerald-600 hover:bg-emerald-600 hover:text-white sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-emerald-500 dark:hover:bg-emerald-600"
+        >
+          <Sparkles className="h-4.5 w-4.5" />
+          <span>{onboardingLabel ?? t.onboarding}</span>
+        </Link>
+
         {/* User Menu Dropdown */}
         <div className="relative shrink-0" ref={menuRef}>
           <button

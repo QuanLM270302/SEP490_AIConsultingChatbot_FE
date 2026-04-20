@@ -874,10 +874,12 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
               </p>
             </div>
           )}
-          <Button type="submit" variant="primary" size="md" disabled={uploading}>
-            <Upload className="mr-2 h-4 w-4" />
-            {uploading ? t.uploading : t.upload}
-          </Button>
+          <div className="sticky bottom-0 z-10 mt-2 rounded-xl border border-zinc-200 bg-white/95 p-2 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/95">
+            <Button type="submit" variant="primary" size="md" disabled={uploading} className="w-full">
+              <Upload className="mr-2 h-4 w-4" />
+              {uploading ? t.uploading : t.upload}
+            </Button>
+          </div>
         </form>
       </div>
       )}

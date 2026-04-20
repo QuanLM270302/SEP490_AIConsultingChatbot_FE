@@ -94,12 +94,20 @@ export function EmployeesTable() {
     }
     const rect = anchor.getBoundingClientRect();
     const menuWidth = 208;
+    const menuHeight = 320;
     const margin = 12;
     const left = Math.min(
       Math.max(rect.right - menuWidth, margin),
       window.innerWidth - margin - menuWidth
     );
-    setMenuPos({ top: rect.bottom + 6, left });
+    const menuGap = 2;
+    const openDownTop = rect.bottom + menuGap;
+    const openUpTop = rect.top - menuHeight - menuGap;
+    const top =
+      openDownTop + menuHeight > window.innerHeight - margin
+        ? Math.max(margin, openUpTop)
+        : openDownTop;
+    setMenuPos({ top, left });
     setOpenMenuId(userId);
   };
 

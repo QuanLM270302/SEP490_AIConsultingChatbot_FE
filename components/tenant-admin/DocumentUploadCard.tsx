@@ -393,7 +393,7 @@ export function DocumentUploadCard({
 
         {/* Action Section */}
         {selectedFile && (
-          <div className="sticky bottom-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="sticky bottom-0 z-10 mt-2 rounded-2xl border border-zinc-200 bg-white/95 p-4 shadow-lg backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/95">
             <button
               type="submit"
               disabled={uploading}
