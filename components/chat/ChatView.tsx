@@ -123,6 +123,8 @@ export function ChatView({
   const handleSelectChat = (chatId: string) => {
     setCurrentChatId(chatId);
     getConversationHistory(chatId).then((history) => {
+      console.log("📥 Conversation history loaded:", history);
+      
       if (!history?.messages?.length) {
         setMessages([]);
         setConversationId(chatId);
@@ -130,20 +132,42 @@ export function ChatView({
       }
       const built: Message[] = [];
       const msgs = history.messages;
+      
+      console.log("📋 Raw messages from API:", msgs.map(m => ({
+        id: m.id,
+        messageId: m.messageId,
+        role: m.role,
+        rating: m.rating,
+        content: m.content.substring(0, 50)
+      })));
+      
       for (let i = 0; i < msgs.length; i++) {
         if (msgs[i].role === "USER") {
           const userMsg = msgs[i];
           const assistantMsg = msgs[i + 1]?.role === "ASSISTANT" ? msgs[i + 1] : null;
           built.push({
-            id: resolveServerMessageId(userMsg) ?? `user-${i}-${userMsg.createdAt ?? ""}`,
+            id: userMsg.messageId || userMsg.id,
             role: "user",
             content: userMsg.content,
             timestamp: new Date(userMsg.createdAt ?? Date.now()),
           });
           if (assistantMsg) {
-            const persisted = mapServerRatingToUi(assistantMsg.rating);
+            // Convert rating: 5 = helpful, 1 = not-helpful, null = no rating
+            let rating: "helpful" | "not-helpful" | undefined;
+            if (assistantMsg.rating === 5) {
+              rating = "helpful";
+            } else if (assistantMsg.rating === 1) {
+              rating = "not-helpful";
+            }
+            
+            console.log(`🔄 Converting assistant message rating:`, {
+              messageId: assistantMsg.messageId || assistantMsg.id,
+              rawRating: assistantMsg.rating,
+              convertedRating: rating
+            });
+            
             built.push({
-              id: resolveServerMessageId(assistantMsg) ?? `assistant-${i}-${assistantMsg.createdAt ?? ""}`,
+              id: assistantMsg.messageId || assistantMsg.id,
               role: "assistant",
               content: assistantMsg.content,
               sources: (assistantMsg.sources ?? []).map((s) => ({
@@ -152,12 +176,20 @@ export function ChatView({
                 confidence: s.relevanceScore,
               })),
               timestamp: new Date(assistantMsg.createdAt ?? Date.now()),
-              ...(persisted ? { rating: persisted } : {}),
+              rating,
             });
             i++;
           }
         }
       }
+      
+      console.log("✅ Built messages:", built.map(m => ({
+        id: m.id,
+        role: m.role,
+        rating: m.rating,
+        content: m.content.substring(0, 50)
+      })));
+      
       setMessages(built);
       setSelectedSource(null);
       setConversationId(chatId);
@@ -167,15 +199,38 @@ export function ChatView({
 
   const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
     console.log("🔵 Rating message:", { messageId, rating });
-    if (!isRatingMessageId(messageId)) {
-      console.error("❌ Cannot rate: missing or invalid server message id");
+    console.log("📋 Current messages:", messages.map(m => ({ id: m.id, role: m.role, rating: m.rating })));
+    
+    // Check if clicking the same rating - if so, unrate
+    const currentMessage = messages.find(m => m.id === messageId);
+    const isUnrating = currentMessage?.rating === rating;
+    
+    if (isUnrating) {
+      console.log("🔄 Unrating message");
+      // Remove rating
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id === messageId) {
+            console.log("✅ Removing rating from message:", msg.id);
+            return { ...msg, rating: undefined };
+          }
+          return msg;
+        })
+      );
+      // TODO: Call API to remove rating if backend supports it
+      // For now, we'll just update UI
       return;
     }
-    let previousRating: Message["rating"];
-    setMessages((prev) => {
-      previousRating = prev.find((m) => m.id === messageId)?.rating;
-      return prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg));
-    });
+    
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id === messageId) {
+          console.log("✅ Found matching message to update:", msg.id);
+          return { ...msg, rating };
+        }
+        return msg;
+      })
+    );
     try {
       const result = await rateMessage(messageId, rating);
       const ui = mapServerRatingToUi(result.rating) ?? rating;

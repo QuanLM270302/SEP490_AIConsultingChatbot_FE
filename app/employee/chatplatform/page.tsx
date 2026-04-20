@@ -156,15 +156,25 @@ export default function ChatPlatformPage() {
 
   const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
     console.log("🔵 Rating message:", { messageId, rating });
-    if (!isRatingMessageId(messageId)) {
-      console.error("❌ Cannot rate: missing or invalid server message id");
+    
+    // Check if clicking the same rating - if so, unrate
+    const currentMessage = messages.find(m => m.id === messageId);
+    const isUnrating = currentMessage?.rating === rating;
+    
+    if (isUnrating) {
+      console.log("🔄 Unrating message");
+      // Remove rating
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, rating: undefined } : msg))
+      );
+      // TODO: Call API to remove rating if backend supports it
+      // For now, we'll just update UI
       return;
     }
-    let previousRating: Message["rating"];
-    setMessages((prev) => {
-      previousRating = prev.find((m) => m.id === messageId)?.rating ?? null;
-      return prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg));
-    });
+    
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
+    );
     try {
       const result = await rateMessage(messageId, rating);
       const ui = mapServerRatingToUi(result.rating) ?? rating;
@@ -420,6 +430,15 @@ export default function ChatPlatformPage() {
                 for (let i = 0; i < history.messages.length; i += 2) {
                   const userMsg = history.messages[i];
                   const aiMsg = history.messages[i + 1];
+                  
+                  // Convert rating: 5 = helpful, 1 = not-helpful, null = no rating
+                  let rating: "helpful" | "not-helpful" | null = null;
+                  if (aiMsg?.rating === 5) {
+                    rating = "helpful";
+                  } else if (aiMsg?.rating === 1) {
+                    rating = "not-helpful";
+                  }
+                  
                   msgs.push({
                     id:
                       resolveServerMessageId(aiMsg as ChatMessageResponse) ??
@@ -434,7 +453,7 @@ export default function ChatPlatformPage() {
                       confidence: s.relevanceScore,
                     })),
                     timestamp: new Date(aiMsg?.createdAt ?? userMsg?.createdAt ?? new Date()),
-                    rating: mapServerRatingToUi(aiMsg?.rating) ?? null,
+                    rating,
                   });
                 }
                 setMessages(msgs);
