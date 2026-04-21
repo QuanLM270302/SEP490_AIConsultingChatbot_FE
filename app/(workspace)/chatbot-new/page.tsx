@@ -64,6 +64,7 @@ export default function ChatbotNewPage() {
 
   const currentUser = getStoredUser();
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  const [permissionsHydrated, setPermissionsHydrated] = useState(false);
   const roleCodes = useMemo(
     () => (currentUser?.roles ?? []).map((role) => role.toUpperCase()),
     [currentUser?.roles]
@@ -138,43 +139,47 @@ export default function ChatbotNewPage() {
   );
 
   const loadPermissions = useCallback(async () => {
-    await tryRefreshAuth();
-    let resolvedPermissions: string[] = [];
-    const latestStoredUser = getStoredUser();
-    const storedAuthorities = extractPermissionCodes(latestStoredUser?.roles);
-    if (storedAuthorities.length > 0) {
-      resolvedPermissions = storedAuthorities;
-    }
-
     try {
-      const permissions = await getCurrentUserPermissions();
-      if (permissions.length > 0) {
-        resolvedPermissions = permissions;
+      await tryRefreshAuth();
+      let resolvedPermissions: string[] = [];
+      const latestStoredUser = getStoredUser();
+      const storedAuthorities = extractPermissionCodes(latestStoredUser?.roles);
+      if (storedAuthorities.length > 0) {
+        resolvedPermissions = storedAuthorities;
       }
-    } catch {
-      // fallback below
-    }
 
-    if (resolvedPermissions.length === 0) {
       try {
-        const profile = await getProfile();
-        const profilePermissions = (profile.permissions ?? []).filter(Boolean);
-        if (profilePermissions.length > 0) {
-          resolvedPermissions = profilePermissions;
+        const permissions = await getCurrentUserPermissions();
+        if (permissions.length > 0) {
+          resolvedPermissions = permissions;
         }
       } catch {
         // fallback below
       }
-    }
 
-    if (resolvedPermissions.length === 0) {
-      const jwtPermissions = decodePermissionsFromJwt(getAccessToken());
-      if (jwtPermissions.length > 0) {
-        resolvedPermissions = jwtPermissions;
+      if (resolvedPermissions.length === 0) {
+        try {
+          const profile = await getProfile();
+          const profilePermissions = (profile.permissions ?? []).filter(Boolean);
+          if (profilePermissions.length > 0) {
+            resolvedPermissions = profilePermissions;
+          }
+        } catch {
+          // fallback below
+        }
       }
-    }
 
-    setUserPermissions(resolvedPermissions);
+      if (resolvedPermissions.length === 0) {
+        const jwtPermissions = decodePermissionsFromJwt(getAccessToken());
+        if (jwtPermissions.length > 0) {
+          resolvedPermissions = jwtPermissions;
+        }
+      }
+
+      setUserPermissions(resolvedPermissions);
+    } finally {
+      setPermissionsHydrated(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -207,6 +212,7 @@ export default function ChatbotNewPage() {
   }, [loadPermissions]);
 
   useEffect(() => {
+    if (!permissionsHydrated) return;
     if (activeView === "analytics" && !canViewAnalytics) {
       router.replace("/chatbot-new");
       return;
@@ -214,7 +220,7 @@ export default function ChatbotNewPage() {
     if (activeView === "search" && !canViewDocuments) {
       router.replace("/chatbot-new");
     }
-  }, [activeView, canViewAnalytics, canViewDocuments, router]);
+  }, [activeView, canViewAnalytics, canViewDocuments, permissionsHydrated, router]);
 
   return (
     <>

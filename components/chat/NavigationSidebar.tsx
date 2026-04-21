@@ -9,7 +9,7 @@ import {
   User,
   LogOut,
   ClipboardCheck,
-  LayoutDashboard,
+  ArrowLeft,
   Settings,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -93,14 +93,14 @@ export function NavigationSidebar({
   }, []);
 
   const isEn = language === "en";
-  const isTenantAdmin = authorities.some((role) =>
-    role.includes("TENANT_ADMIN")
-  );
   const hasDocumentDashboardShortcut = authorities.some(
     (authority) =>
       authority === "DOCUMENT_WRITE" ||
       authority === "DOCUMENT_ALL" ||
       authority === "ALL"
+  );
+  const isTenantAdmin = authorities.some((authority) =>
+    authority.includes("TENANT_ADMIN")
   );
 
   const navigation: {
@@ -108,12 +108,12 @@ export function NavigationSidebar({
     icon: typeof MessageSquare;
     caption: string;
   }[] = [
-    { id: "chat", icon: MessageSquare, caption: isEn ? "Chat" : "Trò chuy?n" },
+    { id: "chat", icon: MessageSquare, caption: isEn ? "Chat" : "Tr\u00f2 chuy\u1ec7n" },
     ...(canViewDocuments
-      ? [{ id: "search" as const, icon: Search, caption: isEn ? "Documents" : "Tài li?u" }]
+      ? [{ id: "search" as const, icon: Search, caption: isEn ? "Documents" : "T\u00e0i li\u1ec7u" }]
       : []),
     ...(canViewAnalytics
-      ? [{ id: "analytics" as const, icon: Users, caption: isEn ? "Analytics" : "Phân tích" }]
+      ? [{ id: "analytics" as const, icon: Users, caption: isEn ? "Analytics" : "Ph\u00e2n t\u00edch" }]
       : []),
   ];
 
@@ -152,7 +152,7 @@ export function NavigationSidebar({
 
       <nav
         className="flex min-h-0 flex-1 flex-col items-center justify-start gap-2.5 px-1 pt-2"
-        aria-label={isEn ? "Main navigation" : "Ði?u hu?ng chính"}
+        aria-label={isEn ? "Main navigation" : "\u0110i\u1ec1u h\u01b0\u1edbng ch\u00ednh"}
       >
         {navigation.map((item) => {
           const isActive = activeView === item.id;
@@ -199,7 +199,7 @@ export function NavigationSidebar({
       </nav>
 
       <div className="mt-auto flex flex-col items-center gap-3 border-t border-zinc-200/90 pt-3 dark:border-zinc-800">
-        {hasDocumentDashboardShortcut ? (
+        {hasDocumentDashboardShortcut && !isTenantAdmin ? (
           <div className="flex flex-col items-center gap-1">
             <button
               type="button"
@@ -210,7 +210,7 @@ export function NavigationSidebar({
                   ? "scale-105 bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200/90 dark:bg-emerald-950/60 dark:text-emerald-400 dark:ring-emerald-700/80"
                   : "text-zinc-600 hover:-translate-y-0.5 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
               }`}
-              title={isEn ? "Document dashboard" : "Document Dashboard"}
+              title={isEn ? "Document dashboard" : "B\u1ea3ng \u0111i\u1ec1u khi\u1ec3n t\u00e0i li\u1ec7u"}
             >
               <FileText className="h-5 w-5" />
             </button>
@@ -221,24 +221,7 @@ export function NavigationSidebar({
                   : "text-zinc-500 dark:text-zinc-400"
               }`}
             >
-              {isEn ? "Doc hub" : "Tài li?u"}
-            </span>
-          </div>
-        ) : null}
-
-        {isTenantAdmin ? (
-          <div className="flex flex-col items-center gap-1">
-            <button
-              type="button"
-              onClick={() => readOnlyNavigation ? undefined : router.push("/tenant-admin")}
-              disabled={readOnlyNavigation}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
-              title={isEn ? "Tenant dashboard" : "Dashboard tenant"}
-            >
-              <LayoutDashboard className="h-5 w-5" />
-            </button>
-            <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
-              {isEn ? "Dashboard" : "B?ng tin"}
+              {isEn ? "Doc hub" : "Dashboard"}
             </span>
           </div>
         ) : null}
@@ -258,12 +241,12 @@ export function NavigationSidebar({
                 onboardingLoading
                   ? isEn
                     ? "Loading onboarding..."
-                    : "Ðang t?i onboarding..."
+                    : "\u0110ang t\u1ea3i onboarding..."
                   : onboardingTotal > 0
                     ? `Onboarding ${onboardingCompleted}/${onboardingTotal}`
                     : isEn
                       ? "Onboarding not configured"
-                      : "Onboarding chua c?u hình"
+                      : "Onboarding ch\u01b0a c\u1ea5u h\u00ecnh"
               }
             >
               <ClipboardCheck className="h-5 w-5" />
@@ -272,7 +255,24 @@ export function NavigationSidebar({
               ) : null}
             </button>
             <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
-              Checklist
+              {isEn ? "Checklist" : "Danh s\u00e1ch"}
+            </span>
+          </div>
+        ) : null}
+
+        {isTenantAdmin ? (
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={() => readOnlyNavigation ? undefined : router.push("/tenant-admin")}
+              disabled={readOnlyNavigation}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
+              title={isEn ? "Back to dashboard" : "Quay l?i dashboard"}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
+              {isEn ? "Dashboard" : "Dashboard"}
             </span>
           </div>
         ) : null}
@@ -287,7 +287,7 @@ export function NavigationSidebar({
             <User className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} />
           </button>
           <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
-            {isEn ? "Account" : "H? so"}
+            {isEn ? "Account" : "H\u1ed3 s\u01a1"}
           </span>
 
           {showUserMenu ? (
@@ -313,7 +313,7 @@ export function NavigationSidebar({
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                   >
                     <User className="h-4 w-4" />
-                    {isEn ? "Profile" : "H? so"}
+                    {isEn ? "Profile" : "H\u1ed3 s\u01a1"}
                   </button>
                   {onOpenSettings ? (
                     <button
@@ -325,7 +325,7 @@ export function NavigationSidebar({
                       className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     >
                       <Settings className="h-4 w-4" />
-                      {isEn ? "Settings" : "Cài d?t"}
+                      {isEn ? "Settings" : "C\u00e0i \u0111\u1eb7t"}
                     </button>
                   ) : null}
                   <button
@@ -334,7 +334,7 @@ export function NavigationSidebar({
                     className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                   >
                     <LogOut className="h-4 w-4" />
-                    {isEn ? "Logout" : "Ðang xu?t"}
+                    {isEn ? "Logout" : "\u0110\u0103ng xu\u1ea5t"}
                   </button>
                 </div>
               </div>

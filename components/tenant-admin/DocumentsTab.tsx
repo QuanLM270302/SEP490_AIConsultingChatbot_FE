@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button, useConfirmDialog } from "@/components/ui";
 import {
   listDocuments,
@@ -709,13 +710,24 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
       return;
     }
     const rect = anchor.getBoundingClientRect();
+    const targetDoc = documents.find((d) => d.id === docId);
+    const editable = canEditDocument(targetDoc);
     const menuWidth = 208;
+    // Keep the flip logic close to real rendered height.
+    const menuHeight = editable ? 292 : 96;
     const margin = 12;
     const left = Math.min(
       Math.max(rect.right - menuWidth, margin),
       window.innerWidth - margin - menuWidth
     );
-    setMenuPos({ top: rect.bottom + 6, left });
+    const menuGap = 6;
+    const openDownTop = rect.bottom + menuGap;
+    const openUpTop = rect.top - menuHeight - menuGap;
+    const top =
+      openDownTop + menuHeight > window.innerHeight - margin
+        ? Math.max(margin, openUpTop)
+        : openDownTop;
+    setMenuPos({ top, left });
     setOpenMenuId(docId);
   };
 
@@ -1284,8 +1296,9 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
       )}
       
       {/* Dropdown Menu */}
-      {openMenuId && menuPos && (
-        <>
+      {openMenuId && menuPos && typeof document !== "undefined"
+        ? createPortal(
+          <>
           <div
             className="fixed inset-0 z-40"
             onClick={() => {
@@ -1376,8 +1389,10 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
               </>
             )}
           </div>
-        </>
-      )}
+          </>,
+          document.body
+        )
+        : null}
       </>
       )}
 

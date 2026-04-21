@@ -88,6 +88,25 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
   const isDocumentDashboardActive = pathname === "/document-dashboard";
 
   const currentUser = getStoredUser();
+  const normalizedAuthorities = useMemo(
+    () => (currentUser?.roles ?? []).map((role) => role.trim().toUpperCase()),
+    [currentUser?.roles]
+  );
+  const hasDocumentAll = normalizedAuthorities.includes("DOCUMENT_ALL");
+  const canViewDocuments =
+    hasDocumentAll ||
+    normalizedAuthorities.includes("DOCUMENT_READ") ||
+    normalizedAuthorities.includes("DOCUMENT_WRITE") ||
+    normalizedAuthorities.includes("DOCUMENT_DELETE");
+  const canViewAnalytics =
+    normalizedAuthorities.includes("ANALYTICS_VIEW") ||
+    normalizedAuthorities.includes("ANALYTICS_EXPORT") ||
+    normalizedAuthorities.some(
+      (role) =>
+        role.includes("TENANT_ADMIN") ||
+        role.includes("SUPER_ADMIN") ||
+        role.includes("STAFF")
+    );
   const isEmployeeUser = useMemo(
     () => (currentUser?.roles ?? []).some((role) => role.includes("EMPLOYEE")),
     [currentUser?.roles]
@@ -228,6 +247,8 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
         activeView={activeView}
         onViewChange={handleSidebarViewChange}
         onToggleHistory={handleToggleHistory}
+        canViewDocuments={canViewDocuments}
+        canViewAnalytics={canViewAnalytics}
         isDocumentDashboardActive={isDocumentDashboardActive}
         showOnboardingShortcut={isEmployeeUser}
         onboardingLoading={isOnboardingLoading}
