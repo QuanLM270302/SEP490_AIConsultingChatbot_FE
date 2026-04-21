@@ -3,6 +3,11 @@ import type { JwtResponse } from "@/types/auth";
 const ACCESS_TOKEN_KEY = "auth_access_token";
 const REFRESH_TOKEN_KEY = "auth_refresh_token";
 const USER_KEY = "auth_user";
+const LOGIN_SESSION_KEY = "auth_login_session_id";
+
+function createLoginSessionId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -35,6 +40,12 @@ export function getStoredUser(): Pick<
   }
 }
 
+export function getLoginSessionId(): string | null {
+  if (typeof window === "undefined") return null;
+  const value = localStorage.getItem(LOGIN_SESSION_KEY)?.trim();
+  return value ? value : null;
+}
+
 export function setAuth(data: JwtResponse): void {
   if (typeof window === "undefined") return;
   const access = data.accessToken?.trim() ?? "";
@@ -42,6 +53,13 @@ export function setAuth(data: JwtResponse): void {
   if (!access || !refresh) return;
   localStorage.setItem(ACCESS_TOKEN_KEY, access);
   localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+  const existingLoginSessionId = localStorage.getItem(LOGIN_SESSION_KEY)?.trim();
+  localStorage.setItem(
+    LOGIN_SESSION_KEY,
+    existingLoginSessionId && existingLoginSessionId.length > 0
+      ? existingLoginSessionId
+      : createLoginSessionId()
+  );
   localStorage.setItem(
     USER_KEY,
     JSON.stringify({
@@ -58,6 +76,7 @@ export function clearAuth(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(LOGIN_SESSION_KEY);
   localStorage.removeItem(USER_KEY);
 }
 

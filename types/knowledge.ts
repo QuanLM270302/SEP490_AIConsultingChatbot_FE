@@ -30,6 +30,9 @@ export interface DocumentResponse {
   chunkCount?: number | null;
   uploadedAt: string;
   documentTitle?: string | null;
+  uploadedBy?: string | null;
+  uploadedByEmail?: string | null;
+  uploadedByName?: string | null;
 }
 
 export interface DeletedDocumentResponse {

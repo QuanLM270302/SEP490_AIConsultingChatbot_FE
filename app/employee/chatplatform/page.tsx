@@ -156,22 +156,16 @@ export default function ChatPlatformPage() {
 
   const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
     console.log("🔵 Rating message:", { messageId, rating });
-    
-    // Check if clicking the same rating - if so, unrate
+
     const currentMessage = messages.find(m => m.id === messageId);
-    const isUnrating = currentMessage?.rating === rating;
-    
-    if (isUnrating) {
-      console.log("🔄 Unrating message");
-      // Remove rating
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === messageId ? { ...msg, rating: undefined } : msg))
-      );
-      // TODO: Call API to remove rating if backend supports it
-      // For now, we'll just update UI
+    const previousRating: Message["rating"] = currentMessage?.rating ?? null;
+
+    // Backend now supports only binary ratings (5 helpful, 1 not-helpful), no unrate action.
+    if (previousRating === rating) {
+      console.log("ℹ️ Rating unchanged, skip request");
       return;
     }
-    
+
     setMessages((prev) =>
       prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
     );
@@ -430,15 +424,8 @@ export default function ChatPlatformPage() {
                 for (let i = 0; i < history.messages.length; i += 2) {
                   const userMsg = history.messages[i];
                   const aiMsg = history.messages[i + 1];
-                  
-                  // Convert rating: 5 = helpful, 1 = not-helpful, null = no rating
-                  let rating: "helpful" | "not-helpful" | null = null;
-                  if (aiMsg?.rating === 5) {
-                    rating = "helpful";
-                  } else if (aiMsg?.rating === 1) {
-                    rating = "not-helpful";
-                  }
-                  
+                  const rating = mapServerRatingToUi(aiMsg?.rating) ?? null;
+
                   msgs.push({
                     id:
                       resolveServerMessageId(aiMsg as ChatMessageResponse) ??
