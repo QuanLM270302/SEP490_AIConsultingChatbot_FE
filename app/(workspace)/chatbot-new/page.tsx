@@ -9,6 +9,7 @@ import { ChatbotNewHeader } from "@/components/chat/ChatbotNewHeader";
 import { getCurrentUserPermissions, getProfile } from "@/lib/api/profile";
 import { getAccessToken, getStoredUser, tryRefreshAuth } from "@/lib/auth-store";
 import { useWorkspaceStore } from "@/lib/workspace-store";
+import { useLivePolling } from "@/lib/hooks/useLivePolling";
 
 function decodePermissionsFromJwt(token: string | null): string[] {
   if (!token) return [];
@@ -186,30 +187,10 @@ export default function ChatbotNewPage() {
     void loadPermissions();
   }, [loadPermissions]);
 
-  useEffect(() => {
-    const PERMISSION_SYNC_MS = 5000;
-    const intervalId = window.setInterval(() => {
-      void loadPermissions();
-    }, PERMISSION_SYNC_MS);
-
-    const syncOnReturn = () => {
-      if (document.visibilityState === "visible") {
-        void loadPermissions();
-      }
-    };
-    const syncOnFocus = () => {
-      void loadPermissions();
-    };
-
-    document.addEventListener("visibilitychange", syncOnReturn);
-    window.addEventListener("focus", syncOnFocus);
-
-    return () => {
-      window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", syncOnReturn);
-      window.removeEventListener("focus", syncOnFocus);
-    };
-  }, [loadPermissions]);
+  useLivePolling(
+    () => loadPermissions(),
+    { enabled: true, intervalMs: 1500, hiddenIntervalMs: 3500, runImmediately: false }
+  );
 
   useEffect(() => {
     if (!permissionsHydrated) return;

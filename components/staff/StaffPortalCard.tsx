@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/platform-dashboard";
 import { STAFF_PORTAL_STATS_REFRESH_EVENT } from "@/lib/staff-portal-stats-refresh";
 
-const POLL_MS = 25_000;
+const POLL_MS = 1200;
 
 function AnimatedStat({ value }: { value: number | null }) {
   if (value === null) {

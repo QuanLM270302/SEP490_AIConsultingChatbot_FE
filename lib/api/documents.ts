@@ -362,6 +362,20 @@ export interface DocumentPermissionProbeResult {
   canDelete: boolean;
 }
 
+export interface AccessScopeDepartment {
+  id: number;
+  name?: string;
+  code?: string;
+  isActive?: boolean;
+}
+
+export interface AccessScopeRole {
+  id: number;
+  name?: string;
+  code?: string;
+  isActive?: boolean;
+}
+
 export async function probeDocumentPermissions(): Promise<DocumentPermissionProbeResult> {
   let canRead = false;
   let canWrite = false;
@@ -423,6 +437,40 @@ export async function listDocuments(params?: ListDocumentsParams): Promise<Docum
     if (Array.isArray(o.data)) return o.data as DocumentResponse[];
   }
   return [];
+}
+
+export async function listAccessScopeDepartments(): Promise<AccessScopeDepartment[]> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/access-scope/departments`);
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to load access scope departments"));
+  const data: unknown = await res.json();
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((item) => (item && typeof item === "object" ? item : null))
+    .filter((item): item is Record<string, unknown> => item !== null)
+    .map((item) => ({
+      id: Number(item.id),
+      name: typeof item.name === "string" ? item.name : undefined,
+      code: typeof item.code === "string" ? item.code : undefined,
+      isActive: typeof item.isActive === "boolean" ? item.isActive : undefined,
+    }))
+    .filter((item) => Number.isFinite(item.id) && item.id > 0);
+}
+
+export async function listAccessScopeRoles(): Promise<AccessScopeRole[]> {
+  const res = await fetchWithAuth(`${DOCUMENTS_BASE}/access-scope/roles`);
+  if (!res.ok) throw apiError(res, await res.text().catch(() => "Failed to load access scope roles"));
+  const data: unknown = await res.json();
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((item) => (item && typeof item === "object" ? item : null))
+    .filter((item): item is Record<string, unknown> => item !== null)
+    .map((item) => ({
+      id: Number(item.id),
+      name: typeof item.name === "string" ? item.name : undefined,
+      code: typeof item.code === "string" ? item.code : undefined,
+      isActive: typeof item.isActive === "boolean" ? item.isActive : undefined,
+    }))
+    .filter((item) => Number.isFinite(item.id) && item.id > 0);
 }
 
 /** GET /api/v1/knowledge/documents/detail/{id} — metadata + visibility (Swagger: xem chi tiết tài liệu). */

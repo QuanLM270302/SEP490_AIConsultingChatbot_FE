@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import { DocumentUploadCard } from "./DocumentUploadCard";
 import { listCategoriesFlat } from "@/lib/api/categories";
 import { listTagsActive } from "@/lib/api/tags";
-import { getTenantActiveDepartments, getTenantRoles } from "@/lib/api/tenant-admin";
-import { uploadDocument, type UploadDocumentParams } from "@/lib/api/documents";
+import { uploadDocument, listAccessScopeDepartments, listAccessScopeRoles, type UploadDocumentParams } from "@/lib/api/documents";
 import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
 import type { DepartmentResponse, RoleResponse } from "@/lib/api/tenant-admin";
 import { useLanguageStore } from "@/lib/language-store";
@@ -31,8 +30,8 @@ export function DocumentUploadSection() {
         const [cats, activeTags, depts, tenantRoles] = await Promise.all([
           listCategoriesFlat(),
           listTagsActive(),
-          getTenantActiveDepartments().catch(() => []),
-          getTenantRoles().catch(() => []),
+          listAccessScopeDepartments().catch(() => []),
+          listAccessScopeRoles().catch(() => []),
         ]);
         setCategories(cats);
         setTags(activeTags);

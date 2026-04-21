@@ -39,7 +39,7 @@ export default function ChatPlatformPage() {
     };
 
     checkHealth();
-    const interval = setInterval(checkHealth, 30000); // Check every 30s
+    const interval = setInterval(checkHealth, 1500); // Near real-time health sync
     return () => clearInterval(interval);
   }, []);
 

@@ -62,7 +62,10 @@ export function NavigationSidebar({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const currentUser = getStoredUser();
-  const [authorities, setAuthorities] = useState<string[]>(currentUser?.roles ?? []);
+  const [authorities, setAuthorities] = useState<string[]>(() => {
+    const user = getStoredUser() as (ReturnType<typeof getStoredUser> & { permissions?: string[] }) | null;
+    return Array.from(new Set([...(user?.roles ?? []), ...(user?.permissions ?? [])]));
+  });
   const [displayName, setDisplayName] = useState(
     currentUser?.email?.split("@")[0] || "User"
   );
@@ -77,7 +80,11 @@ export function NavigationSidebar({
     void (async () => {
       await tryRefreshAuth();
       if (cancelled) return;
-      setAuthorities(getStoredUser()?.roles ?? []);
+      const refreshedUser = getStoredUser() as (ReturnType<typeof getStoredUser> & { permissions?: string[] }) | null;
+      const mergedAuthorities = Array.from(
+        new Set([...(refreshedUser?.roles ?? []), ...(refreshedUser?.permissions ?? [])])
+      );
+      setAuthorities(mergedAuthorities);
     })();
     return () => {
       cancelled = true;
@@ -88,17 +95,28 @@ export function NavigationSidebar({
     getProfile()
       .then((p) => {
         if (p?.fullName?.trim()) setDisplayName(p.fullName.trim());
+        const profileAuthorities = Array.isArray(p?.permissions) ? p.permissions.filter(Boolean) : [];
+        if (profileAuthorities.length > 0) {
+          setAuthorities((prev) => Array.from(new Set([...prev, ...profileAuthorities])));
+        }
       })
       .catch(() => {});
   }, []);
 
   const isEn = language === "en";
-  const hasDocumentDashboardShortcut = authorities.some(
+  const hasDocumentReadPermission = authorities.some(
+    (authority) =>
+      authority === "DOCUMENT_READ" ||
+      authority === "DOCUMENT_ALL" ||
+      authority === "ALL"
+  );
+  const hasDocumentWritePermission = authorities.some(
     (authority) =>
       authority === "DOCUMENT_WRITE" ||
       authority === "DOCUMENT_ALL" ||
       authority === "ALL"
   );
+  const hasDocumentDashboardShortcut = hasDocumentReadPermission && hasDocumentWritePermission;
   const isTenantAdmin = authorities.some((authority) =>
     authority.includes("TENANT_ADMIN")
   );
@@ -221,7 +239,7 @@ export function NavigationSidebar({
                   : "text-zinc-500 dark:text-zinc-400"
               }`}
             >
-              {isEn ? "Doc hub" : "Dashboard"}
+              {isEn ? "Document Dashboard" : "B\u1ea3ng \u0111i\u1ec1u khi\u1ec3n t\u00e0i li\u1ec7u"}
             </span>
           </div>
         ) : null}
@@ -267,7 +285,7 @@ export function NavigationSidebar({
               onClick={() => readOnlyNavigation ? undefined : router.push("/tenant-admin")}
               disabled={readOnlyNavigation}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
-              title={isEn ? "Back to dashboard" : "Quay l?i dashboard"}
+              title={isEn ? "Back to dashboard" : "Quay l\u1ea1i dashboard"}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>

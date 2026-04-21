@@ -17,6 +17,8 @@ import {
   downloadDocument,
   getDocumentDownloadUrl,
   reindexDocument,
+  listAccessScopeDepartments,
+  listAccessScopeRoles,
   type UploadDocumentParams,
   type DocumentPreviewResponse,
   type ListDocumentsParams,
@@ -32,7 +34,7 @@ import { getStoredUser } from "@/lib/auth-store";
 import { listCategoriesFlat } from "@/lib/api/categories";
 import { listTagsActive } from "@/lib/api/tags";
 import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
-import { getTenantActiveDepartments, getTenantRoles, type DepartmentResponse, type RoleResponse } from "@/lib/api/tenant-admin";
+import { type DepartmentResponse, type RoleResponse } from "@/lib/api/tenant-admin";
 import {
   Upload,
   Download,
@@ -56,6 +58,7 @@ import {
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { useLivePolling } from "@/lib/hooks/useLivePolling";
 
 const DOCUMENT_LIMIT_ERROR_KEYWORD = "giới hạn số lượng tài liệu";
 const DOCUMENT_LIMIT_WARNING_MESSAGE =
@@ -177,6 +180,21 @@ function getUploaderDisplayName(doc: DocumentResponse): string {
   );
 }
 
+type DocumentAction = "viewDetail" | "download" | "edit" | "delete" | "changeScope";
+
+function canPerformDocumentAction(params: {
+  action: DocumentAction;
+  isTenantAdmin: boolean;
+  isOwner: boolean;
+  canEditDocuments: boolean;
+}): boolean {
+  const { action, isTenantAdmin, isOwner, canEditDocuments } = params;
+  if (action === "viewDetail" || action === "download") return true;
+  if (!canEditDocuments) return false;
+  if (isTenantAdmin) return true;
+  return isOwner;
+}
+
 export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?: "all" | "upload" | "library"; hideEditActions?: boolean }) {
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [deleted, setDeleted] = useState<DeletedDocumentResponse[]>([]);
@@ -233,8 +251,12 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
   const canManageDocument = useCallback(
     (doc: DocumentResponse | undefined | null) => {
       if (!doc) return false;
-      if (isTenantAdminUser && canEditDocuments) return true;
-      return isDocumentOwner(doc);
+      return canPerformDocumentAction({
+        action: "edit",
+        isTenantAdmin: isTenantAdminUser,
+        isOwner: isDocumentOwner(doc),
+        canEditDocuments,
+      });
     },
     [canEditDocuments, isDocumentOwner, isTenantAdminUser]
   );
@@ -339,8 +361,8 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
         docsPromise,
         listCategoriesFlat(),
         listTagsActive(),
-        getTenantActiveDepartments().catch(() => []),
-        getTenantRoles().catch(() => []),
+        listAccessScopeDepartments().catch(() => []),
+        listAccessScopeRoles().catch(() => []),
         deletedPromise,
       ]);
 
@@ -396,21 +418,15 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
     void load();
   }, [load]);
 
-  useEffect(() => {
-    if (!shouldLoadLibrary) return;
-    const id = window.setInterval(() => {
-      void refreshDocumentsRealtime();
-    }, 2500);
-    return () => window.clearInterval(id);
-  }, [refreshDocumentsRealtime, shouldLoadLibrary]);
-
-  useEffect(() => {
-    const onFocus = () => {
-      void refreshDocumentsRealtime();
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [refreshDocumentsRealtime]);
+  useLivePolling(
+    () => refreshDocumentsRealtime(),
+    {
+      enabled: shouldLoadLibrary,
+      intervalMs: 1200,
+      hiddenIntervalMs: 3000,
+      runImmediately: false,
+    }
+  );
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -493,17 +509,15 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
     return 26;
   };
 
-  useEffect(() => {
-    if (!embeddingModalOpen || !embeddingTrackDocId) return;
-    const statusState = getEmbeddingState(embeddingTrackStatus);
-    if (statusState === "completed" || statusState === "failed") return;
-
-    const pollId = window.setInterval(async () => {
+  useLivePolling(
+    async () => {
+      if (!embeddingModalOpen || !embeddingTrackDocId) return;
+      const statusState = getEmbeddingState(embeddingTrackStatus);
+      if (statusState === "completed" || statusState === "failed") return;
       try {
         const docs = await listDocuments();
         const matched = docs.find((d) => d.id === embeddingTrackDocId);
         if (!matched) return;
-
         setEmbeddingTrackStatus(matched.embeddingStatus || "PENDING");
         const state = getEmbeddingState(matched.embeddingStatus);
         if (state === "completed" || state === "failed") {
@@ -513,10 +527,14 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
       } catch {
         // keep existing status UI on transient polling errors
       }
-    }, 2500);
-
-    return () => window.clearInterval(pollId);
-  }, [embeddingModalOpen, embeddingTrackDocId, embeddingTrackStatus, load]);
+    },
+    {
+      enabled: embeddingModalOpen && !!embeddingTrackDocId,
+      intervalMs: 1200,
+      hiddenIntervalMs: 2500,
+      runImmediately: true,
+    }
+  );
 
   useEffect(() => {
     if (!openMenuId) return;

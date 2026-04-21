@@ -85,7 +85,7 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
       }
     };
 
-    const handleVisibilityChange = () => {
+    const handleInstantSync = () => {
       if (document.visibilityState === "visible" && window.location.pathname.startsWith("/super-admin")) {
         void fetchDashboardStatus();
       }
@@ -94,13 +94,15 @@ export function SuperAdminSidebar({ open, setOpen }: SuperAdminSidebarProps) {
     void fetchDashboardStatus();
     const intervalId = window.setInterval(() => {
       void fetchDashboardStatus();
-    }, 30000);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    }, 1200);
+    document.addEventListener("visibilitychange", handleInstantSync);
+    window.addEventListener("focus", handleInstantSync);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleInstantSync);
+      window.removeEventListener("focus", handleInstantSync);
     };
   }, [mounted, isSuperAdmin, isStaff]);
 

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
+import { useLivePolling } from "@/lib/hooks/useLivePolling";
 import type { DocumentResponse, DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
 import {
   listDocuments,
@@ -200,7 +201,6 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
   const [detailLoading, setDetailLoading] = useState(false);
   /** Background list refresh (polling / tab focus) — không che màn hình */
   const [listSyncing, setListSyncing] = useState(false);
-  const debounceSyncRef = useRef<number | null>(null);
   
   // Filter states for advanced search
   const [categories, setCategories] = useState<DocumentCategoryResponse[]>([]);
@@ -461,55 +461,26 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
     };
   }, [canReadDocuments, loadList]);
 
-  const LIVE_POLL_MS = 10_000;
-  const FAST_RETRY_403_MS = 4_500;
-  const VISIBILITY_DEBOUNCE_MS = 450;
-
-  useEffect(() => {
-    if (!canReadDocuments) return;
-    const id = window.setInterval(() => {
-      void syncPermissionsAndList();
-    }, LIVE_POLL_MS);
-    return () => window.clearInterval(id);
-  }, [canReadDocuments, syncPermissionsAndList]);
+  useLivePolling(
+    () => syncPermissionsAndList(),
+    {
+      enabled: canReadDocuments,
+      intervalMs: 2200,
+      hiddenIntervalMs: 5000,
+      runImmediately: false,
+    }
+  );
 
   /** Khi đang hiển thị lỗi 403, thử đồng bộ thường xuyên hơn cho đến khi thành công. */
-  useEffect(() => {
-    if (!canReadDocuments) return;
-    if (documentsErrorStatus !== 403) return;
-    const id = window.setInterval(() => {
-      void syncPermissionsAndList();
-    }, FAST_RETRY_403_MS);
-    return () => window.clearInterval(id);
-  }, [canReadDocuments, documentsErrorStatus, syncPermissionsAndList]);
-
-  useEffect(() => {
-    if (!canReadDocuments) return;
-    const schedule = () => {
-      if (debounceSyncRef.current) window.clearTimeout(debounceSyncRef.current);
-      debounceSyncRef.current = window.setTimeout(() => {
-        debounceSyncRef.current = null;
-        void syncPermissionsAndList();
-      }, VISIBILITY_DEBOUNCE_MS);
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") schedule();
-    };
-    const onFocus = () => schedule();
-    const onPageShow = () => schedule();
-
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("pageshow", onPageShow);
-
-    return () => {
-      if (debounceSyncRef.current) window.clearTimeout(debounceSyncRef.current);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("pageshow", onPageShow);
-    };
-  }, [canReadDocuments, syncPermissionsAndList]);
+  useLivePolling(
+    () => syncPermissionsAndList(),
+    {
+      enabled: canReadDocuments && documentsErrorStatus === 403,
+      intervalMs: 900,
+      hiddenIntervalMs: 2000,
+      runImmediately: true,
+    }
+  );
 
   useEffect(() => {
     if (!selected) {

@@ -8,14 +8,14 @@ import { DocumentsTab } from "@/components/tenant-admin/DocumentsTab";
 import { DocumentUploadCard } from "@/components/tenant-admin/DocumentUploadCard";
 import { listCategoriesFlat } from "@/lib/api/categories";
 import { listTagsActive } from "@/lib/api/tags";
-import { getTenantActiveDepartments, getTenantRoles } from "@/lib/api/tenant-admin";
-import { uploadDocument, type UploadDocumentParams } from "@/lib/api/documents";
+import { uploadDocument, listAccessScopeDepartments, listAccessScopeRoles, type UploadDocumentParams } from "@/lib/api/documents";
 import { getStoredUser, tryRefreshAuth } from "@/lib/auth-store";
 import { getCurrentUserPermissions, getProfile } from "@/lib/api/profile";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
 import type { DepartmentResponse, RoleResponse } from "@/lib/api/tenant-admin";
+import { useLivePolling } from "@/lib/hooks/useLivePolling";
 
 const READ_DOCUMENT_AUTHORITIES = ["DOCUMENT_READ", "DOCUMENT_ALL", "ALL"] as const;
 const MANAGE_DOCUMENT_AUTHORITIES = ["DOCUMENT_WRITE", "DOCUMENT_ALL", "ALL"] as const;
@@ -141,30 +141,10 @@ export default function DocumentDashboardPage() {
     };
   }, [syncAuthorities]);
 
-  useEffect(() => {
-    const POLL_MS = 2500;
-    const intervalId = window.setInterval(() => {
-      void syncAuthorities();
-    }, POLL_MS);
-
-    const syncOnFocus = () => {
-      void syncAuthorities();
-    };
-    const syncOnVisible = () => {
-      if (document.visibilityState === "visible") {
-        void syncAuthorities();
-      }
-    };
-
-    window.addEventListener("focus", syncOnFocus);
-    document.addEventListener("visibilitychange", syncOnVisible);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", syncOnFocus);
-      document.removeEventListener("visibilitychange", syncOnVisible);
-    };
-  }, [syncAuthorities]);
+  useLivePolling(
+    () => syncAuthorities(),
+    { enabled: true, intervalMs: 1200, hiddenIntervalMs: 3000, runImmediately: true }
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -173,8 +153,8 @@ export default function DocumentDashboardPage() {
         const [cats, activeTags, depts, tenantRoles] = await Promise.all([
           listCategoriesFlat(),
           listTagsActive(),
-          getTenantActiveDepartments().catch(() => []),
-          getTenantRoles().catch(() => []),
+          listAccessScopeDepartments().catch(() => []),
+          listAccessScopeRoles().catch(() => []),
         ]);
         if (cancelled) return;
         setCategories(cats);
@@ -265,7 +245,7 @@ export default function DocumentDashboardPage() {
                 {language === "en" ? "Document Dashboard" : "Bảng điều khiển tài liệu"}
               </div>
               <h1 className="mt-4 text-3xl font-bold tracking-tight md:text-4xl">
-                {language === "en" ? "Documents" : "Tài liệu"}
+                {language === "en" ? "Document Dashboard" : "Bảng điều khiển tài liệu"}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-white/90 md:text-base">
                 {language === "en"

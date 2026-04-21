@@ -16,8 +16,7 @@ import {
 } from "@/lib/api/tenant-admin";
 import { tryRefreshAuth } from "@/lib/auth-store";
 import { apiErrorLooksForbidden, parseApiErrorMessage } from "@/lib/api/parseApiError";
-
-const FORBIDDEN_POLL_MS = 7_000;
+import { useLivePolling } from "@/lib/hooks/useLivePolling";
 
 export function ChatbotAnalyticsView() {
   const { language } = useLanguageStore();
@@ -65,13 +64,15 @@ export function ChatbotAnalyticsView() {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    if (!forbidden || !pageError) return;
-    const id = window.setInterval(() => {
-      void load({ silent: true });
-    }, FORBIDDEN_POLL_MS);
-    return () => window.clearInterval(id);
-  }, [forbidden, pageError, load]);
+  useLivePolling(
+    () => load({ silent: true }),
+    {
+      enabled: forbidden && !!pageError,
+      intervalMs: 1200,
+      hiddenIntervalMs: 2500,
+      runImmediately: true,
+    }
+  );
 
   return (
     <div className="scrollbar-chat-hidden h-full overflow-y-auto scroll-smooth bg-white dark:bg-zinc-950">
