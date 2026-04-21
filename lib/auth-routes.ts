@@ -16,6 +16,7 @@ export const PATH_ALLOWED_ROLES: Record<string, string[]> = {
   "/profile": [],
   "/chatbot": [],
   "/chatbot-new": [],
+  "/document-dashboard": [],
   "/subscription": [ROLE_TENANT_ADMIN],
   "/employee": [ROLE_EMPLOYEE, ROLE_TENANT_ADMIN],
   "/tenant-admin": [ROLE_TENANT_ADMIN],
