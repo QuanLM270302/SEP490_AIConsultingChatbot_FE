@@ -340,7 +340,7 @@ export default function ChatbotNewPage() {
 
       <main
         className={`relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-[padding] duration-300 ease-out ${
-          isHistoryOpen ? "pl-64" : "pl-0"
+          isHistoryOpen ? "lg:pl-64" : "pl-0"
         }`}
       >
         <ChatbotNewHeader onSmartSearch={() => goToSearch()} />
