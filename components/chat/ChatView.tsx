@@ -302,6 +302,12 @@ export function ChatView({
               .reverse()
               .find((m) => m.role === "ASSISTANT");
             console.log("🤖 Last assistant message:", lastAssistantMsg);
+            console.log("⭐ Message rating:", lastAssistantMsg?.rating);
+            console.log("📊 Full message details:", {
+              messageId: lastAssistantMsg?.messageId,
+              rating: lastAssistantMsg?.rating,
+              hasRating: lastAssistantMsg?.rating !== undefined && lastAssistantMsg?.rating !== null
+            });
             const msgId = lastAssistantMsg ? resolveServerMessageId(lastAssistantMsg) : undefined;
             if (msgId) {
               realMessageId = msgId;
