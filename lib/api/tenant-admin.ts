@@ -109,6 +109,55 @@ function firstNonNegativeInt(...values: unknown[]): number {
   return 0;
 }
 
+/** Map BE variants (department_id, departmentId, ...) into DepartmentResponse.id */
+function normalizeTenantDepartment(raw: unknown): DepartmentResponse {
+  if (!raw || typeof raw !== "object") {
+    return { id: 0 };
+  }
+  const o = raw as Record<string, unknown>;
+  const idRaw = o.id ?? o.department_id ?? o.departmentId;
+  const id = Number(idRaw);
+  return {
+    id: Number.isFinite(id) ? id : 0,
+    name: typeof o.name === "string" ? o.name : undefined,
+    code: typeof o.code === "string" ? o.code : undefined,
+    description: typeof o.description === "string" ? o.description : undefined,
+    parentId:
+      typeof o.parentId === "number"
+        ? o.parentId
+        : typeof o.parent_id === "number"
+          ? o.parent_id
+          : undefined,
+    isActive:
+      typeof o.isActive === "boolean"
+        ? o.isActive
+        : typeof o.is_active === "boolean"
+          ? o.is_active
+          : undefined,
+    employeeCount: firstNonNegativeInt(
+      o.employeeCount,
+      o.employee_count,
+      o.userCount,
+      o.usersCount
+    ),
+  };
+}
+
+function normalizeDepartmentList(data: unknown): DepartmentResponse[] {
+  if (Array.isArray(data)) {
+    return data
+      .map((item) => normalizeTenantDepartment(item))
+      .filter((department) => department.id > 0);
+  }
+  if (data && typeof data === "object") {
+    const o = data as Record<string, unknown>;
+    const inner = o.content ?? o.data ?? o.departments ?? o.items;
+    if (Array.isArray(inner)) return normalizeDepartmentList(inner);
+    if (inner && typeof inner === "object") return normalizeDepartmentList(inner);
+  }
+  return [];
+}
+
 /** Map BE variants (userCount, users_count, …) into RoleResponse.usersCount */
 export function normalizeTenantRole(raw: unknown): RoleResponse {
   if (!raw || typeof raw !== "object") {
@@ -145,6 +194,7 @@ function normalizeRoleList(list: unknown): RoleResponse[] {
       const o = list as Record<string, unknown>;
       const inner = o.content ?? o.data ?? o.roles;
       if (Array.isArray(inner)) return normalizeRoleList(inner);
+      if (inner && typeof inner === "object") return normalizeRoleList(inner);
     }
     return [];
   }
@@ -214,7 +264,8 @@ export async function getTenantUsers(
 export async function getTenantDepartments(): Promise<DepartmentResponse[]> {
   const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/departments`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load departments"));
-  return res.json();
+  const data: unknown = await res.json();
+  return normalizeDepartmentList(data);
 }
 
 export async function getTenantRoles(): Promise<RoleResponse[]> {
@@ -317,7 +368,8 @@ export async function getTenantDepartmentById(departmentId: number): Promise<Dep
 export async function getTenantActiveDepartments(): Promise<DepartmentResponse[]> {
   const res = await fetchWithAuth(`${TENANT_ADMIN_BASE}/departments/active`);
   if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load active departments"));
-  return res.json();
+  const data: unknown = await res.json();
+  return normalizeDepartmentList(data);
 }
 
 export interface CreateDepartmentRequest {

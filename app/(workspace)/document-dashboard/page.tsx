@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Upload, Sparkles, BookOpen, ShieldCheck } from "lucide-react";
+import { Upload, Sparkles, FileText, ShieldCheck } from "lucide-react";
 import { DocumentsTab } from "@/components/tenant-admin/DocumentsTab";
 import { DocumentUploadCard } from "@/components/tenant-admin/DocumentUploadCard";
 import { listCategoriesFlat } from "@/lib/api/categories";
@@ -11,27 +11,11 @@ import { listTagsActive } from "@/lib/api/tags";
 import { getTenantActiveDepartments, getTenantRoles } from "@/lib/api/tenant-admin";
 import { uploadDocument, type UploadDocumentParams } from "@/lib/api/documents";
 import { getStoredUser, tryRefreshAuth } from "@/lib/auth-store";
+import { getCurrentUserPermissions, getProfile } from "@/lib/api/profile";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
 import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
 import type { DepartmentResponse, RoleResponse } from "@/lib/api/tenant-admin";
-
-const RECENT_UPLOAD_IDS_KEY = "document-dashboard:recent-upload-ids";
-
-function writeRecentUploadId(id: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = window.localStorage.getItem(RECENT_UPLOAD_IDS_KEY);
-    const ids = raw ? (JSON.parse(raw) as unknown) : [];
-    const next = new Set(
-      Array.isArray(ids) ? ids.filter((value): value is string => typeof value === "string") : []
-    );
-    next.add(id);
-    window.localStorage.setItem(RECENT_UPLOAD_IDS_KEY, JSON.stringify(Array.from(next)));
-  } catch {
-    // Ignore storage failures (private mode, quota, etc.) — local cache is best-effort.
-  }
-}
 
 const READ_DOCUMENT_AUTHORITIES = ["DOCUMENT_READ", "DOCUMENT_ALL", "ALL"] as const;
 const MANAGE_DOCUMENT_AUTHORITIES = ["DOCUMENT_WRITE", "DOCUMENT_ALL", "ALL"] as const;
@@ -56,26 +40,26 @@ function DocumentsSubNav({
   const t = translations[language];
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-2xl border border-zinc-200 bg-white/90 p-2 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
+    <div className="flex gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
       <Link
         href="/document-dashboard"
-        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 ${
+        className={`relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
           activeTab === "documents"
-            ? "scale-[1.01] bg-emerald-600 text-white shadow-sm"
-            : "text-zinc-600 hover:-translate-y-0.5 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white"
+            ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-white"
+            : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
         }`}
       >
-        <BookOpen className="h-4 w-4" />
-        {t.documents}
+        <FileText className="h-4 w-4" />
+        {language === "en" ? "Documents" : "Tài liệu"}
       </Link>
 
       {canManageDocuments && (
         <Link
           href="/document-dashboard?mode=upload"
-          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 ${
+          className={`relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
             activeTab === "upload"
-              ? "scale-[1.01] bg-emerald-600 text-white shadow-sm"
-              : "text-zinc-600 hover:-translate-y-0.5 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white"
+              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-white"
+              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
           }`}
         >
           <Upload className="h-4 w-4" />
@@ -117,20 +101,70 @@ export default function DocumentDashboardPage() {
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [loadingMeta, setLoadingMeta] = useState(true);
+  const [uploading, setUploading] = useState(false);
+
+  const syncAuthorities = useMemo(
+    () => async () => {
+      await tryRefreshAuth();
+      const stored = getStoredUser();
+      const roleAuthorities = (stored?.roles ?? []).filter(Boolean);
+
+      let permissionAuthorities: string[] = [];
+      try {
+        permissionAuthorities = await getCurrentUserPermissions();
+      } catch {
+        try {
+          const profile = await getProfile();
+          permissionAuthorities = (profile.permissions ?? []).filter(Boolean);
+        } catch {
+          permissionAuthorities = [];
+        }
+      }
+
+      const merged = Array.from(
+        new Set([...roleAuthorities, ...permissionAuthorities].map((v) => v.trim()).filter(Boolean))
+      );
+      setAuthorities(merged);
+      setHydrated(true);
+    },
+    []
+  );
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      await tryRefreshAuth();
+      await syncAuthorities();
       if (cancelled) return;
-      const user = getStoredUser();
-      setAuthorities(user?.roles ?? []);
-      setHydrated(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [syncAuthorities]);
+
+  useEffect(() => {
+    const POLL_MS = 2500;
+    const intervalId = window.setInterval(() => {
+      void syncAuthorities();
+    }, POLL_MS);
+
+    const syncOnFocus = () => {
+      void syncAuthorities();
+    };
+    const syncOnVisible = () => {
+      if (document.visibilityState === "visible") {
+        void syncAuthorities();
+      }
+    };
+
+    window.addEventListener("focus", syncOnFocus);
+    document.addEventListener("visibilitychange", syncOnVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", syncOnFocus);
+      document.removeEventListener("visibilitychange", syncOnVisible);
+    };
+  }, [syncAuthorities]);
 
   useEffect(() => {
     let cancelled = false;
@@ -169,13 +203,17 @@ export default function DocumentDashboardPage() {
 
   useEffect(() => {
     if (!hydrated) return;
-    if (!canReadDocuments) router.replace("/chatbot-new");
-  }, [canReadDocuments, hydrated, router]);
-
-  useEffect(() => {
-    if (!hydrated) return;
     if (!canManageDocuments && activeTab === "upload") router.replace("/document-dashboard");
   }, [activeTab, canManageDocuments, hydrated, router]);
+
+  useEffect(() => {
+    if (!hydrated || canReadDocuments) return;
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.replace("/chatbot-new");
+  }, [canReadDocuments, hydrated, router]);
 
   const handleUpload = async (data: {
     file: File;
@@ -186,18 +224,22 @@ export default function DocumentDashboardPage() {
     departmentIds: number[];
     roleIds: number[];
   }) => {
-    const params: UploadDocumentParams = {
-      file: data.file,
-      categoryId: data.categoryId || null,
-      tagIds: data.tagIds.length ? data.tagIds : null,
-      description: data.description || null,
-      visibility: data.visibility,
-      accessibleDepartments: data.departmentIds.length ? data.departmentIds : null,
-      accessibleRoles: data.roleIds.length ? data.roleIds : null,
-    };
-    const uploaded = await uploadDocument(params);
-    writeRecentUploadId(uploaded.id);
-    router.replace("/document-dashboard");
+    setUploading(true);
+    try {
+      const params: UploadDocumentParams = {
+        file: data.file,
+        categoryId: data.categoryId || null,
+        tagIds: data.tagIds.length ? data.tagIds : null,
+        description: data.description || null,
+        visibility: data.visibility,
+        accessibleDepartments: data.departmentIds.length ? data.departmentIds : null,
+        accessibleRoles: data.roleIds.length ? data.roleIds : null,
+      };
+      await uploadDocument(params);
+      router.replace("/document-dashboard");
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (!hydrated) {
@@ -209,17 +251,7 @@ export default function DocumentDashboardPage() {
   }
 
   if (!canReadDocuments) {
-    return (
-      <div className="flex min-h-0 flex-1 items-center justify-center px-6">
-        <div className="max-w-md rounded-2xl border border-zinc-200 bg-white p-6 text-center dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-sm text-zinc-600 dark:text-zinc-300">
-            {language === "en"
-              ? "You do not have permission to access the Document Dashboard. Redirecting..."
-              : "Bạn không có quyền truy cập Document Dashboard. Đang chuyển hướng..."}
-          </p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -230,7 +262,7 @@ export default function DocumentDashboardPage() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold tracking-wide backdrop-blur">
                 <Sparkles className="h-3.5 w-3.5" />
-                {language === "en" ? "Document hub" : "Trung tâm tài liệu"}
+                {language === "en" ? "Document Dashboard" : "Bảng điều khiển tài liệu"}
               </div>
               <h1 className="mt-4 text-3xl font-bold tracking-tight md:text-4xl">
                 {language === "en" ? "Documents" : "Tài liệu"}
@@ -270,13 +302,13 @@ export default function DocumentDashboardPage() {
                   tags={tags}
                   departments={departments}
                   roles={roles}
-                  uploading={false}
+                  uploading={uploading}
                   onUpload={handleUpload}
                 />
               )
             ) : null
           ) : (
-            <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:p-6 lg:p-8">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
               <DocumentsTab mode="library" hideEditActions />
             </div>
           )}

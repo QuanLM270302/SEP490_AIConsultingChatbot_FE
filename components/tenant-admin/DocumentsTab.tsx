@@ -177,32 +177,6 @@ function getUploaderDisplayName(doc: DocumentResponse): string {
   );
 }
 
-const RECENT_UPLOAD_IDS_KEY = "document-dashboard:recent-upload-ids";
-
-function readRecentUploadIds(): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  try {
-    const raw = window.localStorage.getItem(RECENT_UPLOAD_IDS_KEY);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((value): value is string => typeof value === "string" && value.length > 0));
-  } catch {
-    return new Set();
-  }
-}
-
-function writeRecentUploadId(id: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    const ids = readRecentUploadIds();
-    ids.add(id);
-    window.localStorage.setItem(RECENT_UPLOAD_IDS_KEY, JSON.stringify(Array.from(ids)));
-  } catch {
-    // ignore storage failures
-  }
-}
-
 export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?: "all" | "upload" | "library"; hideEditActions?: boolean }) {
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [deleted, setDeleted] = useState<DeletedDocumentResponse[]>([]);
@@ -242,21 +216,27 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
   const canEditDocuments = !hideEditActions;
   const currentUser = getStoredUser();
   const currentUserId = currentUser?.id ?? null;
-  const currentUserEmail = currentUser?.email ?? null;
-  const recentUploadIds = useMemo(() => readRecentUploadIds(), []);
+  const isTenantAdminUser = useMemo(
+    () => (currentUser?.roles ?? []).some((role) => role.toUpperCase().includes("TENANT_ADMIN")),
+    [currentUser?.roles]
+  );
 
-  const canEditDocument = useCallback(
+  const isDocumentOwner = useCallback(
     (doc: DocumentResponse | undefined | null) => {
       if (!doc) return false;
-      const uploader = doc.uploadedBy ?? doc.uploadedByEmail ?? doc.uploadedByName ?? null;
-
-      if (canEditDocuments) return true;
-      if (recentUploadIds.has(doc.id)) return true;
-      if (!uploader) return false;
-
-      return uploader === currentUserId || uploader === currentUserEmail;
+      if (!currentUserId) return false;
+      return (doc.uploadedBy ?? "").trim().toLowerCase() === currentUserId.trim().toLowerCase();
     },
-    [canEditDocuments, currentUserEmail, currentUserId, recentUploadIds]
+    [currentUserId]
+  );
+
+  const canManageDocument = useCallback(
+    (doc: DocumentResponse | undefined | null) => {
+      if (!doc) return false;
+      if (isTenantAdminUser && canEditDocuments) return true;
+      return isDocumentOwner(doc);
+    },
+    [canEditDocuments, isDocumentOwner, isTenantAdminUser]
   );
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [reindexing, setReindexing] = useState<Record<string, boolean>>({});
@@ -410,10 +390,6 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
     }
   }, [updateEmbeddingCompletionTimestamps, shouldLoadLibrary]);
 
-  const hasInProgressEmbedding = useMemo(
-    () => documents.some((d) => getEmbeddingState(d.embeddingStatus) === "in-progress"),
-    [documents]
-  );
   const isWarningError = !!error && isDocumentLimitWarning(error);
 
   useEffect(() => {
@@ -421,22 +397,20 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
   }, [load]);
 
   useEffect(() => {
-    if (!hasInProgressEmbedding) return;
+    if (!shouldLoadLibrary) return;
     const id = window.setInterval(() => {
       void refreshDocumentsRealtime();
-    }, 5000);
+    }, 2500);
     return () => window.clearInterval(id);
-  }, [hasInProgressEmbedding, refreshDocumentsRealtime]);
+  }, [refreshDocumentsRealtime, shouldLoadLibrary]);
 
   useEffect(() => {
     const onFocus = () => {
-      if (hasInProgressEmbedding) {
-        void refreshDocumentsRealtime();
-      }
+      void refreshDocumentsRealtime();
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [hasInProgressEmbedding, refreshDocumentsRealtime]);
+  }, [refreshDocumentsRealtime]);
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -488,7 +462,6 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
         accessibleRoles,
       };
       const uploadedDoc = await uploadDocument(params);
-      writeRecentUploadId(uploadedDoc.id);
       form.reset();
       setSelectedTagIds([]);
       setUploadVisibility("COMPANY_WIDE");
@@ -711,7 +684,7 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
     }
     const rect = anchor.getBoundingClientRect();
     const targetDoc = documents.find((d) => d.id === docId);
-    const editable = canEditDocument(targetDoc);
+    const editable = canManageDocument(targetDoc);
     const menuWidth = 208;
     // Keep the flip logic close to real rendered height.
     const menuHeight = editable ? 292 : 96;
@@ -1327,7 +1300,7 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
             >
               <Download className="h-4 w-4" /> {isEn ? "Download" : "Tải xuống"}
             </button>
-            {canEditDocument(documents.find((d) => d.id === openMenuId)) && (
+            {canManageDocument(documents.find((d) => d.id === openMenuId)) && (
               <>
                 <button
                   type="button"
