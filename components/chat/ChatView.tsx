@@ -145,8 +145,9 @@ export function ChatView({
         if (msgs[i].role === "USER") {
           const userMsg = msgs[i];
           const assistantMsg = msgs[i + 1]?.role === "ASSISTANT" ? msgs[i + 1] : null;
+          const userId = resolveServerMessageId(userMsg) ?? `user-${i}-${Date.now()}`;
           built.push({
-            id: userMsg.messageId || userMsg.id,
+            id: userId,
             role: "user",
             content: userMsg.content,
             timestamp: new Date(userMsg.createdAt ?? Date.now()),
@@ -159,15 +160,17 @@ export function ChatView({
             } else if (assistantMsg.rating === 1) {
               rating = "not-helpful";
             }
-            
+
+            const assistantId = resolveServerMessageId(assistantMsg) ?? `assistant-${i}-${Date.now()}`;
+
             console.log(`🔄 Converting assistant message rating:`, {
-              messageId: assistantMsg.messageId || assistantMsg.id,
+              messageId: assistantId,
               rawRating: assistantMsg.rating,
-              convertedRating: rating
+              convertedRating: rating,
             });
-            
+
             built.push({
-              id: assistantMsg.messageId || assistantMsg.id,
+              id: assistantId,
               role: "assistant",
               content: assistantMsg.content,
               sources: (assistantMsg.sources ?? []).map((s) => ({
@@ -200,28 +203,16 @@ export function ChatView({
   const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
     console.log("🔵 Rating message:", { messageId, rating });
     console.log("📋 Current messages:", messages.map(m => ({ id: m.id, role: m.role, rating: m.rating })));
-    
-    // Check if clicking the same rating - if so, unrate
+
     const currentMessage = messages.find(m => m.id === messageId);
-    const isUnrating = currentMessage?.rating === rating;
-    
-    if (isUnrating) {
-      console.log("🔄 Unrating message");
-      // Remove rating
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id === messageId) {
-            console.log("✅ Removing rating from message:", msg.id);
-            return { ...msg, rating: undefined };
-          }
-          return msg;
-        })
-      );
-      // TODO: Call API to remove rating if backend supports it
-      // For now, we'll just update UI
+    const previousRating: Message["rating"] = currentMessage?.rating;
+
+    // Backend now supports only binary ratings (5 helpful, 1 not-helpful), no unrate action.
+    if (previousRating === rating) {
+      console.log("ℹ️ Rating unchanged, skip request");
       return;
     }
-    
+
     setMessages((prev) =>
       prev.map((msg) => {
         if (msg.id === messageId) {

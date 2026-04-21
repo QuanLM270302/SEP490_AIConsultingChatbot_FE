@@ -2,28 +2,31 @@
 
 import { useState, useEffect } from "react";
 import {
+  Search,
   MessageSquare,
-  Users,
   FileText,
+  Users,
   User,
   LogOut,
   ClipboardCheck,
   LayoutDashboard,
   Settings,
-  Sun,
-  Moon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguageStore } from "@/lib/language-store";
-import { clearAuth, getAccessToken, getStoredUser } from "@/lib/auth-store";
+import {
+  clearAuth,
+  getAccessToken,
+  getStoredUser,
+  tryRefreshAuth,
+} from "@/lib/auth-store";
 import { logout } from "@/lib/api/auth";
 import { getProfile } from "@/lib/api/profile";
-import { useAppTheme } from "@/lib/use-app-theme";
 
 export type ChatbotNavView = "chat" | "search" | "analytics";
 
 interface NavigationSidebarProps {
-  activeView: ChatbotNavView;
+  activeView: ChatbotNavView | null;
   onViewChange: (view: ChatbotNavView) => void;
   onToggleHistory: () => void;
   canViewDocuments?: boolean;
@@ -34,6 +37,9 @@ interface NavigationSidebarProps {
   onboardingCompleted?: number;
   onboardingHasIncomplete?: boolean;
   onOpenOnboarding?: () => void;
+  isDocumentDashboardActive?: boolean;
+  onOpenSettings?: () => void;
+  readOnlyNavigation?: boolean;
 }
 
 export function NavigationSidebar({
@@ -48,20 +54,34 @@ export function NavigationSidebar({
   onboardingCompleted = 0,
   onboardingHasIncomplete = false,
   onOpenOnboarding,
+  isDocumentDashboardActive = false,
+  onOpenSettings,
+  readOnlyNavigation = false,
 }: NavigationSidebarProps) {
-  const { language, toggleLanguage } = useLanguageStore();
-  const { theme, toggleTheme } = useAppTheme();
+  const { language } = useLanguageStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const currentUser = getStoredUser();
+  const [authorities, setAuthorities] = useState<string[]>(currentUser?.roles ?? []);
   const [displayName, setDisplayName] = useState(
     currentUser?.email?.split("@")[0] || "User"
   );
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await tryRefreshAuth();
+      if (cancelled) return;
+      setAuthorities(getStoredUser()?.roles ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -73,8 +93,14 @@ export function NavigationSidebar({
   }, []);
 
   const isEn = language === "en";
-  const isTenantAdmin = (currentUser?.roles ?? []).some((role) =>
+  const isTenantAdmin = authorities.some((role) =>
     role.includes("TENANT_ADMIN")
+  );
+  const hasDocumentDashboardShortcut = authorities.some(
+    (authority) =>
+      authority === "DOCUMENT_WRITE" ||
+      authority === "DOCUMENT_ALL" ||
+      authority === "ALL"
   );
 
   const navigation: {
@@ -82,12 +108,12 @@ export function NavigationSidebar({
     icon: typeof MessageSquare;
     caption: string;
   }[] = [
-    { id: "chat", icon: MessageSquare, caption: isEn ? "Chat" : "Trò chuyện" },
+    { id: "chat", icon: MessageSquare, caption: isEn ? "Chat" : "Tr� chuy?n" },
     ...(canViewDocuments
-      ? [{ id: "search" as const, icon: FileText, caption: isEn ? "Documents" : "Tài liệu" }]
+      ? [{ id: "search" as const, icon: Search, caption: isEn ? "Documents" : "T�i li?u" }]
       : []),
     ...(canViewAnalytics
-      ? [{ id: "analytics" as const, icon: Users, caption: isEn ? "Analytics" : "Phân tích" }]
+      ? [{ id: "analytics" as const, icon: Users, caption: isEn ? "Analytics" : "Ph�n t�ch" }]
       : []),
   ];
 
@@ -126,7 +152,7 @@ export function NavigationSidebar({
 
       <nav
         className="flex min-h-0 flex-1 flex-col items-center justify-start gap-2.5 px-1 pt-2"
-        aria-label={isEn ? "Main navigation" : "Điều hướng chính"}
+        aria-label={isEn ? "Main navigation" : "�i?u hu?ng ch�nh"}
       >
         {navigation.map((item) => {
           const isActive = activeView === item.id;
@@ -137,6 +163,7 @@ export function NavigationSidebar({
               key={item.id}
               type="button"
               onClick={() => {
+                if (readOnlyNavigation) return;
                 if (item.id === "chat") {
                   onToggleHistory();
                   onViewChange("chat");
@@ -144,14 +171,17 @@ export function NavigationSidebar({
                 }
                 onViewChange(item.id);
               }}
+              disabled={readOnlyNavigation}
               title={item.caption}
-              className="flex flex-col items-center gap-1 border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 dark:focus-visible:ring-offset-zinc-950"
+              className={`group flex flex-col items-center gap-1 border-0 bg-transparent p-0 transition-transform duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 dark:focus-visible:ring-offset-zinc-950 ${readOnlyNavigation ? "cursor-default opacity-90" : "hover:-translate-y-0.5"}`}
             >
               <span
                 className={`flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors ${
                   isActive
-                    ? "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200/90 dark:bg-emerald-950/60 dark:text-emerald-400 dark:ring-emerald-700/80"
-                    : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
+                    ? "scale-105 bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200/90 dark:bg-emerald-950/60 dark:text-emerald-400 dark:ring-emerald-700/80"
+                    : readOnlyNavigation
+                      ? "text-zinc-400 dark:text-zinc-500"
+                      : "text-zinc-600 group-hover:bg-zinc-100 dark:text-zinc-400 dark:group-hover:bg-zinc-900"
                 }`}
               >
                 <Icon className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2} />
@@ -169,18 +199,46 @@ export function NavigationSidebar({
       </nav>
 
       <div className="mt-auto flex flex-col items-center gap-3 border-t border-zinc-200/90 pt-3 dark:border-zinc-800">
+        {hasDocumentDashboardShortcut ? (
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={() => readOnlyNavigation ? undefined : router.push("/document-dashboard")}
+              disabled={readOnlyNavigation}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+                isDocumentDashboardActive
+                  ? "scale-105 bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200/90 dark:bg-emerald-950/60 dark:text-emerald-400 dark:ring-emerald-700/80"
+                  : "text-zinc-600 hover:-translate-y-0.5 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
+              }`}
+              title={isEn ? "Document dashboard" : "Document Dashboard"}
+            >
+              <FileText className="h-5 w-5" />
+            </button>
+            <span
+              className={`max-w-[3.75rem] text-center text-[8px] font-medium leading-tight ${
+                isDocumentDashboardActive
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : "text-zinc-500 dark:text-zinc-400"
+              }`}
+            >
+              {isEn ? "Doc hub" : "T�i li?u"}
+            </span>
+          </div>
+        ) : null}
+
         {isTenantAdmin ? (
           <div className="flex flex-col items-center gap-1">
             <button
               type="button"
-              onClick={() => router.push("/tenant-admin")}
+              onClick={() => readOnlyNavigation ? undefined : router.push("/tenant-admin")}
+              disabled={readOnlyNavigation}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
               title={isEn ? "Tenant dashboard" : "Dashboard tenant"}
             >
               <LayoutDashboard className="h-5 w-5" />
             </button>
             <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
-              {isEn ? "Dashboard" : "Bảng tin"}
+              {isEn ? "Dashboard" : "B?ng tin"}
             </span>
           </div>
         ) : null}
@@ -189,8 +247,8 @@ export function NavigationSidebar({
           <div className="flex flex-col items-center gap-1">
             <button
               type="button"
-              onClick={onOpenOnboarding}
-              disabled={onboardingLoading || onboardingTotal === 0}
+              onClick={readOnlyNavigation ? undefined : onOpenOnboarding}
+              disabled={readOnlyNavigation || onboardingLoading || onboardingTotal === 0}
               className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${
                 onboardingHasIncomplete
                   ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
@@ -200,12 +258,12 @@ export function NavigationSidebar({
                 onboardingLoading
                   ? isEn
                     ? "Loading onboarding..."
-                    : "Đang tải onboarding..."
+                    : "�ang t?i onboarding..."
                   : onboardingTotal > 0
                     ? `Onboarding ${onboardingCompleted}/${onboardingTotal}`
                     : isEn
                       ? "Onboarding not configured"
-                      : "Onboarding chưa cấu hình"
+                      : "Onboarding chua c?u h�nh"
               }
             >
               <ClipboardCheck className="h-5 w-5" />
@@ -219,20 +277,6 @@ export function NavigationSidebar({
           </div>
         ) : null}
 
-        <div className="flex flex-col items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setShowSettingsModal(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
-            title={isEn ? "Settings" : "Cài đặt"}
-          >
-            <Settings className="h-5 w-5" />
-          </button>
-          <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
-            {isEn ? "Settings" : "Cài đặt"}
-          </span>
-        </div>
-
         <div className="relative flex flex-col items-center gap-1 pb-1">
           <button
             type="button"
@@ -243,7 +287,7 @@ export function NavigationSidebar({
             <User className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} />
           </button>
           <span className="max-w-[3.75rem] text-center text-[8px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
-            {isEn ? "Account" : "Hồ sơ"}
+            {isEn ? "Account" : "H? so"}
           </span>
 
           {showUserMenu ? (
@@ -269,15 +313,28 @@ export function NavigationSidebar({
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                   >
                     <User className="h-4 w-4" />
-                    {isEn ? "Profile" : "Hồ sơ"}
+                    {isEn ? "Profile" : "H? so"}
                   </button>
+                  {onOpenSettings ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        onOpenSettings();
+                      }}
+                      className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    >
+                      <Settings className="h-4 w-4" />
+                      {isEn ? "Settings" : "C�i d?t"}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={handleLogout}
                     className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                   >
                     <LogOut className="h-4 w-4" />
-                    {isEn ? "Logout" : "Đăng xuất"}
+                    {isEn ? "Logout" : "�ang xu?t"}
                   </button>
                 </div>
               </div>
@@ -285,54 +342,6 @@ export function NavigationSidebar({
           ) : null}
         </div>
       </div>
-
-      {showSettingsModal ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                {isEn ? "Chatbot settings" : "Cài đặt chatbot"}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowSettingsModal(false)}
-                className="rounded-lg px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                {isEn ? "Close" : "Đóng"}
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-800/60">
-                <span className="text-sm text-zinc-700 dark:text-zinc-200">
-                  {isEn ? "Theme" : "Giao diện"}
-                </span>
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                >
-                  {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-                  {theme === "dark" ? (isEn ? "Light mode" : "Chế độ sáng") : (isEn ? "Dark mode" : "Chế độ tối")}
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-800/60">
-                <span className="text-sm text-zinc-700 dark:text-zinc-200">
-                  {isEn ? "Language" : "Ngôn ngữ"}
-                </span>
-                <button
-                  type="button"
-                  onClick={toggleLanguage}
-                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                >
-                  {language === "en" ? "EN" : "VI"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </aside>
   );
 }

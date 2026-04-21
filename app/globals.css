@@ -112,6 +112,22 @@ footer {
   animation: gradientMove 15s ease infinite;
 }
 
+/* Workspace view switch animation - used when tabs change in the shared workspace shell */
+@keyframes workspaceViewEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-view-enter {
+  animation: workspaceViewEnter 240ms ease-out both;
+}
+
 /* Pulse animation for icons */
 @keyframes pulse-glow {
   0%, 100% {
