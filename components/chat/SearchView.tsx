@@ -15,8 +15,6 @@ import {
   History,
   CheckCircle2,
   RefreshCw,
-  ListFilter,
-  ChevronDown,
   Eye,
   FileType,
   HardDrive,
@@ -25,7 +23,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
-import type { DocumentResponse } from "@/types/knowledge";
+import { translations } from "@/lib/translations";
+import type { DocumentResponse, DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
 import {
   listDocuments,
   getDocument,
@@ -36,12 +35,15 @@ import {
   getVersionHistory,
   getActiveRagVersion,
   setActiveRagVersion,
+  type ListDocumentsParams,
 } from "@/lib/api/documents";
 import type { DocumentPreviewResponse } from "@/lib/api/documents";
 import { clearAuth, refreshAuth, tryRefreshAuth } from "@/lib/auth-store";
 import type { DocumentVersionResponse } from "@/types/knowledge";
 import { getProfile } from "@/lib/api/profile";
 import { cn } from "@/lib/utils/cn";
+import { listCategoriesFlat } from "@/lib/api/categories";
+import { listTagsActive } from "@/lib/api/tags";
 
 const DocumentUploadSection = dynamic(
   () => import("@/components/tenant-admin/DocumentUploadSection").then((m) => m.DocumentUploadSection)
@@ -135,7 +137,6 @@ export interface SearchViewProps {
   permissionTabs?: string[];
 }
 
-type SortMode = "newest" | "title_az" | "title_za";
 type DocumentPermissionTab = "DOCUMENT_READ" | "DOCUMENT_WRITE" | "DOCUMENT_DELETE";
 
 function formatFileSize(bytes: number): string {
@@ -185,6 +186,7 @@ function getErrorTraceId(error: unknown): string | null {
 export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProps) {
   const router = useRouter();
   const { language } = useLanguageStore();
+  const sharedTranslations = translations[language];
   const [query, setQuery] = useState("");
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [listLoading, setListLoading] = useState(true);
@@ -208,7 +210,17 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
   /** Background list refresh (polling / tab focus) — không che màn hình */
   const [listSyncing, setListSyncing] = useState(false);
   const debounceSyncRef = useRef<number | null>(null);
-  const [sortMode, setSortMode] = useState<SortMode>("newest");
+  
+  // Filter states for advanced search
+  const [categories, setCategories] = useState<DocumentCategoryResponse[]>([]);
+  const [tags, setTags] = useState<DocumentTagResponse[]>([]);
+  const [filterCategoryId, setFilterCategoryId] = useState<string>("");
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterFromDate, setFilterFromDate] = useState<string>("");
+  const [filterToDate, setFilterToDate] = useState<string>("");
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  
   const normalizedPermissionTabs = useMemo<DocumentPermissionTab[]>(
     () =>
       permissionTabs.filter((code): code is DocumentPermissionTab =>
@@ -293,10 +305,6 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
         language === "en" ? "Download" : "Tải xuống",
       backToList: language === "en" ? "Back to list" : "Quay lại danh sách",
       loading: language === "en" ? "Loading…" : "Đang tải…",
-      sortLabel: language === "en" ? "Sort" : "Sắp xếp",
-      sortNewest: language === "en" ? "Newest first" : "Mới nhất",
-      sortTitleAz: language === "en" ? "Title A–Z" : "Tiêu đề A–Z",
-      sortTitleZa: language === "en" ? "Title Z–A" : "Tiêu đề Z–A",
       metaType: language === "en" ? "Format" : "Định dạng",
       metaSize: language === "en" ? "Size" : "Dung lượng",
       metaVisibility: language === "en" ? "Access" : "Phạm vi truy cập",
@@ -318,9 +326,9 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
       previewBadgePdf: language === "en" ? "PDF" : "PDF",
       previewBadgeOther: language === "en" ? "Preview" : "Xem trước",
       tagsLabel: language === "en" ? "Tags" : "Thẻ",
-      permissionRead: language === "en" ? "View documents" : "Xem tài liệu",
-      permissionWrite: language === "en" ? "Upload / edit" : "Tải lên / chỉnh sửa",
-      permissionDelete: language === "en" ? "Delete documents" : "Xóa tài liệu",
+      permissionRead: language === "en" ? "Search & Browse" : "Tìm kiếm & Duyệt",
+      permissionWrite: language === "en" ? "Upload Documents" : "Tải lên tài liệu",
+      permissionDelete: language === "en" ? "Manage & Delete" : "Quản lý & Xóa",
       permissionNone:
         language === "en"
           ? "No document permissions assigned yet"
@@ -329,18 +337,32 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
         language === "en" ? "Document workspace tabs" : "Tab thao tác tài liệu",
       permissionReadDesc:
         language === "en"
-          ? "Browse, search, and preview available documents."
-          : "Duyệt, tìm kiếm và xem trước tài liệu được cấp quyền.",
+          ? "Search, filter, and preview documents with advanced filters."
+          : "Tìm kiếm, lọc và xem trước tài liệu với bộ lọc nâng cao.",
       permissionWriteDesc:
         language === "en"
-          ? "Upload and update your document knowledge base."
-          : "Tải lên và cập nhật kho tài liệu nội bộ.",
+          ? "Upload new documents and manage document versions."
+          : "Tải lên tài liệu mới và quản lý phiên bản.",
       permissionDeleteDesc:
         language === "en"
-          ? "Manage delete/restore actions with admin-style interface."
-          : "Quản lý xóa/khôi phục theo giao diện admin.",
+          ? "Full document management with delete and restore capabilities."
+          : "Quản lý tài liệu đầy đủ với khả năng xóa và khôi phục.",
+      filters: language === "en" ? "Filters" : "Bộ lọc",
+      advancedFilters: language === "en" ? "Advanced Filters" : "Bộ lọc nâng cao",
+      category: language === "en" ? "Category" : "Danh mục",
+      status: language === "en" ? "Status" : "Trạng thái",
+      fromDate: language === "en" ? "From" : "Từ ngày",
+      toDate: language === "en" ? "To" : "Đến ngày",
+      allCategories: language === "en" ? "All" : "Tất cả",
+      allStatuses: language === "en" ? "All" : "Tất cả",
+      statusCompleted: sharedTranslations.statusCompleted,
+      statusPending: sharedTranslations.statusPending,
+      statusProcessing: sharedTranslations.statusProcessing,
+      statusFailed: sharedTranslations.statusFailed,
+      reset: language === "en" ? "Reset" : "Đặt lại",
+      applyFilters: language === "en" ? "Apply Filters" : "Áp dụng",
     }),
-    [language]
+    [language, sharedTranslations]
   );
 
   const permissionTabConfig = useMemo(() => {
@@ -410,8 +432,23 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
       }
       try {
         try {
-          const rows = await listDocuments();
+          // Build filter params
+          const params: ListDocumentsParams = {};
+          if (query.trim()) params.keyword = query.trim();
+          if (filterCategoryId) params.categoryId = filterCategoryId;
+          if (filterTagIds.length > 0) params.tagIds = filterTagIds;
+          if (filterStatus) params.status = filterStatus;
+          if (filterFromDate) params.fromDate = `${filterFromDate}T00:00:00`;
+          if (filterToDate) params.toDate = `${filterToDate}T23:59:59`;
+          
+          const [rows, cats, activeTags] = await Promise.all([
+            listDocuments(params),
+            listCategoriesFlat().catch(() => []),
+            listTagsActive().catch(() => []),
+          ]);
           setDocuments(rows);
+          setCategories(cats);
+          setTags(activeTags);
           setDocumentsErrorStatus(null);
         } catch (e: unknown) {
           const err = e as Error & { status?: number };
@@ -433,7 +470,15 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
             const ok = await refreshAuth();
             if (ok) {
               try {
-                const rows2 = await listDocuments();
+                const params2: ListDocumentsParams = {};
+                if (query.trim()) params2.keyword = query.trim();
+                if (filterCategoryId) params2.categoryId = filterCategoryId;
+                if (filterTagIds.length > 0) params2.tagIds = filterTagIds;
+                if (filterStatus) params2.status = filterStatus;
+                if (filterFromDate) params2.fromDate = `${filterFromDate}T00:00:00`;
+                if (filterToDate) params2.toDate = `${filterToDate}T23:59:59`;
+                
+                const rows2 = await listDocuments(params2);
                 setDocuments(rows2);
                 setDocumentsErrorStatus(null);
                 return;
@@ -459,7 +504,7 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
         else setListLoading(false);
       }
     })();
-  }, [canReadDocuments, router]);
+  }, [canReadDocuments, router, query, filterCategoryId, filterTagIds, filterStatus, filterFromDate, filterToDate]);
 
   /** Làm mới JWT từ DB rồi tải lại list — dùng khi admin vừa đổi quyền (mọi máy qua polling + khi quay lại tab). */
   const syncPermissionsAndList = useCallback(async () => {
@@ -562,17 +607,9 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
   const sortedFiltered = useMemo(() => {
     const list = [...filtered];
     const titleOf = (d: DocumentResponse) => d.documentTitle || d.originalFileName;
-    if (sortMode === "newest") {
-      list.sort(
-        (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-      );
-    } else if (sortMode === "title_az") {
-      list.sort((a, b) => titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: "base" }));
-    } else {
-      list.sort((a, b) => titleOf(b).localeCompare(titleOf(a), undefined, { sensitivity: "base" }));
-    }
+    list.sort((a, b) => titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: "base" }));
     return list;
-  }, [filtered, sortMode]);
+  }, [filtered]);
 
   useEffect(() => {
     if (!query.trim()) return;
@@ -844,43 +881,183 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
       ) : (
       <div className="scrollbar-chat-hidden flex-1 overflow-y-auto scroll-smooth px-4 py-8 sm:px-6">
         {canReadDocuments ? (
-          <div className="mx-auto mb-5 flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-stretch">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t.searchPlaceholder}
-                autoComplete="off"
-                className="w-full rounded-xl border border-zinc-300 bg-white py-3 pl-10 pr-4 text-sm text-zinc-900 shadow-inner placeholder-zinc-400 outline-none ring-emerald-500/0 transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500"
-              />
-            </div>
-            <div className="flex w-full shrink-0 items-stretch gap-2 sm:w-[min(100%,220px)] sm:min-w-[200px]">
-              <label className="sr-only" htmlFor="search-sort">
-                {t.sortLabel}
-              </label>
-              <div className="relative flex w-full min-w-0 flex-1">
-                <ListFilter
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500/90"
-                  aria-hidden
+          <>
+            <div className="mx-auto mb-3 w-full max-w-6xl">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') loadList();
+                  }}
+                  placeholder={t.searchPlaceholder}
+                  autoComplete="off"
+                  className="w-full rounded-xl border border-zinc-300 bg-white py-3 pl-10 pr-32 text-sm text-zinc-900 shadow-inner placeholder-zinc-400 outline-none ring-emerald-500/0 transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500"
                 />
-                <select
-                  id="search-sort"
-                  value={sortMode}
-                  onChange={(e) => setSortMode(e.target.value as SortMode)}
-                  className="w-full cursor-pointer appearance-none rounded-xl border border-emerald-400 bg-white py-3 pl-10 pr-9 text-sm text-zinc-900 shadow-inner outline-none ring-emerald-500/0 transition hover:border-emerald-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-emerald-500/35 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-emerald-500/55"
-                >
-                  <option value="newest">{t.sortNewest}</option>
-                  <option value="title_az">{t.sortTitleAz}</option>
-                  <option value="title_za">{t.sortTitleZa}</option>
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
-                  aria-hidden
-                />
+                <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                      showFilters || filterCategoryId || filterTagIds.length > 0 || filterStatus || filterFromDate || filterToDate
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    {t.filters}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* Collapsible Advanced Filters */}
+            {showFilters && (
+              <div className="mx-auto mb-5 w-full max-w-6xl rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                    {t.advancedFilters}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(false)}
+                    className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Filter Grid */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {/* Category */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      {t.category}
+                    </label>
+                    <select
+                      value={filterCategoryId}
+                      onChange={(e) => setFilterCategoryId(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    >
+                      <option value="">{t.allCategories}</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      {t.status}
+                    </label>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    >
+                      <option value="">{t.allStatuses}</option>
+                      <option value="COMPLETED">{t.statusCompleted}</option>
+                      <option value="PENDING">{t.statusPending}</option>
+                      <option value="PROCESSING">{t.statusProcessing}</option>
+                      <option value="FAILED">{t.statusFailed}</option>
+                    </select>
+                  </div>
+
+                  {/* From Date */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      {t.fromDate}
+                    </label>
+                    <input
+                      type="date"
+                      value={filterFromDate}
+                      onChange={(e) => setFilterFromDate(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    />
+                  </div>
+
+                  {/* To Date */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      {t.toDate}
+                    </label>
+                    <input
+                      type="date"
+                      value={filterToDate}
+                      onChange={(e) => setFilterToDate(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Tags */}
+                {tags.length > 0 && (
+                  <div className="mt-4">
+                    <label className="mb-2 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      {t.tagsLabel}
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((tag) => {
+                        const active = filterTagIds.includes(tag.id);
+                        return (
+                          <button
+                            key={tag.id}
+                            type="button"
+                            onClick={() => {
+                              setFilterTagIds((prev) =>
+                                prev.includes(tag.id) ? prev.filter((x) => x !== tag.id) : [...prev, tag.id]
+                              );
+                            }}
+                            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                              active
+                                ? "bg-emerald-500 text-white shadow-sm"
+                                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                            }`}
+                          >
+                            {tag.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="mt-6 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      setFilterCategoryId("");
+                      setFilterTagIds([]);
+                      setFilterStatus("");
+                      setFilterFromDate("");
+                      setFilterToDate("");
+                      loadList();
+                    }}
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    {t.reset}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => loadList()}
+                    className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  >
+                    {t.applyFilters}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : null}
         {listLoading ? (
           <div className="flex justify-center py-20">
