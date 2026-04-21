@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw, ShieldAlert } from "lucide-react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { AIMetrics } from "@/components/tenant-admin/AIMetrics";
 import { AIUsageChart } from "@/components/tenant-admin/AIUsageChart";
 import { DocumentEmbeddingOverview } from "@/components/tenant-admin/DocumentEmbeddingOverview";
@@ -55,7 +54,6 @@ export default function AnalyticsPage() {
   }, [load]);
 
   return (
-    <TenantAdminLayout>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">{t.aiAnalytics}</h1>
@@ -125,6 +123,6 @@ export default function AnalyticsPage() {
           </>
         ) : null}
       </div>
-    </TenantAdminLayout>
   );
 }
+

@@ -165,12 +165,20 @@ export function EmployeeManagementNew({ onOpenCreate, onActionSuccess, onActionE
     }
     const rect = anchor.getBoundingClientRect();
     const menuWidth = 208;
+    const menuHeight = 320;
     const margin = 12;
     const left = Math.min(
       Math.max(rect.right - menuWidth, margin),
       window.innerWidth - margin - menuWidth
     );
-    setMenuPos({ top: rect.bottom + 6, left });
+    const menuGap = 2;
+    const openDownTop = rect.bottom + menuGap;
+    const openUpTop = rect.top - menuHeight - menuGap;
+    const top =
+      openDownTop + menuHeight > window.innerHeight - margin
+        ? Math.max(margin, openUpTop)
+        : openDownTop;
+    setMenuPos({ top, left });
     setOpenMenuId(userId);
   };
 
@@ -753,6 +761,7 @@ function DetailModal({ user, onClose }: { user: UserResponse; onClose: () => voi
   const { language } = useLanguageStore();
   const t = translations[language];
   const isEn = language === "en";
+  const userPermissions = (user.permissions ?? []).filter((code) => Boolean(code));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -868,6 +877,29 @@ function DetailModal({ user, onClose }: { user: UserResponse; onClose: () => voi
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-200 dark:bg-zinc-800">
+                <Shield className="h-4 w-4 text-zinc-600 dark:text-zinc-400" />
+              </div>
+              <h4 className="font-semibold text-zinc-900 dark:text-white">{isEn ? "Permissions" : "Quyền bổ sung"}</h4>
+            </div>
+            {userPermissions.length === 0 ? (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">{t.noPermissions}</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {userPermissions.map((code) => (
+                  <span
+                    key={code}
+                    className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-300"
+                  >
+                    {getPermissionLabel(code, undefined, isEn ? "en" : "vi")}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {user.createdAt && (

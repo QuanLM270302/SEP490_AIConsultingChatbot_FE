@@ -13,6 +13,7 @@ export interface UserProfileResponse {
   createdAt: string; // ISO datetime
   updatedAt: string | null;
   lastLoginAt: string | null;
+  permissions?: string[]; // User permissions
 }
 
 /** Request body for PUT /api/v1/profile/update */

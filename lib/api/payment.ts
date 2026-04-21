@@ -1,7 +1,7 @@
 import { fetchWithAuth } from "./fetchWithAuth";
 import { PAYMENT_BASE } from "./config";
 
-export type PaymentStatus = "SUCCESS" | "PENDING" | "FAILED" | "EXPIRED";
+export type PaymentStatus = "SUCCESS" | "PENDING" | "FAILED" | "EXPIRED" | "CANCELLED";
 
 export interface PaymentHistoryItem {
   payment_id: string;

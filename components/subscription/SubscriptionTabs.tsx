@@ -1,18 +1,26 @@
-type TabType = "plans" | "billing" | "history";
+type TabType = "plans" | "history" | "upcoming";
 
 interface SubscriptionTabsProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
+  language?: "vi" | "en";
 }
 
 export function SubscriptionTabs({
   activeTab,
   onTabChange,
+  language = "vi",
 }: SubscriptionTabsProps) {
   const tabs: { id: TabType; label: string }[] = [
-    { id: "plans", label: "Gói đăng ký" },
-    { id: "billing", label: "Thanh toán" },
-    { id: "history", label: "Lịch sử giao dịch" },
+    { id: "plans", label: language === "en" ? "Plans" : "Gói đăng ký" },
+    { id: "history", label: language === "en" ? "History" : "Lịch sử giao dịch" },
+    {
+      id: "upcoming",
+      label:
+        language === "en"
+          ? "Upcoming renewal"
+          : "Sắp thanh toán",
+    },
   ];
 
   return (

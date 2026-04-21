@@ -2,14 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import { useEffect, useState, useTransition } from "react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
+import { useEffect, useState } from "react";
 import { FileText, FolderTree, Tag, Upload } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
-import { AnimatedSegmentedControl } from "@/components/ui";
-
-type TabId = "upload" | "documents" | "categories" | "tags";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 function TabPanelSkeleton() {
   return (
@@ -27,118 +25,61 @@ const DocumentsTab = dynamic(
   { loading: () => <TabPanelSkeleton /> }
 );
 
-const DocumentUploadCard = dynamic(
-  () => import("@/components/tenant-admin/DocumentUploadSection").then((m) => m.DocumentUploadSection),
-  { loading: () => <TabPanelSkeleton /> }
-);
-
-const CategoriesTab = dynamic(
-  () => import("@/components/tenant-admin/CategoriesTab").then((m) => m.CategoriesTab),
-  { loading: () => <TabPanelSkeleton /> }
-);
-
-const TagsTab = dynamic(
-  () => import("@/components/tenant-admin/TagsTab").then((m) => m.TagsTab),
-  { loading: () => <TabPanelSkeleton /> }
-);
-
-export default function DocumentsPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("documents");
-  const [mountedTabs, setMountedTabs] = useState<Record<TabId, boolean>>({
-    upload: false,
-    documents: true,
-    categories: false,
-    tags: false,
-  });
-  const [isTabPending, startTabTransition] = useTransition();
+function DocumentsNavigation() {
+  const pathname = usePathname();
   const { language } = useLanguageStore();
   const t = translations[language];
-  const isEn = language === "en";
 
-  const tabs: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: "documents", label: t.documents, icon: FileText },
-    { id: "upload", label: language === "en" ? "Upload documents" : "Đăng tải tài liệu", icon: Upload },
-    { id: "categories", label: t.categories, icon: FolderTree },
-    { id: "tags", label: t.tags, icon: Tag },
+  const navItems = [
+    { href: "/tenant-admin/documents", label: t.documents, icon: FileText },
+    { href: "/tenant-admin/documents-upload", label: language === "en" ? "Upload" : "Đăng tải", icon: Upload },
+    { href: "/tenant-admin/categories", label: t.categories, icon: FolderTree },
+    { href: "/tenant-admin/tags", label: t.tags, icon: Tag },
   ];
 
-  useEffect(() => {
-    const warmupId = window.setTimeout(() => {
-      setMountedTabs((prev) =>
-        prev.upload ? prev : { ...prev, upload: true }
-      );
-    }, 420);
-    return () => window.clearTimeout(warmupId);
-  }, []);
+  return (
+    <div className="flex gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+      {navItems.map((item) => {
+        const isActive = pathname === item.href;
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+              isActive
+                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-white"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
-  const renderTabContent = (tab: TabId) => {
-    if (tab === "upload") return <DocumentUploadCard />;
-    if (tab === "documents") return <DocumentsTab mode="library" />;
-    if (tab === "categories") return <CategoriesTab />;
-    return <TagsTab />;
-  };
+export default function DocumentsPage() {
+  const { language } = useLanguageStore();
+  const t = translations[language];
 
   return (
-    <TenantAdminLayout>
-      <div className="space-y-8">
+      <div className="mx-auto max-w-6xl space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
             {t.documentsKnowledgeBase}
           </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-400">
             {t.documentsKBDescription}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <AnimatedSegmentedControl
-            value={activeTab}
-            onChange={(next) => {
-              setMountedTabs((prev) =>
-                prev[next] ? prev : { ...prev, [next]: true }
-              );
-              startTabTransition(() => setActiveTab(next));
-            }}
-            layoutId="documents-tab-pill"
-            options={tabs.map((tab) => ({ value: tab.id, label: tab.label }))}
-          />
-        </div>
+        <DocumentsNavigation />
 
-        <div className="relative">
-          {isTabPending ? (
-            <div className="pointer-events-none absolute right-0 top-[-14px] z-10 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
-              {isEn ? "Switching..." : "Đang chuyển tab..."}
-            </div>
-          ) : null}
-
-          <div className="relative">
-            {tabs.map((tab) => {
-              if (!mountedTabs[tab.id]) return null;
-              const isActive = activeTab === tab.id;
-              return (
-                <motion.div
-                  key={tab.id}
-                  initial={false}
-                  animate={
-                    isActive
-                      ? { opacity: 1, y: 0, scale: 1 }
-                      : { opacity: 0, y: 8, scale: 0.995 }
-                  }
-                  transition={{ duration: 0.22, ease: "easeOut" }}
-                  className={
-                    isActive
-                      ? "relative"
-                      : "pointer-events-none absolute inset-0 overflow-hidden"
-                  }
-                  style={{ visibility: isActive ? "visible" : "hidden" }}
-                >
-                  {renderTabContent(tab.id)}
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
+        <DocumentsTab mode="library" />
       </div>
-    </TenantAdminLayout>
   );
 }
+

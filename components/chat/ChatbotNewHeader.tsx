@@ -8,32 +8,31 @@ type ChatbotNewHeaderProps = {
   onSmartSearch?: () => void;
 };
 
-/** Banner tím–hồng giống `ChatHeader` (/chatbot cũ); layout phía dưới dùng emerald như các trang app */
+/** Hero header — tím/indigo chủ đạo, ít “neon” hơn để tập trung vào khung chat bên dưới */
 export function ChatbotNewHeader({ onSmartSearch }: ChatbotNewHeaderProps) {
   const { language } = useLanguageStore();
   const isEn = language === "en";
 
   return (
-    
-    <header className="relative z-20 shrink-0 bg-zinc-50 px-4 pb-3 pt-4 dark:bg-zinc-950 sm:px-5">
-      <div className="animate-gradient relative overflow-hidden rounded-2xl bg-[length:220%_220%] bg-gradient-to-r from-lime-400 via-fuchsia-500 via-emerald-400 to-violet-600 px-4 py-3.5 shadow-md shadow-fuchsia-500/15 dark:shadow-lg dark:shadow-emerald-500/25 sm:px-5 sm:py-4">
-        <div className="pointer-events-none absolute inset-0 bg-black/20 dark:bg-black/10" />
-        <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-12 left-1/4 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
+    <header className="relative z-20 shrink-0 px-4 pb-3 pt-4 sm:px-5">
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-800 px-4 py-3.5 shadow-xl shadow-violet-900/25 ring-1 ring-white/10 sm:px-5 sm:py-4">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.08)_45%,transparent_65%)]" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full bg-fuchsia-400/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-44 w-44 rounded-full bg-indigo-400/20 blur-3xl" />
 
-        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm sm:h-11 sm:w-11">
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 shadow-inner shadow-black/10 ring-1 ring-white/20 backdrop-blur-sm">
               <Bot className="h-5 w-5 text-white" strokeWidth={2} />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base font-semibold text-white sm:text-lg md:text-xl">
+              <h1 className="text-base font-semibold tracking-tight text-white sm:text-lg md:text-xl">
                 {isEn ? "Internal AI Consulting Chatbot" : "AI Chatbot Tư vấn Nội bộ"}
               </h1>
-              <p className="mt-1 text-xs text-white/90 sm:text-sm">
+              <p className="mt-0.5 text-xs leading-relaxed text-white/85 sm:text-sm">
                 {isEn
-                  ? "Ask questions in English • RAG-powered • Based on company documents"
-                  : "Đặt câu hỏi bằng tiếng Việt • RAG-powered • Dựa trên tài liệu công ty"}
+                  ? "Ask in English or Vietnamese • RAG • Grounded in your company documents"
+                  : "Đặt câu hỏi bằng tiếng Việt • RAG • Dựa trên tài liệu công ty"}
               </p>
             </div>
           </div>
@@ -41,10 +40,10 @@ export function ChatbotNewHeader({ onSmartSearch }: ChatbotNewHeaderProps) {
           <button
             type="button"
             onClick={onSmartSearch}
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-full bg-white/20 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:self-center sm:px-4 sm:text-sm"
+            className="inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-xl bg-white/15 px-4 py-2.5 text-xs font-semibold text-white shadow-sm ring-1 ring-white/20 backdrop-blur-sm transition hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:self-auto sm:rounded-full sm:py-2 sm:text-sm"
           >
-            <Sparkles className="h-3.5 w-3.5 shrink-0 text-white" />
-            {isEn ? "Smart Search" : "Tìm kiếm thông minh"}
+            <Sparkles className="h-4 w-4 shrink-0 text-amber-200" strokeWidth={2} />
+            {isEn ? "Smart search" : "Tìm kiếm thông minh"}
           </button>
         </div>
       </div>

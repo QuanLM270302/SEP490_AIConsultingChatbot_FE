@@ -5,6 +5,7 @@ import { MessageBubble } from "./MessageBubble";
 import { ReferencesSection } from "./ReferencesSection";
 import { RatingButtons } from "./RatingButtons";
 import { formatAnswer } from "@/lib/utils/formatAnswer";
+import { isRatingMessageId } from "@/lib/chatMessageId";
 
 interface ChatMessageItemProps {
   message: Message;
@@ -31,11 +32,13 @@ export function ChatMessageItem({ message, onRate }: ChatMessageItemProps) {
 
           <ReferencesSection references={message.references} />
 
-          <RatingButtons
-            messageId={message.id}
-            currentRating={message.rating || null}
-            onRate={onRate}
-          />
+          {isRatingMessageId(message.id) ? (
+            <RatingButtons
+              messageId={message.id}
+              currentRating={message.rating || null}
+              onRate={onRate}
+            />
+          ) : null}
         </div>
       </div>
     </div>

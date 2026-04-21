@@ -9,6 +9,9 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, ThumbsUp, ThumbsDown, FileText, MessageSquare } from "lucide-react";
 import { toUiErrorMessage } from "@/lib/api/parseApiError";
 import { chat, chatbotHealth, getConversationHistory, rateMessage } from "@/lib/api/chatbot";
+import { isRatingMessageId, resolveServerMessageId } from "@/lib/chatMessageId";
+import { mapServerRatingToUi } from "@/lib/chatRating";
+import type { ChatMessageResponse } from "@/types/chatbot";
 
 export default function ChatPlatformPage() {
   const router = useRouter();
@@ -73,6 +76,7 @@ export default function ChatPlatformPage() {
 
       // Fetch conversation history to get real message ID from backend
       let realMessageId = userMessageId; // fallback
+      let assistantServerRating: Message["rating"] = null;
       if (response.conversationId) {
         try {
           console.log("🔍 Fetching conversation history for ID:", response.conversationId);
@@ -85,14 +89,15 @@ export default function ChatPlatformPage() {
               .reverse()
               .find((m) => m.role === "ASSISTANT");
             console.log("🤖 Last assistant message:", lastAssistantMsg);
-            // Backend uses 'messageId' field, not 'id'
-            const msgId = (lastAssistantMsg as any)?.messageId || lastAssistantMsg?.id;
+            const msgId = lastAssistantMsg ? resolveServerMessageId(lastAssistantMsg) : undefined;
             if (msgId) {
               realMessageId = msgId;
               console.log("✅ Got real message ID from backend:", realMessageId);
             } else {
               console.warn("⚠️ No assistant message ID found in history");
             }
+            const mapped = lastAssistantMsg ? mapServerRatingToUi(lastAssistantMsg.rating) : undefined;
+            assistantServerRating = mapped ?? null;
           } else {
             console.warn("⚠️ History is empty or invalid");
           }
@@ -109,7 +114,7 @@ export default function ChatPlatformPage() {
         answer: response.answer,
         references,
         timestamp: new Date(),
-        rating: null,
+        rating: assistantServerRating,
       };
 
       setMessages((prev) => [...prev, newMessage]);
@@ -151,14 +156,31 @@ export default function ChatPlatformPage() {
 
   const handleRate = async (messageId: string, rating: "helpful" | "not-helpful") => {
     console.log("🔵 Rating message:", { messageId, rating });
+
+    const currentMessage = messages.find(m => m.id === messageId);
+    const previousRating: Message["rating"] = currentMessage?.rating ?? null;
+
+    // Backend now supports only binary ratings (5 helpful, 1 not-helpful), no unrate action.
+    if (previousRating === rating) {
+      console.log("ℹ️ Rating unchanged, skip request");
+      return;
+    }
+
     setMessages((prev) =>
       prev.map((msg) => (msg.id === messageId ? { ...msg, rating } : msg))
     );
     try {
-      await rateMessage(messageId, rating);
+      const result = await rateMessage(messageId, rating);
+      const ui = mapServerRatingToUi(result.rating) ?? rating;
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, rating: ui } : msg))
+      );
       console.log("✅ Rating submitted successfully");
     } catch (e) {
       console.error("❌ Rating submission failed:", e);
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, rating: previousRating } : msg))
+      );
     }
   };
 
@@ -313,6 +335,7 @@ export default function ChatPlatformPage() {
                   </div>
 
                   {/* FEEDBACK */}
+                  {isRatingMessageId(msg.id) ? (
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleRate(msg.id, "helpful")}
@@ -337,6 +360,7 @@ export default function ChatPlatformPage() {
                       Not useful
                     </button>
                   </div>
+                  ) : null}
                 </div>
               ))
             )}
@@ -400,8 +424,13 @@ export default function ChatPlatformPage() {
                 for (let i = 0; i < history.messages.length; i += 2) {
                   const userMsg = history.messages[i];
                   const aiMsg = history.messages[i + 1];
+                  const rating = mapServerRatingToUi(aiMsg?.rating) ?? null;
+
                   msgs.push({
-                    id: aiMsg?.id ?? userMsg?.id ?? "",
+                    id:
+                      resolveServerMessageId(aiMsg as ChatMessageResponse) ??
+                      resolveServerMessageId(userMsg as ChatMessageResponse) ??
+                      "",
                     question: userMsg?.content ?? "",
                     answer: aiMsg?.content ?? "",
                     references: (aiMsg?.sources ?? []).map((s) => ({
@@ -411,7 +440,7 @@ export default function ChatPlatformPage() {
                       confidence: s.relevanceScore,
                     })),
                     timestamp: new Date(aiMsg?.createdAt ?? userMsg?.createdAt ?? new Date()),
-                    rating: (aiMsg?.rating as "helpful" | "not-helpful" | null) ?? null,
+                    rating,
                   });
                 }
                 setMessages(msgs);

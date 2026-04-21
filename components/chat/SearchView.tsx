@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -14,8 +15,6 @@ import {
   History,
   CheckCircle2,
   RefreshCw,
-  ListFilter,
-  ChevronDown,
   Eye,
   FileType,
   HardDrive,
@@ -24,7 +23,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
-import type { DocumentResponse } from "@/types/knowledge";
+import { translations } from "@/lib/translations";
+import type { DocumentResponse, DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
 import {
   listDocuments,
   getDocument,
@@ -35,12 +35,22 @@ import {
   getVersionHistory,
   getActiveRagVersion,
   setActiveRagVersion,
+  type ListDocumentsParams,
 } from "@/lib/api/documents";
 import type { DocumentPreviewResponse } from "@/lib/api/documents";
 import { clearAuth, refreshAuth, tryRefreshAuth } from "@/lib/auth-store";
 import type { DocumentVersionResponse } from "@/types/knowledge";
 import { getProfile } from "@/lib/api/profile";
 import { cn } from "@/lib/utils/cn";
+import { listCategoriesFlat } from "@/lib/api/categories";
+import { listTagsActive } from "@/lib/api/tags";
+
+const DocumentUploadSection = dynamic(
+  () => import("@/components/tenant-admin/DocumentUploadSection").then((m) => m.DocumentUploadSection)
+);
+const DocumentsTab = dynamic(
+  () => import("@/components/tenant-admin/DocumentsTab").then((m) => m.DocumentsTab)
+);
 
 /** Một dòng / một đoạn theo ký tự xuống dòng từ API (giữ đúng cấu trúc file gốc). */
 function PreviewPlainText({ text }: { text: string }) {
@@ -124,9 +134,10 @@ function HighlightMatches({ text, query }: { text: string; query: string }) {
 
 export interface SearchViewProps {
   initialQuery?: string;
+  permissionTabs?: string[];
 }
 
-type SortMode = "newest" | "title_az" | "title_za";
+type DocumentPermissionTab = "DOCUMENT_READ" | "DOCUMENT_WRITE" | "DOCUMENT_DELETE";
 
 function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "—";
@@ -172,9 +183,10 @@ function getErrorTraceId(error: unknown): string | null {
   return typeof traceId === "string" && traceId.trim().length > 0 ? traceId.trim() : null;
 }
 
-export function SearchView({ initialQuery }: SearchViewProps) {
+export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProps) {
   const router = useRouter();
   const { language } = useLanguageStore();
+  const sharedTranslations = translations[language];
   const [query, setQuery] = useState("");
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [listLoading, setListLoading] = useState(true);
@@ -198,7 +210,28 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   /** Background list refresh (polling / tab focus) — không che màn hình */
   const [listSyncing, setListSyncing] = useState(false);
   const debounceSyncRef = useRef<number | null>(null);
-  const [sortMode, setSortMode] = useState<SortMode>("newest");
+  
+  // Filter states for advanced search
+  const [categories, setCategories] = useState<DocumentCategoryResponse[]>([]);
+  const [tags, setTags] = useState<DocumentTagResponse[]>([]);
+  const [filterCategoryId, setFilterCategoryId] = useState<string>("");
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterFromDate, setFilterFromDate] = useState<string>("");
+  const [filterToDate, setFilterToDate] = useState<string>("");
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  
+  const normalizedPermissionTabs = useMemo<DocumentPermissionTab[]>(
+    () =>
+      permissionTabs.filter((code): code is DocumentPermissionTab =>
+        code === "DOCUMENT_READ" || code === "DOCUMENT_WRITE" || code === "DOCUMENT_DELETE"
+      ),
+    [permissionTabs]
+  );
+  const [activePermissionTab, setActivePermissionTab] = useState<DocumentPermissionTab | null>(
+    normalizedPermissionTabs[0] ?? null
+  );
+  const canReadDocuments = normalizedPermissionTabs.includes("DOCUMENT_READ");
 
   const t = useMemo(
     () => ({
@@ -208,10 +241,6 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         language === "en"
           ? "No documents match your search."
           : "Không có tài liệu phù hợp.",
-      noAccess:
-        language === "en"
-          ? "You do not have permission to view documents."
-          : "Bạn chưa có quyền xem tài liệu.",
       listEmpty:
         language === "en" ? "No documents found." : "Không có tài liệu.",
       details: language === "en" ? "Details" : "Chi tiết",
@@ -220,18 +249,8 @@ export function SearchView({ initialQuery }: SearchViewProps) {
       download: language === "en" ? "Download" : "Tải xuống",
       versions: language === "en" ? "Versions" : "Xem phiên bản",
       setRag: language === "en" ? "Set as RAG active" : "Đặt làm bản RAG active",
-      refreshSession:
-        language === "en" ? "Refresh login session" : "Làm mới phiên đăng nhập",
       syncingHint:
         language === "en" ? "Syncing permissions & list…" : "Đang đồng bộ quyền & danh sách…",
-      permissionHint403:
-        language === "en"
-          ? "If access was just granted, we refresh your session automatically — no need to sign out. You can also use the button below."
-          : "Nếu vừa được cấp quyền, hệ thống tự làm mới phiên — không cần đăng xuất. Bạn vẫn có thể bấm nút bên dưới.",
-      permissionPolling403:
-        language === "en"
-          ? "Checking for updated access…"
-          : "Đang kiểm tra quyền mới…",
       permPreview:
         language === "en"
           ? "You do not have permission to preview this document inline."
@@ -286,10 +305,6 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         language === "en" ? "Download" : "Tải xuống",
       backToList: language === "en" ? "Back to list" : "Quay lại danh sách",
       loading: language === "en" ? "Loading…" : "Đang tải…",
-      sortLabel: language === "en" ? "Sort" : "Sắp xếp",
-      sortNewest: language === "en" ? "Newest first" : "Mới nhất",
-      sortTitleAz: language === "en" ? "Title A–Z" : "Tiêu đề A–Z",
-      sortTitleZa: language === "en" ? "Title Z–A" : "Tiêu đề Z–A",
       metaType: language === "en" ? "Format" : "Định dạng",
       metaSize: language === "en" ? "Size" : "Dung lượng",
       metaVisibility: language === "en" ? "Access" : "Phạm vi truy cập",
@@ -311,9 +326,82 @@ export function SearchView({ initialQuery }: SearchViewProps) {
       previewBadgePdf: language === "en" ? "PDF" : "PDF",
       previewBadgeOther: language === "en" ? "Preview" : "Xem trước",
       tagsLabel: language === "en" ? "Tags" : "Thẻ",
+      permissionRead: language === "en" ? "Search & Browse" : "Tìm kiếm & Duyệt",
+      permissionWrite: language === "en" ? "Upload Documents" : "Tải lên tài liệu",
+      permissionDelete: language === "en" ? "Manage & Delete" : "Quản lý & Xóa",
+      permissionNone:
+        language === "en"
+          ? "No document permissions assigned yet"
+          : "Chưa được cấp quyền tài liệu",
+      permissionTabsTitle:
+        language === "en" ? "Document workspace tabs" : "Tab thao tác tài liệu",
+      permissionReadDesc:
+        language === "en"
+          ? "Search, filter, and preview documents with advanced filters."
+          : "Tìm kiếm, lọc và xem trước tài liệu với bộ lọc nâng cao.",
+      permissionWriteDesc:
+        language === "en"
+          ? "Upload new documents and manage document versions."
+          : "Tải lên tài liệu mới và quản lý phiên bản.",
+      permissionDeleteDesc:
+        language === "en"
+          ? "Full document management with delete and restore capabilities."
+          : "Quản lý tài liệu đầy đủ với khả năng xóa và khôi phục.",
+      filters: language === "en" ? "Filters" : "Bộ lọc",
+      advancedFilters: language === "en" ? "Advanced Filters" : "Bộ lọc nâng cao",
+      category: language === "en" ? "Category" : "Danh mục",
+      status: language === "en" ? "Status" : "Trạng thái",
+      fromDate: language === "en" ? "From" : "Từ ngày",
+      toDate: language === "en" ? "To" : "Đến ngày",
+      allCategories: language === "en" ? "All" : "Tất cả",
+      allStatuses: language === "en" ? "All" : "Tất cả",
+      statusCompleted: sharedTranslations.statusCompleted,
+      statusPending: sharedTranslations.statusPending,
+      statusProcessing: sharedTranslations.statusProcessing,
+      statusFailed: sharedTranslations.statusFailed,
+      reset: language === "en" ? "Reset" : "Đặt lại",
+      applyFilters: language === "en" ? "Apply Filters" : "Áp dụng",
     }),
-    [language]
+    [language, sharedTranslations]
   );
+
+  const permissionTabConfig = useMemo(() => {
+    const map: Record<string, string> = {
+      DOCUMENT_READ: t.permissionRead,
+      DOCUMENT_WRITE: t.permissionWrite,
+      DOCUMENT_DELETE: t.permissionDelete,
+    };
+    const descriptions: Record<string, string> = {
+      DOCUMENT_READ: t.permissionReadDesc,
+      DOCUMENT_WRITE: t.permissionWriteDesc,
+      DOCUMENT_DELETE: t.permissionDeleteDesc,
+    };
+    return normalizedPermissionTabs
+      .filter((code, index, arr) => arr.indexOf(code) === index)
+      .map((code) => ({
+        code,
+        label: map[code] ?? code,
+        description: descriptions[code] ?? "",
+      }));
+  }, [
+    normalizedPermissionTabs,
+    t.permissionDelete,
+    t.permissionDeleteDesc,
+    t.permissionRead,
+    t.permissionReadDesc,
+    t.permissionWrite,
+    t.permissionWriteDesc,
+  ]);
+
+  useEffect(() => {
+    if (normalizedPermissionTabs.length === 0) {
+      setActivePermissionTab(null);
+      return;
+    }
+    setActivePermissionTab((current) =>
+      current && normalizedPermissionTabs.includes(current) ? current : normalizedPermissionTabs[0]
+    );
+  }, [normalizedPermissionTabs]);
 
   useEffect(() => {
     if (!initialQuery) return;
@@ -327,6 +415,13 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   }, []);
 
   const loadList = useCallback((options?: { silent?: boolean }) => {
+    if (!canReadDocuments) {
+      setDocuments([]);
+      setDocumentsErrorStatus(null);
+      setListLoading(false);
+      setListSyncing(false);
+      return;
+    }
     const silent = options?.silent ?? false;
 
     void (async () => {
@@ -337,8 +432,23 @@ export function SearchView({ initialQuery }: SearchViewProps) {
       }
       try {
         try {
-          const rows = await listDocuments();
+          // Build filter params
+          const params: ListDocumentsParams = {};
+          if (query.trim()) params.keyword = query.trim();
+          if (filterCategoryId) params.categoryId = filterCategoryId;
+          if (filterTagIds.length > 0) params.tagIds = filterTagIds;
+          if (filterStatus) params.status = filterStatus;
+          if (filterFromDate) params.fromDate = `${filterFromDate}T00:00:00`;
+          if (filterToDate) params.toDate = `${filterToDate}T23:59:59`;
+          
+          const [rows, cats, activeTags] = await Promise.all([
+            listDocuments(params),
+            listCategoriesFlat().catch(() => []),
+            listTagsActive().catch(() => []),
+          ]);
           setDocuments(rows);
+          setCategories(cats);
+          setTags(activeTags);
           setDocumentsErrorStatus(null);
         } catch (e: unknown) {
           const err = e as Error & { status?: number };
@@ -360,7 +470,15 @@ export function SearchView({ initialQuery }: SearchViewProps) {
             const ok = await refreshAuth();
             if (ok) {
               try {
-                const rows2 = await listDocuments();
+                const params2: ListDocumentsParams = {};
+                if (query.trim()) params2.keyword = query.trim();
+                if (filterCategoryId) params2.categoryId = filterCategoryId;
+                if (filterTagIds.length > 0) params2.tagIds = filterTagIds;
+                if (filterStatus) params2.status = filterStatus;
+                if (filterFromDate) params2.fromDate = `${filterFromDate}T00:00:00`;
+                if (filterToDate) params2.toDate = `${filterToDate}T23:59:59`;
+                
+                const rows2 = await listDocuments(params2);
                 setDocuments(rows2);
                 setDocumentsErrorStatus(null);
                 return;
@@ -386,7 +504,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
         else setListLoading(false);
       }
     })();
-  }, [router]);
+  }, [canReadDocuments, router, query, filterCategoryId, filterTagIds, filterStatus, filterFromDate, filterToDate]);
 
   /** Làm mới JWT từ DB rồi tải lại list — dùng khi admin vừa đổi quyền (mọi máy qua polling + khi quay lại tab). */
   const syncPermissionsAndList = useCallback(async () => {
@@ -397,6 +515,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   /** Làm mới JWT trước khi gọi API lần đầu — giảm 403 do token cũ sau khi admin cấp quyền. */
   useEffect(() => {
     let cancelled = false;
+    if (!canReadDocuments || activePermissionTab !== "DOCUMENT_READ") return;
     void (async () => {
       await tryRefreshAuth();
       if (!cancelled) loadList();
@@ -404,29 +523,32 @@ export function SearchView({ initialQuery }: SearchViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [loadList]);
+  }, [activePermissionTab, canReadDocuments, loadList]);
 
   const LIVE_POLL_MS = 10_000;
   const FAST_RETRY_403_MS = 4_500;
   const VISIBILITY_DEBOUNCE_MS = 450;
 
   useEffect(() => {
+    if (!canReadDocuments || activePermissionTab !== "DOCUMENT_READ") return;
     const id = window.setInterval(() => {
       void syncPermissionsAndList();
     }, LIVE_POLL_MS);
     return () => window.clearInterval(id);
-  }, [syncPermissionsAndList]);
+  }, [activePermissionTab, canReadDocuments, syncPermissionsAndList]);
 
   /** Khi đang hiển thị lỗi 403, thử đồng bộ thường xuyên hơn cho đến khi thành công. */
   useEffect(() => {
+    if (!canReadDocuments || activePermissionTab !== "DOCUMENT_READ") return;
     if (documentsErrorStatus !== 403) return;
     const id = window.setInterval(() => {
       void syncPermissionsAndList();
     }, FAST_RETRY_403_MS);
     return () => window.clearInterval(id);
-  }, [documentsErrorStatus, syncPermissionsAndList]);
+  }, [activePermissionTab, canReadDocuments, documentsErrorStatus, syncPermissionsAndList]);
 
   useEffect(() => {
+    if (!canReadDocuments || activePermissionTab !== "DOCUMENT_READ") return;
     const schedule = () => {
       if (debounceSyncRef.current) window.clearTimeout(debounceSyncRef.current);
       debounceSyncRef.current = window.setTimeout(() => {
@@ -451,7 +573,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("pageshow", onPageShow);
     };
-  }, [syncPermissionsAndList]);
+  }, [activePermissionTab, canReadDocuments, syncPermissionsAndList]);
 
   useEffect(() => {
     if (!selected) {
@@ -485,17 +607,9 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   const sortedFiltered = useMemo(() => {
     const list = [...filtered];
     const titleOf = (d: DocumentResponse) => d.documentTitle || d.originalFileName;
-    if (sortMode === "newest") {
-      list.sort(
-        (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-      );
-    } else if (sortMode === "title_az") {
-      list.sort((a, b) => titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: "base" }));
-    } else {
-      list.sort((a, b) => titleOf(b).localeCompare(titleOf(a), undefined, { sensitivity: "base" }));
-    }
+    list.sort((a, b) => titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: "base" }));
     return list;
-  }, [filtered, sortMode]);
+  }, [filtered]);
 
   useEffect(() => {
     if (!query.trim()) return;
@@ -625,22 +739,6 @@ export function SearchView({ initialQuery }: SearchViewProps) {
     }
   };
 
-  const handleRefreshSessionAndReload = () => {
-    void (async () => {
-      const ok = await tryRefreshAuth();
-      if (ok) {
-        loadList({ silent: false });
-        return;
-      }
-      const okStrict = await refreshAuth();
-      if (okStrict) loadList({ silent: false });
-      else {
-        setDocuments([]);
-        setDocumentsErrorStatus(403);
-      }
-    })();
-  };
-
   const handleVersionPreview = async (documentId: string, versionId: string) => {
     await loadPreview(documentId, versionId);
   };
@@ -685,7 +783,6 @@ export function SearchView({ initialQuery }: SearchViewProps) {
   };
 
   const listMessage = () => {
-    if (documentsErrorStatus === 403) return t.noAccess;
     if (!listLoading && documents.length === 0 && !documentsErrorStatus) return t.listEmpty;
     return null;
   };
@@ -699,77 +796,269 @@ export function SearchView({ initialQuery }: SearchViewProps) {
               className="flex min-w-0 flex-1 flex-row flex-nowrap items-baseline gap-x-2 overflow-x-auto text-left [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-x-3"
               title={
                 language === "en"
-                  ? "Filter by title or tag — select a card to preview."
-                  : "Lọc theo tiêu đề hoặc thẻ — chọn thẻ để xem trước."
+                  ? "Access document workspace based on your assigned permissions."
+                  : "Truy cập không gian tài liệu theo quyền đã được cấp."
               }
             >
               <h1 className="shrink-0 text-lg font-semibold tracking-tight text-zinc-900 sm:text-xl dark:text-white">
-                {language === "en" ? "Document search" : "Tìm kiếm tài liệu"}
+                {language === "en" ? "Documents" : "Tài liệu"}
               </h1>
               <p className="shrink-0 whitespace-nowrap text-xs leading-normal text-zinc-500 sm:text-[13px]">
                 {language === "en"
-                  ? "Filter by title or tag — select a card to preview."
-                  : "Lọc theo tiêu đề hoặc thẻ — chọn thẻ để xem trước."}
+                  ? "Access document workspace based on your assigned permissions."
+                  : "Truy cập không gian tài liệu theo quyền đã được cấp."}
               </p>
             </div>
             {listSyncing ? (
               <span
                 className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-emerald-400/95"
-                title={documentsErrorStatus === 403 ? t.permissionPolling403 : t.syncingHint}
+                title={t.syncingHint}
               >
                 <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                <span className="hidden sm:inline">
-                  {documentsErrorStatus === 403 ? t.permissionPolling403 : t.syncingHint}
-                </span>
+                <span className="hidden sm:inline">{t.syncingHint}</span>
               </span>
             ) : null}
           </div>
-          <form
-            className="mt-3 flex w-full flex-col gap-3 sm:flex-row sm:items-stretch"
-            onSubmit={(e) => {
-              e.preventDefault();
-            }}
-          >
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t.searchPlaceholder}
-                autoComplete="off"
-                className="w-full rounded-xl border border-zinc-300 bg-white py-3 pl-10 pr-4 text-sm text-zinc-900 shadow-inner placeholder-zinc-400 outline-none ring-emerald-500/0 transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500"
-              />
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2.5 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+              {t.permissionTabsTitle}
             </div>
-            <div className="flex w-full shrink-0 items-stretch gap-2 sm:w-[min(100%,220px)] sm:min-w-[200px]">
-              <label className="sr-only" htmlFor="search-sort">
-                {t.sortLabel}
-              </label>
-              <div className="relative flex w-full min-w-0 flex-1">
-                <ListFilter
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500/90"
-                  aria-hidden
-                />
-                <select
-                  id="search-sort"
-                  value={sortMode}
-                  onChange={(e) => setSortMode(e.target.value as SortMode)}
-                  className="w-full cursor-pointer appearance-none rounded-xl border border-emerald-400 bg-white py-3 pl-10 pr-9 text-sm text-zinc-900 shadow-inner outline-none ring-emerald-500/0 transition hover:border-emerald-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-emerald-500/35 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-emerald-500/55"
-                >
-                  <option value="newest">{t.sortNewest}</option>
-                  <option value="title_az">{t.sortTitleAz}</option>
-                  <option value="title_za">{t.sortTitleZa}</option>
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
-                  aria-hidden
-                />
+            {permissionTabConfig.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {permissionTabConfig.map((tab) => {
+                  const isActive = activePermissionTab === tab.code;
+                  return (
+                    <button
+                      key={tab.code}
+                      type="button"
+                      onClick={() => setActivePermissionTab(tab.code)}
+                      className={`rounded-lg border px-3 py-2 text-left transition ${
+                        isActive
+                          ? "border-emerald-400 bg-emerald-500 text-white shadow-sm"
+                          : "border-zinc-300 bg-white text-zinc-700 hover:border-emerald-400 hover:bg-emerald-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:border-emerald-600 dark:hover:bg-zinc-700"
+                      }`}
+                    >
+                      <div className="text-xs font-semibold">{tab.label}</div>
+                      <div
+                        className={`mt-0.5 text-[11px] ${
+                          isActive ? "text-white/90" : "text-zinc-500 dark:text-zinc-400"
+                        }`}
+                      >
+                        {tab.description}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
-          </form>
+            ) : (
+              <div className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                {t.permissionNone}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
+      {activePermissionTab === null ? (
+        <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
+          <div className="w-full max-w-xl rounded-2xl border border-zinc-200 bg-zinc-50 p-8 text-center dark:border-zinc-800 dark:bg-zinc-900/60">
+            <FileText className="mx-auto h-10 w-10 text-zinc-400 dark:text-zinc-500" />
+            <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300">{t.permissionNone}</p>
+          </div>
+        </div>
+      ) : activePermissionTab === "DOCUMENT_WRITE" ? (
+        <div className="scrollbar-chat-hidden flex-1 overflow-y-auto px-4 py-8 sm:px-6">
+          <div className="mx-auto w-full max-w-6xl">
+            <DocumentUploadSection />
+          </div>
+        </div>
+      ) : activePermissionTab === "DOCUMENT_DELETE" ? (
+        <div className="scrollbar-chat-hidden flex-1 overflow-y-auto px-4 py-8 sm:px-6">
+          <div className="mx-auto w-full max-w-6xl">
+            <DocumentsTab mode="library" />
+          </div>
+        </div>
+      ) : (
       <div className="scrollbar-chat-hidden flex-1 overflow-y-auto scroll-smooth px-4 py-8 sm:px-6">
+        {canReadDocuments ? (
+          <>
+            <div className="mx-auto mb-3 w-full max-w-6xl">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') loadList();
+                  }}
+                  placeholder={t.searchPlaceholder}
+                  autoComplete="off"
+                  className="w-full rounded-xl border border-zinc-300 bg-white py-3 pl-10 pr-32 text-sm text-zinc-900 shadow-inner placeholder-zinc-400 outline-none ring-emerald-500/0 transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                      showFilters || filterCategoryId || filterTagIds.length > 0 || filterStatus || filterFromDate || filterToDate
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    {t.filters}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Collapsible Advanced Filters */}
+            {showFilters && (
+              <div className="mx-auto mb-5 w-full max-w-6xl rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                    {t.advancedFilters}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(false)}
+                    className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Filter Grid */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {/* Category */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      {t.category}
+                    </label>
+                    <select
+                      value={filterCategoryId}
+                      onChange={(e) => setFilterCategoryId(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    >
+                      <option value="">{t.allCategories}</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      {t.status}
+                    </label>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    >
+                      <option value="">{t.allStatuses}</option>
+                      <option value="COMPLETED">{t.statusCompleted}</option>
+                      <option value="PENDING">{t.statusPending}</option>
+                      <option value="PROCESSING">{t.statusProcessing}</option>
+                      <option value="FAILED">{t.statusFailed}</option>
+                    </select>
+                  </div>
+
+                  {/* From Date */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      {t.fromDate}
+                    </label>
+                    <input
+                      type="date"
+                      value={filterFromDate}
+                      onChange={(e) => setFilterFromDate(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    />
+                  </div>
+
+                  {/* To Date */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      {t.toDate}
+                    </label>
+                    <input
+                      type="date"
+                      value={filterToDate}
+                      onChange={(e) => setFilterToDate(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Tags */}
+                {tags.length > 0 && (
+                  <div className="mt-4">
+                    <label className="mb-2 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      {t.tagsLabel}
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((tag) => {
+                        const active = filterTagIds.includes(tag.id);
+                        return (
+                          <button
+                            key={tag.id}
+                            type="button"
+                            onClick={() => {
+                              setFilterTagIds((prev) =>
+                                prev.includes(tag.id) ? prev.filter((x) => x !== tag.id) : [...prev, tag.id]
+                              );
+                            }}
+                            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                              active
+                                ? "bg-emerald-500 text-white shadow-sm"
+                                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                            }`}
+                          >
+                            {tag.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="mt-6 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      setFilterCategoryId("");
+                      setFilterTagIds([]);
+                      setFilterStatus("");
+                      setFilterFromDate("");
+                      setFilterToDate("");
+                      loadList();
+                    }}
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    {t.reset}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => loadList()}
+                    className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  >
+                    {t.applyFilters}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : null}
         {listLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
@@ -779,29 +1068,6 @@ export function SearchView({ initialQuery }: SearchViewProps) {
             <div className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-10 text-center shadow-lg dark:border-zinc-800 dark:bg-zinc-900/60 dark:shadow-black/20">
               <FileText className="mx-auto h-10 w-10 text-zinc-400 dark:text-zinc-600" />
               <p className="mt-4 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">{listMessage()}</p>
-              {documentsErrorStatus === 403 ? (
-                <>
-                  <p className="mt-3 text-xs leading-relaxed text-zinc-500">{t.permissionHint403}</p>
-                  {listSyncing ? (
-                    <p className="mt-3 inline-flex items-center justify-center gap-2 text-xs text-emerald-400/90">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                      {t.permissionPolling403}
-                    </p>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={handleRefreshSessionAndReload}
-                    disabled={listLoading}
-                    className="mt-4 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-                  >
-                    {listLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      t.refreshSession
-                    )}
-                  </button>
-                </>
-              ) : null}
             </div>
           </div>
         ) : filtered.length === 0 ? (
@@ -865,6 +1131,7 @@ export function SearchView({ initialQuery }: SearchViewProps) {
           </div>
         )}
       </div>
+      )}
 
       {selected && typeof document !== "undefined"
         ? createPortal(

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { EmployeeManagementNew } from "@/components/tenant-admin/EmployeeManagementNew";
 import { CreateUserModal } from "@/components/tenant-admin/CreateUserModal";
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
@@ -20,7 +19,6 @@ export default function EmployeesPage() {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   return (
-    <TenantAdminLayout>
       <div className="space-y-6">
         {/* Feedback Message */}
         {feedback && (
@@ -93,6 +91,6 @@ export default function EmployeesPage() {
           }}
         />
       </div>
-    </TenantAdminLayout>
   );
 }
+

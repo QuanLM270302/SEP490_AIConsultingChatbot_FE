@@ -45,8 +45,9 @@ export interface SourceDocument {
 
 // GET /api/v1/chatbot/history/{id}
 export interface ChatMessageResponse {
-  id: string;
-  messageId?: string; // Backend uses this field name
+  /** Present depending on API / Jackson naming */
+  id?: string;
+  messageId?: string;
   role: "USER" | "ASSISTANT";
   content: string;
   sources: SourceDocument[];

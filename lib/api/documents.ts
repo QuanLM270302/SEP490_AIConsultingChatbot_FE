@@ -356,6 +356,45 @@ export interface ListDocumentsParams {
   toDate?: string;
 }
 
+export interface DocumentPermissionProbeResult {
+  canRead: boolean;
+  canWrite: boolean;
+  canDelete: boolean;
+}
+
+export async function probeDocumentPermissions(): Promise<DocumentPermissionProbeResult> {
+  let canRead = false;
+  let canWrite = false;
+  let canDelete = false;
+
+  try {
+    const res = await fetchWithAuth(`${DOCUMENTS_BASE}?keyword=__permission_probe__`);
+    canRead = res.status !== 401 && res.status !== 403;
+  } catch {
+    canRead = false;
+  }
+
+  try {
+    const form = new FormData();
+    const res = await fetchWithAuth(`${DOCUMENTS_BASE}/upload`, {
+      method: "POST",
+      body: form,
+    });
+    canWrite = res.status !== 401 && res.status !== 403;
+  } catch {
+    canWrite = false;
+  }
+
+  try {
+    const res = await fetchWithAuth(`${DOCUMENTS_BASE}/deleted`);
+    canDelete = res.status !== 401 && res.status !== 403;
+  } catch {
+    canDelete = false;
+  }
+
+  return { canRead, canWrite, canDelete };
+}
+
 export async function listDocuments(params?: ListDocumentsParams): Promise<DocumentResponse[]> {
   let url = DOCUMENTS_BASE;
   

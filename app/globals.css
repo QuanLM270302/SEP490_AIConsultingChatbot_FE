@@ -54,10 +54,17 @@ body {
 /* Prevent fixed-size media from overflowing when zoomed */
 img,
 svg,
-video,
-canvas {
+video {
   max-width: 100%;
   height: auto;
+}
+
+/*
+ * Chart.js sets explicit canvas width/height for hit-testing & tooltips.
+ * `height: auto` here breaks hover/tooltip mapping on doughnut & other charts.
+ */
+canvas {
+  max-width: 100%;
 }
 
 /* Keep common app wrappers stable across browser zoom levels */
@@ -103,6 +110,22 @@ footer {
 .animate-gradient {
   background-size: 400% 400%;
   animation: gradientMove 15s ease infinite;
+}
+
+/* Workspace view switch animation - used when tabs change in the shared workspace shell */
+@keyframes workspaceViewEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-view-enter {
+  animation: workspaceViewEnter 240ms ease-out both;
 }
 
 /* Pulse animation for icons */

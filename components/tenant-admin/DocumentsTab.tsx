@@ -27,6 +27,7 @@ import type {
   DocumentVisibility,
   UpdateDocumentAccessRequest,
 } from "@/types/knowledge";
+import { getStoredUser } from "@/lib/auth-store";
 import { listCategoriesFlat } from "@/lib/api/categories";
 import { listTagsActive } from "@/lib/api/tags";
 import type { DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
@@ -166,7 +167,42 @@ function extractCompletionTimestamp(doc: DocumentResponse): string | null {
   return null;
 }
 
-export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "library" }) {
+function getUploaderDisplayName(doc: DocumentResponse): string {
+  return (
+    doc.uploadedByName ??
+    doc.uploadedByEmail ??
+    doc.uploadedBy ??
+    "—"
+  );
+}
+
+const RECENT_UPLOAD_IDS_KEY = "document-dashboard:recent-upload-ids";
+
+function readRecentUploadIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(RECENT_UPLOAD_IDS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((value): value is string => typeof value === "string" && value.length > 0));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeRecentUploadId(id: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const ids = readRecentUploadIds();
+    ids.add(id);
+    window.localStorage.setItem(RECENT_UPLOAD_IDS_KEY, JSON.stringify(Array.from(ids)));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?: "all" | "upload" | "library"; hideEditActions?: boolean }) {
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [deleted, setDeleted] = useState<DeletedDocumentResponse[]>([]);
   const [categories, setCategories] = useState<DocumentCategoryResponse[]>([]);
@@ -202,6 +238,25 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
   
   // Menu states
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const canEditDocuments = !hideEditActions;
+  const currentUser = getStoredUser();
+  const currentUserId = currentUser?.id ?? null;
+  const currentUserEmail = currentUser?.email ?? null;
+  const recentUploadIds = useMemo(() => readRecentUploadIds(), []);
+
+  const canEditDocument = useCallback(
+    (doc: DocumentResponse | undefined | null) => {
+      if (!doc) return false;
+      const uploader = doc.uploadedBy ?? doc.uploadedByEmail ?? doc.uploadedByName ?? null;
+
+      if (canEditDocuments) return true;
+      if (recentUploadIds.has(doc.id)) return true;
+      if (!uploader) return false;
+
+      return uploader === currentUserId || uploader === currentUserEmail;
+    },
+    [canEditDocuments, currentUserEmail, currentUserId, recentUploadIds]
+  );
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [reindexing, setReindexing] = useState<Record<string, boolean>>({});
   
@@ -432,6 +487,7 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
         accessibleRoles,
       };
       const uploadedDoc = await uploadDocument(params);
+      writeRecentUploadId(uploadedDoc.id);
       form.reset();
       setSelectedTagIds([]);
       setUploadVisibility("COMPANY_WIDE");
@@ -874,10 +930,12 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
               </p>
             </div>
           )}
-          <Button type="submit" variant="primary" size="md" disabled={uploading}>
-            <Upload className="mr-2 h-4 w-4" />
-            {uploading ? t.uploading : t.upload}
-          </Button>
+          <div className="sticky bottom-0 z-10 mt-2 rounded-xl border border-zinc-200 bg-white/95 p-2 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/95">
+            <Button type="submit" variant="primary" size="md" disabled={uploading} className="w-full">
+              <Upload className="mr-2 h-4 w-4" />
+              {uploading ? t.uploading : t.upload}
+            </Button>
+          </div>
         </form>
       </div>
       )}
@@ -1256,63 +1314,67 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
             >
               <Download className="h-4 w-4" /> {isEn ? "Download" : "Tải xuống"}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setOpenMenuId(null);
-                setMenuPos(null);
-                loadVersions(openMenuId);
-              }}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              <History className="h-4 w-4" /> {isEn ? "Version history" : "Lịch sử phiên bản"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const doc = documents.find((d) => d.id === openMenuId);
-                setOpenMenuId(null);
-                setMenuPos(null);
-                if (doc) setAccessDoc(doc);
-              }}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              <Lock className="h-4 w-4" /> {isEn ? "Update access" : "Cập nhật quyền"}
-            </button>
-            {(() => {
-              const doc = documents.find((d) => d.id === openMenuId);
-              const status = doc?.embeddingStatus?.toUpperCase();
-              const showReindex = status === "FAILED" || status === "COMPLETED";
-              return showReindex ? (
+            {canEditDocument(documents.find((d) => d.id === openMenuId)) && (
+              <>
                 <button
                   type="button"
-                  onClick={() => void handleReindex(openMenuId)}
-                  disabled={reindexing[openMenuId]}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setMenuPos(null);
+                    loadVersions(openMenuId);
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
-                  <RotateCcw className={`h-4 w-4 ${reindexing[openMenuId] ? "animate-spin" : ""}`} />
-                  {isEn ? "Re-index" : "Re-index lại"}
+                  <History className="h-4 w-4" /> {isEn ? "Version history" : "Lịch sử phiên bản"}
                 </button>
-              ) : null;
-            })()}
-            <button
-              type="button"
-              onClick={() => {
-                setOpenMenuId(null);
-                setMenuPos(null);
-                setNewVersionDocId(openMenuId);
-              }}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              <Upload className="h-4 w-4" /> {isEn ? "Upload new version" : "Tải phiên bản mới"}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSoftDelete(openMenuId)}
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
-            >
-              <Trash2 className="h-4 w-4" /> {isEn ? "Soft delete" : "Xóa mềm"}
-            </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const doc = documents.find((d) => d.id === openMenuId);
+                    setOpenMenuId(null);
+                    setMenuPos(null);
+                    if (doc) setAccessDoc(doc);
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  <Lock className="h-4 w-4" /> {isEn ? "Update access" : "Cập nhật quyền"}
+                </button>
+                {(() => {
+                  const doc = documents.find((d) => d.id === openMenuId);
+                  const status = doc?.embeddingStatus?.toUpperCase();
+                  const showReindex = status === "FAILED" || status === "COMPLETED";
+                  return showReindex ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleReindex(openMenuId)}
+                      disabled={reindexing[openMenuId]}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    >
+                      <RotateCcw className={`h-4 w-4 ${reindexing[openMenuId] ? "animate-spin" : ""}`} />
+                      {isEn ? "Re-index" : "Re-index lại"}
+                    </button>
+                  ) : null;
+                })()}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setMenuPos(null);
+                    setNewVersionDocId(openMenuId);
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  <Upload className="h-4 w-4" /> {isEn ? "Upload new version" : "Tải phiên bản mới"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSoftDelete(openMenuId)}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                >
+                  <Trash2 className="h-4 w-4" /> {isEn ? "Soft delete" : "Xóa mềm"}
+                </button>
+              </>
+            )}
           </div>
         </>
       )}
@@ -1379,6 +1441,13 @@ export function DocumentsTab({ mode = "all" }: { mode?: "all" | "upload" | "libr
                   <span className="text-zinc-500 dark:text-zinc-400">{language === "en" ? "Size:" : "Dung lượng:"}</span>
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">
                     {formatFileSize(detailDoc.fileSize)}
+                  </span>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 sm:col-span-2">
+                  <Upload className="h-4 w-4 text-sky-500" />
+                  <span className="text-zinc-500 dark:text-zinc-400">{language === "en" ? "Uploaded by:" : "Người tải lên:"}</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {getUploaderDisplayName(detailDoc)}
                   </span>
                 </div>
               </div>

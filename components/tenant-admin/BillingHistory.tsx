@@ -35,6 +35,11 @@ export function BillingHistory({ payments, loading }: BillingHistoryProps) {
       icon: Clock,
       className: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400",
     },
+    CANCELLED: {
+      label: language === "en" ? "Cancelled" : "Đã hủy",
+      icon: XCircle,
+      className: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400",
+    },
   };
 
   if (loading) {
@@ -59,7 +64,7 @@ export function BillingHistory({ payments, loading }: BillingHistoryProps) {
       <div className="overflow-x-auto">
         {payments.length === 0 ? (
           <div className="p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-            {t.noTransactionsYet}
+            {language === "en" ? "No payment history yet." : "Chưa có"}
           </div>
         ) : (
           <table className="min-w-full divide-y divide-zinc-100 dark:divide-zinc-900">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TenantAdminLayout } from "@/components/tenant-admin/TenantAdminLayout";
 import { getChatbotConfig, updateChatbotConfig, type ChatbotMode } from "@/lib/api/chatbot-config";
 import { getTenantFeedback, type FeedbackAnalytics } from "@/lib/api/feedback";
 import { useLanguageStore } from "@/lib/language-store";
@@ -83,7 +82,6 @@ export default function AIInsightsPage() {
   };
 
   return (
-    <TenantAdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -137,7 +135,7 @@ export default function AIInsightsPage() {
                   checked={mode === "BALANCED"}
                   onChange={(e) => setMode(e.target.value as ChatbotMode)}
                   disabled={loading || saving}
-                  className="mt-1 h-4 w-4 text-purple-600 focus:ring-2 focus:ring-purple-500"
+                  className="mt-1 h-4 w-4 shrink-0 text-purple-600 accent-purple-600 focus:outline-none focus:ring-0 focus:ring-offset-0"
                 />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -163,7 +161,7 @@ export default function AIInsightsPage() {
                   checked={mode === "STRICT"}
                   onChange={(e) => setMode(e.target.value as ChatbotMode)}
                   disabled={loading || saving}
-                  className="mt-1 h-4 w-4 text-purple-600 focus:ring-2 focus:ring-purple-500"
+                  className="mt-1 h-4 w-4 shrink-0 text-purple-600 accent-purple-600 focus:outline-none focus:ring-0 focus:ring-offset-0"
                 />
                 <div className="flex-1">
                   <span className="font-medium text-zinc-900 dark:text-white">
@@ -184,7 +182,7 @@ export default function AIInsightsPage() {
                   checked={mode === "FLEXIBLE"}
                   onChange={(e) => setMode(e.target.value as ChatbotMode)}
                   disabled={loading || saving}
-                  className="mt-1 h-4 w-4 text-purple-600 focus:ring-2 focus:ring-purple-500"
+                  className="mt-1 h-4 w-4 shrink-0 text-purple-600 accent-purple-600 focus:outline-none focus:ring-0 focus:ring-offset-0"
                 />
                 <div className="flex-1">
                   <span className="font-medium text-zinc-900 dark:text-white">
@@ -332,6 +330,6 @@ export default function AIInsightsPage() {
           )}
         </div>
       </div>
-    </TenantAdminLayout>
   );
 }
+

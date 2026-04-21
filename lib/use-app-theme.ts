@@ -14,13 +14,21 @@ import {
  * useLayoutEffect avoids the flash where a mounted header strips .dark before reading storage.
  */
 export function useAppTheme() {
+  // Keep first server/client render deterministic to prevent hydration mismatches.
   const [theme, setThemeState] = useState<ThemeMode>("light");
+  const [hydrated, setHydrated] = useState(false);
 
   useLayoutEffect(() => {
-    const t = resolveTheme();
-    setThemeState(t);
-    applyTheme(t);
+    const resolvedTheme = resolveTheme();
+    setThemeState(resolvedTheme);
+    applyTheme(resolvedTheme);
+    setHydrated(true);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!hydrated) return;
+    applyTheme(theme);
+  }, [theme, hydrated]);
 
   useEffect(() => {
     return onThemeChange((next) => {
@@ -29,17 +37,16 @@ export function useAppTheme() {
   }, []);
 
   const setTheme = useCallback((mode: ThemeMode) => {
-    persistTheme(mode);
     setThemeState(mode);
+    persistTheme(mode);
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeState((prev) => {
-      const next: ThemeMode = prev === "dark" ? "light" : "dark";
-      persistTheme(next);
-      return next;
-    });
-  }, []);
+    const currentTheme = hydrated ? theme : resolveTheme();
+    const next: ThemeMode = currentTheme === "dark" ? "light" : "dark";
+    setThemeState(next);
+    persistTheme(next);
+  }, [hydrated, theme]);
 
-  return { theme, setTheme, toggleTheme };
+  return { theme, setTheme, toggleTheme, hydrated };
 }

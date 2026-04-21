@@ -226,7 +226,14 @@ export default function StaffOrganizationsPage() {
       setDeleteModalOpen(false);
       setDeleteTenantId(null);
     } catch (e: unknown) {
-      setError(getErrorMessage(e, language === "en" ? "Cannot delete tenant" : "Không thể xóa tenant"));
+      setError(
+        getErrorMessage(
+          e,
+          language === "en"
+            ? "Cannot mark tenant for deletion"
+            : "Không thể đánh dấu xóa tenant"
+        )
+      );
     } finally {
       setActionLoading(null);
     }
@@ -239,6 +246,27 @@ export default function StaffOrganizationsPage() {
 
   const actionBtnClass =
     "inline-flex h-8 items-center gap-1 rounded-md px-2.5 text-xs font-medium transition disabled:opacity-50";
+
+  const markDeleteCopy =
+    language === "en"
+      ? {
+          action: "Mark for deletion",
+          actionTitle: "Mark tenant for deletion",
+          modalTitle: "Confirm mark for deletion",
+          modalDescription:
+            "Are you sure you want to mark this tenant for deletion? The tenant will be hidden from staff view and handled by retention workflow.",
+          confirming: "Marking...",
+          confirmAction: "Confirm mark",
+        }
+      : {
+          action: "Đánh dấu xóa",
+          actionTitle: "Đánh dấu xóa tổ chức",
+          modalTitle: "Xác nhận đánh dấu xóa",
+          modalDescription:
+            "Bạn có chắc muốn đánh dấu xóa tổ chức này không? Tổ chức sẽ bị ẩn khỏi màn staff và được xử lý theo luồng lưu trữ dữ liệu.",
+          confirming: "Đang đánh dấu...",
+          confirmAction: "Xác nhận đánh dấu",
+        };
 
   return (
     <>
@@ -388,10 +416,10 @@ export default function StaffOrganizationsPage() {
                             type="button"
                             onClick={() => openDeleteModal(tenant.id)}
                             className={`${actionBtnClass} bg-red-600 text-white hover:bg-red-700`}
-                            title={t.delete}
+                            title={markDeleteCopy.actionTitle}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            <span>{t.delete}</span>
+                            <span>{markDeleteCopy.action}</span>
                           </button>
                         </div>
                       </td>
@@ -469,10 +497,10 @@ export default function StaffOrganizationsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
             <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">
-              {t.deleteTenant}
+              {markDeleteCopy.modalTitle}
             </h3>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              {t.deleteConfirm}
+              {markDeleteCopy.modalDescription}
             </p>
             
             {error && (
@@ -501,10 +529,10 @@ export default function StaffOrganizationsPage() {
                 {actionLoading === deleteTenantId ? (
                   <span className="inline-flex items-center justify-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {t.deleting}
+                    {markDeleteCopy.confirming}
                   </span>
                 ) : (
-                  t.confirmDelete
+                  markDeleteCopy.confirmAction
                 )}
               </button>
             </div>
