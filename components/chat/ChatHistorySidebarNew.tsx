@@ -22,7 +22,7 @@ interface ChatHistorySidebarNewProps {
   refreshTrigger?: number;
 }
 
-/** Trượt từ mép phải của sidebar (w-16), không chồng lên icon nav */
+/** Side panel lives inside chat content area to avoid transform/fixed offset drift. */
 export function ChatHistorySidebarNew({
   isOpen,
   onClose,
@@ -100,7 +100,7 @@ export function ChatHistorySidebarNew({
 
       <aside
         aria-hidden={!isOpen}
-        className={`fixed top-0 z-50 flex h-full w-[min(85vw,16rem)] flex-col border-r border-zinc-200 bg-white shadow-md transition-transform duration-300 ease-out will-change-transform dark:border-zinc-800 dark:bg-zinc-950 ${
+        className={`fixed top-0 z-50 flex h-dvh w-[min(85vw,16rem)] flex-col border-r border-zinc-200 bg-white shadow-md transition-transform duration-300 ease-out will-change-transform dark:border-zinc-800 dark:bg-zinc-950 ${
           isOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}
         style={{ left: "4rem" }}

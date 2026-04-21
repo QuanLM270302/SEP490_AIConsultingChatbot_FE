@@ -54,6 +54,8 @@ export function DocumentUploadCard({
   const t = translations[language];
   const isEn = language === "en";
   const visibilityLabels = getVisibilityLabels(language);
+  const availableDepartments = departments.filter((d) => Number.isFinite(d.id) && d.id > 0);
+  const availableRoles = roles.filter((r) => Number.isFinite(r.id) && r.id > 0);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -63,6 +65,7 @@ export function DocumentUploadCard({
   const [visibility, setVisibility] = useState<DocumentVisibility>("COMPANY_WIDE");
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<number[]>([]);
   const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
+  const [error, setError] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,6 +92,7 @@ export function DocumentUploadCard({
     const files = e.target.files;
     if (files && files[0]) {
       setSelectedFile(files[0]);
+      setError(null);
     }
   };
 
@@ -126,34 +130,104 @@ export function DocumentUploadCard({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile) return;
+    setError(null);
+    if (!selectedFile) {
+      setError(isEn ? "Please select a file first." : "Vui lòng chọn tệp trước.");
+      return;
+    }
 
-    await onUpload({
-      file: selectedFile,
-      categoryId: categoryId || undefined,
-      tagIds: selectedTagIds,
-      description: description || undefined,
-      visibility,
-      departmentIds: selectedDepartmentIds,
-      roleIds: selectedRoleIds,
-    });
+    const allowedExtensions = new Set(["pdf", "docx", "xlsx", "pptx", "txt", "md", "csv"]);
+    const ext = selectedFile.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!allowedExtensions.has(ext)) {
+      setError(
+        isEn
+          ? "Unsupported file type. Allowed: PDF, DOCX, XLSX, PPTX, TXT, MD, CSV."
+          : "Định dạng không hỗ trợ. Chỉ chấp nhận: PDF, DOCX, XLSX, PPTX, TXT, MD, CSV."
+      );
+      return;
+    }
 
-    // Reset form
-    setSelectedFile(null);
-    setCategoryId("");
-    setSelectedTagIds([]);
-    setDescription("");
-    setVisibility("COMPANY_WIDE");
-    setSelectedDepartmentIds([]);
-    setSelectedRoleIds([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    const maxFileSize = 50 * 1024 * 1024;
+    if (selectedFile.size > maxFileSize) {
+      setError(isEn ? "File size exceeds 50MB limit." : "Dung lượng tệp vượt quá giới hạn 50MB.");
+      return;
+    }
+
+    if (
+      (visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+      selectedDepartmentIds.length === 0
+    ) {
+      setError(isEn ? "Please select at least one department." : "Vui lòng chọn ít nhất một phòng ban.");
+      return;
+    }
+
+    if (
+      (visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+      selectedRoleIds.length === 0
+    ) {
+      setError(isEn ? "Please select at least one role." : "Vui lòng chọn ít nhất một vai trò.");
+      return;
+    }
+
+    if (
+      (visibility === "SPECIFIC_DEPARTMENTS" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+      availableDepartments.length === 0
+    ) {
+      setError(
+        isEn
+          ? "No active departments available for this access scope."
+          : "Không có phòng ban hoạt động để áp dụng phạm vi truy cập này."
+      );
+      return;
+    }
+
+    if (
+      (visibility === "SPECIFIC_ROLES" || visibility === "SPECIFIC_DEPARTMENTS_AND_ROLES") &&
+      availableRoles.length === 0
+    ) {
+      setError(
+        isEn
+          ? "No active roles available for this access scope."
+          : "Không có vai trò hoạt động để áp dụng phạm vi truy cập này."
+      );
+      return;
+    }
+
+    try {
+      await onUpload({
+        file: selectedFile,
+        categoryId: categoryId || undefined,
+        tagIds: selectedTagIds,
+        description: description || undefined,
+        visibility,
+        departmentIds: selectedDepartmentIds,
+        roleIds: selectedRoleIds,
+      });
+
+      // Reset form
+      setSelectedFile(null);
+      setCategoryId("");
+      setSelectedTagIds([]);
+      setDescription("");
+      setVisibility("COMPANY_WIDE");
+      setSelectedDepartmentIds([]);
+      setSelectedRoleIds([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : isEn ? "Upload failed." : "Tải lên thất bại.");
     }
   };
 
   return (
     <div className="mx-auto max-w-4xl">
       <form onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
+            {error}
+          </div>
+        )}
         {/* Upload Section */}
         <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h3 className="mb-6 text-lg font-semibold text-zinc-900 dark:text-white">
@@ -332,7 +406,7 @@ export function DocumentUploadCard({
                   {t.selectDepartments}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {departments.map((d) => {
+                  {availableDepartments.map((d) => {
                     const active = selectedDepartmentIds.includes(d.id);
                     return (
                       <button
@@ -364,7 +438,7 @@ export function DocumentUploadCard({
                   {t.selectRoles}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {roles.map((r) => {
+                  {availableRoles.map((r) => {
                     const active = selectedRoleIds.includes(r.id);
                     return (
                       <button

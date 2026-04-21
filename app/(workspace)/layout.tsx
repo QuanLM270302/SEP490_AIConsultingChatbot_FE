@@ -231,7 +231,6 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
   // Animate the right pane whenever the shell surfaces a different view.
   const viewKey = `${pathname}?${view ?? ""}&mode=${mode ?? ""}`;
   const shouldReserveChatSidebarSpace = activeView === "chat" && isChatHistoryOpen;
-
   return (
     <div className="relative flex h-dvh min-h-0 overflow-hidden bg-zinc-100 dark:bg-[#060607]">
       <div
