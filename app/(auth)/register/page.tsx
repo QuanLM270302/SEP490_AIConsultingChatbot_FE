@@ -21,10 +21,60 @@ export default function RegisterPage() {
   const [representativePosition, setRepresentativePosition] = useState("");
   const [representativePhone, setRepresentativePhone] = useState("");
   const [requestMessage, setRequestMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const getFieldClassName = (field: string) =>
+    `block w-full rounded-lg border bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:ring-2 dark:bg-zinc-900 dark:text-zinc-50 ${
+      fieldErrors[field]
+        ? "border-red-500 focus:border-red-500 focus:ring-red-500/25 dark:border-red-500"
+        : "border-zinc-200 focus:border-emerald-500 focus:ring-emerald-500/20 dark:border-zinc-700"
+    }`;
+
+  const validateForm = (): Record<string, string> => {
+    const next: Record<string, string> = {};
+    if (!companyName.trim()) next.companyName = "Vui lòng nhập tên công ty.";
+    if (!contactEmail.trim()) next.contactEmail = "Vui lòng nhập email liên hệ.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim())) {
+      next.contactEmail = "Email không đúng định dạng.";
+    }
+    if (representativePhone.trim() && !/^(0\d{9}|(\+84)\d{9})$/.test(representativePhone.trim().replace(/\s+/g, ""))) {
+      next.representativePhone = "Số điện thoại không hợp lệ (0xxxxxxxxx hoặc +84xxxxxxxxx).";
+    }
+    if (website.trim()) {
+      try {
+        const u = new URL(website.trim());
+        if (!["http:", "https:"].includes(u.protocol)) next.website = "Website phải bắt đầu bằng http:// hoặc https://";
+      } catch {
+        next.website = "Website không đúng định dạng URL.";
+      }
+    }
+    return next;
+  };
+
+  const extractBackendFieldErrors = (data: unknown): Record<string, string> => {
+    if (!data || typeof data !== "object") return {};
+    const o = data as Record<string, unknown>;
+    const details = o.details;
+    if (!details || typeof details !== "object") return {};
+    const d = details as Record<string, unknown>;
+    const mapped: Record<string, string> = {};
+    for (const [k, v] of Object.entries(d)) {
+      if (typeof v === "string" && v.trim()) mapped[k] = v.trim();
+    }
+    return mapped;
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setFieldErrors({});
+
+    const localErrors = validateForm();
+    if (Object.keys(localErrors).length > 0) {
+      setFieldErrors(localErrors);
+      setError("Vui lòng kiểm tra lại thông tin đã nhập.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -49,6 +99,10 @@ export default function RegisterPage() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
+        const backendFields = extractBackendFieldErrors(data);
+        if (Object.keys(backendFields).length > 0) {
+          setFieldErrors(backendFields);
+        }
         throw new Error(toUiErrorMessage(data, "Registration failed"));
       }
 
@@ -138,10 +192,15 @@ export default function RegisterPage() {
                 type="text"
                 required
                 value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                onChange={(e) => {
+                  setCompanyName(e.target.value);
+                  if (fieldErrors.companyName) setFieldErrors((prev) => ({ ...prev, companyName: "" }));
+                }}
+                aria-invalid={fieldErrors.companyName ? "true" : "false"}
+                className={getFieldClassName("companyName")}
                 placeholder="Acme Corporation"
               />
+              {fieldErrors.companyName ? <p className="text-xs text-red-500">{fieldErrors.companyName}</p> : null}
             </div>
 
             <div className="space-y-1.5">
@@ -153,10 +212,15 @@ export default function RegisterPage() {
                 type="email"
                 required
                 value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                onChange={(e) => {
+                  setContactEmail(e.target.value);
+                  if (fieldErrors.contactEmail) setFieldErrors((prev) => ({ ...prev, contactEmail: "" }));
+                }}
+                aria-invalid={fieldErrors.contactEmail ? "true" : "false"}
+                className={getFieldClassName("contactEmail")}
                 placeholder="contact@company.com"
               />
+              {fieldErrors.contactEmail ? <p className="text-xs text-red-500">{fieldErrors.contactEmail}</p> : null}
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -197,10 +261,19 @@ export default function RegisterPage() {
                 id="representativePhone"
                 type="tel"
                 value={representativePhone}
-                onChange={(e) => setRepresentativePhone(e.target.value)}
-                className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  onChange={(e) => {
+                    setRepresentativePhone(e.target.value);
+                    if (fieldErrors.representativePhone) {
+                      setFieldErrors((prev) => ({ ...prev, representativePhone: "" }));
+                    }
+                  }}
+                  aria-invalid={fieldErrors.representativePhone ? "true" : "false"}
+                  className={getFieldClassName("representativePhone")}
                 placeholder="+84 123 456 789"
               />
+                {fieldErrors.representativePhone ? (
+                  <p className="text-xs text-red-500">{fieldErrors.representativePhone}</p>
+                ) : null}
             </div>
 
             <div className="space-y-1.5">
@@ -226,10 +299,15 @@ export default function RegisterPage() {
                   id="website"
                   type="url"
                   value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  onChange={(e) => {
+                    setWebsite(e.target.value);
+                    if (fieldErrors.website) setFieldErrors((prev) => ({ ...prev, website: "" }));
+                  }}
+                  aria-invalid={fieldErrors.website ? "true" : "false"}
+                  className={getFieldClassName("website")}
                   placeholder="https://company.com"
                 />
+                {fieldErrors.website ? <p className="text-xs text-red-500">{fieldErrors.website}</p> : null}
               </div>
 
               <div className="min-w-0 space-y-1.5">

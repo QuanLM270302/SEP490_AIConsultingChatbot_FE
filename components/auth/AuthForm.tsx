@@ -33,12 +33,64 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [mustChangePromptOpen, setMustChangePromptOpen] = useState(false);
   const [postLoginPath, setPostLoginPath] = useState<string>("/");
+
+  const getInputClassName = (hasError: boolean) =>
+    `block w-full rounded-lg border bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition ${
+      hasError
+        ? "border-red-500 ring-1 ring-red-500 dark:border-red-500 dark:ring-red-500/80"
+        : "border-zinc-200 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
+    }`;
+
+  const normalizeLoginError = (err: unknown): {
+    global: string;
+    fields: { email?: string; password?: string };
+  } => {
+    const raw = toUiErrorMessage(err, "Login failed");
+    const status = typeof err === "object" && err && "status" in err ? Number((err as { status?: unknown }).status) : null;
+    const lower = raw.toLowerCase();
+
+    if (status === 401 || lower.includes("email hoặc mật khẩu") || lower.includes("unauthorized")) {
+      return {
+        global: "Email hoặc mật khẩu không đúng.",
+        fields: { password: "Mật khẩu không đúng." },
+      };
+    }
+
+    if (lower.includes("email không đúng định dạng")) {
+      return {
+        global: "Email không đúng định dạng.",
+        fields: { email: "Email không đúng định dạng." },
+      };
+    }
+
+    if (lower.includes("email không được để trống")) {
+      return {
+        global: "Vui lòng nhập email.",
+        fields: { email: "Vui lòng nhập email." },
+      };
+    }
+
+    if (
+      lower.includes("mật khẩu không được để trống") ||
+      lower.includes("mật khẩu phải có ít nhất") ||
+      lower.includes("password")
+    ) {
+      return {
+        global: "Mật khẩu không hợp lệ.",
+        fields: { password: raw },
+      };
+    }
+
+    return { global: raw, fields: {} };
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setFieldErrors({});
 
     if (mode === "login") {
       setLoading(true);
@@ -54,7 +106,9 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
           router.refresh();
         }
       } catch (err) {
-        setError(toUiErrorMessage(err, "Login failed"));
+        const normalized = normalizeLoginError(err);
+        setError(normalized.global);
+        setFieldErrors(normalized.fields);
       } finally {
         setLoading(false);
       }
@@ -112,10 +166,15 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
+              }}
+              aria-invalid={fieldErrors.email ? "true" : "false"}
+              className={getInputClassName(!!fieldErrors.email)}
               placeholder="you@company.com"
             />
+            {fieldErrors.email ? <p className="text-xs text-red-500">{fieldErrors.email}</p> : null}
           </div>
 
           <div className="space-y-1.5 text-left">
@@ -130,10 +189,15 @@ export function AuthForm({ mode, showRoleSelector = false }: AuthFormProps) {
               type="password"
               required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
+              }}
+              aria-invalid={fieldErrors.password ? "true" : "false"}
+              className={getInputClassName(!!fieldErrors.password)}
               placeholder="••••••••"
             />
+            {fieldErrors.password ? <p className="text-xs text-red-500">{fieldErrors.password}</p> : null}
           </div>
 
           {mode === "login" && (
