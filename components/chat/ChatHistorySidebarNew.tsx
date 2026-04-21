@@ -92,7 +92,7 @@ export function ChatHistorySidebarNew({
     <>
       {isOpen ? (
         <div
-          className="fixed inset-0 z-[44] bg-black/20 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden"
           onClick={onClose}
           aria-hidden
         />
@@ -100,7 +100,7 @@ export function ChatHistorySidebarNew({
 
       <aside
         aria-hidden={!isOpen}
-        className={`fixed top-0 z-40 flex h-full w-64 flex-col border-r border-zinc-200 bg-white shadow-md transition-transform duration-300 ease-out will-change-transform dark:border-zinc-800 dark:bg-zinc-950 ${
+        className={`fixed top-0 z-50 flex h-full w-[min(85vw,16rem)] flex-col border-r border-zinc-200 bg-white shadow-md transition-transform duration-300 ease-out will-change-transform dark:border-zinc-800 dark:bg-zinc-950 ${
           isOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}
         style={{ left: "4rem" }}
