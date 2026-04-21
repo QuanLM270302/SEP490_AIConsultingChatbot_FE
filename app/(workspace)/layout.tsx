@@ -259,8 +259,8 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
       />
 
       <main
-        className={`relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-[padding] duration-300 ease-out ${
-          shouldReserveChatSidebarSpace ? "pl-64" : "pl-0"
+        className={`relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-[padding-left] duration-300 ease-out ${
+          shouldReserveChatSidebarSpace ? "pl-[260px]" : "pl-0"
         }`}
       >
         <div

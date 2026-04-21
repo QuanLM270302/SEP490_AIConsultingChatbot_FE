@@ -100,10 +100,11 @@ export function ChatHistorySidebarNew({
 
       <aside
         aria-hidden={!isOpen}
-        className={`fixed top-0 z-50 flex h-dvh w-[min(85vw,16rem)] flex-col border-r border-zinc-200 bg-white shadow-md transition-transform duration-300 ease-out will-change-transform dark:border-zinc-800 dark:bg-zinc-950 ${
-          isOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+        className={`fixed left-16 top-0 z-50 ml-0 flex h-dvh flex-col border-l-0 border-r border-zinc-200 bg-white shadow-md transition-[width,opacity] duration-300 ease-out will-change-[width,opacity] dark:border-zinc-800 dark:bg-zinc-950 ${
+          isOpen
+            ? "w-[260px] opacity-100"
+            : "pointer-events-none w-0 overflow-hidden opacity-0"
         }`}
-        style={{ left: "4rem" }}
       >
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800/80">
