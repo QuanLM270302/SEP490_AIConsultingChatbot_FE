@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
-import { useLivePolling } from "@/lib/hooks/useLivePolling";
 import type { DocumentResponse, DocumentCategoryResponse, DocumentTagResponse } from "@/types/knowledge";
 import {
   listDocuments,
@@ -179,6 +178,7 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
   const router = useRouter();
   const { language } = useLanguageStore();
   const sharedTranslations = translations[language];
+  const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [listLoading, setListLoading] = useState(true);
@@ -335,12 +335,14 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
       statusFailed: sharedTranslations.statusFailed,
       reset: language === "en" ? "Reset" : "Đặt lại",
       applyFilters: language === "en" ? "Apply Filters" : "Áp dụng",
+      searchAction: language === "en" ? "Search" : "Tìm",
     }),
     [language, sharedTranslations]
   );
 
   useEffect(() => {
     if (!initialQuery) return;
+    setQueryInput(initialQuery);
     setQuery(initialQuery);
   }, [initialQuery]);
 
@@ -442,11 +444,10 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
     })();
   }, [canReadDocuments, router, query, filterCategoryId, filterTagIds, filterStatus, filterFromDate, filterToDate]);
 
-  /** Làm mới JWT từ DB rồi tải lại list — dùng khi admin vừa đổi quyền (mọi máy qua polling + khi quay lại tab). */
-  const syncPermissionsAndList = useCallback(async () => {
-    await tryRefreshAuth();
-    loadList({ silent: true });
-  }, [loadList]);
+  const applySearch = useCallback(() => {
+    const nextQuery = queryInput.trim();
+    setQuery(nextQuery);
+  }, [queryInput]);
 
   /** Làm mới JWT trước khi gọi API lần đầu — giảm 403 do token cũ sau khi admin cấp quyền. */
   useEffect(() => {
@@ -454,33 +455,17 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
     if (!canReadDocuments) return;
     void (async () => {
       await tryRefreshAuth();
-      if (!cancelled) loadList();
+      if (cancelled) return;
     })();
     return () => {
       cancelled = true;
     };
-  }, [canReadDocuments, loadList]);
+  }, [canReadDocuments]);
 
-  useLivePolling(
-    () => syncPermissionsAndList(),
-    {
-      enabled: canReadDocuments,
-      intervalMs: 2200,
-      hiddenIntervalMs: 5000,
-      runImmediately: false,
-    }
-  );
-
-  /** Khi đang hiển thị lỗi 403, thử đồng bộ thường xuyên hơn cho đến khi thành công. */
-  useLivePolling(
-    () => syncPermissionsAndList(),
-    {
-      enabled: canReadDocuments && documentsErrorStatus === 403,
-      intervalMs: 900,
-      hiddenIntervalMs: 2000,
-      runImmediately: true,
-    }
-  );
+  useEffect(() => {
+    if (!canReadDocuments) return;
+    void loadList();
+  }, [canReadDocuments, query, filterCategoryId, filterTagIds, filterStatus, filterFromDate, filterToDate, loadList]);
 
   useEffect(() => {
     if (!selected) {
@@ -517,12 +502,6 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
     list.sort((a, b) => titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: "base" }));
     return list;
   }, [filtered]);
-
-  useEffect(() => {
-    if (!query.trim()) return;
-    if (sortedFiltered.length === 0) return;
-    setSelected((prev) => prev ?? sortedFiltered[0]);
-  }, [sortedFiltered, query]);
 
   const canSetRagActive = useMemo(() => {
     const r = (profileRoleName ?? "").toUpperCase();
@@ -741,16 +720,23 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
                 <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  value={queryInput}
+                  onChange={(e) => setQueryInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') loadList();
+                    if (e.key === "Enter") applySearch();
                   }}
                   placeholder={t.searchPlaceholder}
                   autoComplete="off"
-                  className="w-full rounded-xl border border-zinc-300 bg-white py-3 pl-10 pr-32 text-sm text-zinc-900 shadow-inner placeholder-zinc-400 outline-none ring-emerald-500/0 transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500"
+                  className="w-full rounded-xl border border-zinc-300 bg-white py-3 pl-10 pr-52 text-sm text-zinc-900 shadow-inner placeholder-zinc-400 outline-none ring-emerald-500/0 transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-2">
+                  <button
+                    type="button"
+                    onClick={applySearch}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  >
+                    {t.searchAction}
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowFilters(!showFilters)}
@@ -890,13 +876,13 @@ export function SearchView({ initialQuery, permissionTabs = [] }: SearchViewProp
                   <button
                     type="button"
                     onClick={() => {
+                      setQueryInput("");
                       setQuery("");
                       setFilterCategoryId("");
                       setFilterTagIds([]);
                       setFilterStatus("");
                       setFilterFromDate("");
                       setFilterToDate("");
-                      loadList();
                     }}
                     className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                   >
