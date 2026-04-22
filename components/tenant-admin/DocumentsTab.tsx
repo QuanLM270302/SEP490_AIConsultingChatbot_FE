@@ -294,16 +294,6 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
     };
   }, [searchKeyword, filterCategoryId, filterTagIds, filterStatus, filterFromDate, filterToDate]);
 
-  const applySearchKeyword = useCallback(() => {
-    const nextKeyword = searchKeywordInput.trim();
-    setSearchKeyword(nextKeyword);
-    currentFiltersRef.current = {
-      ...currentFiltersRef.current,
-      searchKeyword: nextKeyword,
-    };
-    void load();
-  }, [searchKeywordInput, load]);
-  
   const { language } = useLanguageStore();
   const t = translations[language];
   const isEn = language === "en";
@@ -400,6 +390,16 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
       setLoading(false);
     }
   }, [updateEmbeddingCompletionTimestamps, isEn, shouldLoadLibrary]);
+
+  const applySearchKeyword = useCallback(() => {
+    const nextKeyword = searchKeywordInput.trim();
+    setSearchKeyword(nextKeyword);
+    currentFiltersRef.current = {
+      ...currentFiltersRef.current,
+      searchKeyword: nextKeyword,
+    };
+    void load();
+  }, [searchKeywordInput, load]);
 
   const isWarningError = !!error && isDocumentLimitWarning(error);
 
