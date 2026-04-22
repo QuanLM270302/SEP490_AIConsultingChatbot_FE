@@ -118,6 +118,15 @@ export async function approveTenant(tenantId: string): Promise<{ message: string
   return data;
 }
 
+export async function resendTenantCredentials(tenantId: string): Promise<{ message: string }> {
+  const res = await fetchWithAuth(`${STAFF_BASE}/tenants/${tenantId}/resend-credentials`, {
+    method: "PUT",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || "Gửi lại email đăng nhập thất bại");
+  return data;
+}
+
 export async function suspendTenant(tenantId: string): Promise<{ message: string }> {
   const res = await fetchWithAuth(`${STAFF_BASE}/tenants/${tenantId}/suspend`, {
     method: "PUT",

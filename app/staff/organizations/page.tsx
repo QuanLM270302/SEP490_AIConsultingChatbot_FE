@@ -13,6 +13,7 @@ import {
   XCircle,
   Building2,
   Mail,
+  Send,
   Users,
   MapPin,
   Globe,
@@ -27,6 +28,7 @@ import {
   getTenants,
   getTenantById,
   approveTenant,
+  resendTenantCredentials,
   suspendTenant,
   activateTenant,
   rejectTenant,
@@ -82,6 +84,7 @@ export default function StaffOrganizationsPage() {
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTenantId, setDeleteTenantId] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const ensureStaffAccessToken = useCallback(async (): Promise<boolean> => {
     if (getAccessToken()) return true;
@@ -160,11 +163,38 @@ export default function StaffOrganizationsPage() {
     try {
       setActionLoading(tenantId);
       setError(null);
+      setSuccessMessage(null);
       await approveTenant(tenantId);
       await loadTenants();
       requestStaffPortalStatsRefresh();
+      setSuccessMessage(language === "en" ? "Tenant approved and login email sent." : "Tenant đã được duyệt và đã gửi email đăng nhập.");
     } catch (e: unknown) {
       setError(getErrorMessage(e, language === "en" ? "Cannot approve tenant" : "Không thể phê duyệt tenant"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResendCredentials = async (tenantId: string) => {
+    try {
+      setActionLoading(`resend:${tenantId}`);
+      setError(null);
+      setSuccessMessage(null);
+      await resendTenantCredentials(tenantId);
+      setSuccessMessage(
+        language === "en"
+          ? "Login credentials were resent successfully."
+          : "Đã gửi lại thông tin đăng nhập thành công."
+      );
+    } catch (e: unknown) {
+      setError(
+        getErrorMessage(
+          e,
+          language === "en"
+            ? "Cannot resend login credentials"
+            : "Không thể gửi lại thông tin đăng nhập"
+        )
+      );
     } finally {
       setActionLoading(null);
     }
@@ -382,19 +412,35 @@ export default function StaffOrganizationsPage() {
                             </>
                           )}
                           {tenant.status === "ACTIVE" && (
-                            <button
-                              type="button"
-                              disabled={actionLoading === tenant.id}
-                              onClick={() => handleSuspend(tenant.id)}
-                              className={`${actionBtnClass} bg-amber-500/90 text-white hover:bg-amber-600`}
-                            >
-                              {actionLoading === tenant.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <PauseCircle className="h-3.5 w-3.5" />
-                              )}
-                              <span>{t.suspend}</span>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                disabled={actionLoading === `resend:${tenant.id}`}
+                                onClick={() => handleResendCredentials(tenant.id)}
+                                className={`${actionBtnClass} bg-sky-500/90 text-white hover:bg-sky-600`}
+                                title={language === "en" ? "Resend login credentials email" : "Gửi lại email thông tin đăng nhập"}
+                              >
+                                {actionLoading === `resend:${tenant.id}` ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Send className="h-3.5 w-3.5" />
+                                )}
+                                <span>{language === "en" ? "Resend mail" : "Gửi lại mail"}</span>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={actionLoading === tenant.id}
+                                onClick={() => handleSuspend(tenant.id)}
+                                className={`${actionBtnClass} bg-amber-500/90 text-white hover:bg-amber-600`}
+                              >
+                                {actionLoading === tenant.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <PauseCircle className="h-3.5 w-3.5" />
+                                )}
+                                <span>{t.suspend}</span>
+                              </button>
+                            </>
                           )}
                           {tenant.status === "SUSPENDED" && (
                             <button
@@ -433,6 +479,11 @@ export default function StaffOrganizationsPage() {
 
         {error && (
           <ErrorNotice message={error} />
+        )}
+        {successMessage && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+            {successMessage}
+          </div>
         )}
       </div>
 
