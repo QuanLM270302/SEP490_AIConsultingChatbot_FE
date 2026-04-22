@@ -58,7 +58,6 @@ import {
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/language-store";
 import { translations } from "@/lib/translations";
-import { useLivePolling } from "@/lib/hooks/useLivePolling";
 
 const DOCUMENT_LIMIT_ERROR_KEYWORD = "giới hạn số lượng tài liệu";
 const DOCUMENT_LIMIT_WARNING_MESSAGE =
@@ -264,6 +263,7 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
   const [reindexing, setReindexing] = useState<Record<string, boolean>>({});
   
   // Search and filter states
+  const [searchKeywordInput, setSearchKeywordInput] = useState<string>("");
   const [searchKeyword, setSearchKeyword] = useState<string>("");
   const [filterCategoryId, setFilterCategoryId] = useState<string>("");
   const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
@@ -293,6 +293,16 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
       filterToDate,
     };
   }, [searchKeyword, filterCategoryId, filterTagIds, filterStatus, filterFromDate, filterToDate]);
+
+  const applySearchKeyword = useCallback(() => {
+    const nextKeyword = searchKeywordInput.trim();
+    setSearchKeyword(nextKeyword);
+    currentFiltersRef.current = {
+      ...currentFiltersRef.current,
+      searchKeyword: nextKeyword,
+    };
+    void load();
+  }, [searchKeywordInput, load]);
   
   const { language } = useLanguageStore();
   const t = translations[language];
@@ -391,42 +401,11 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
     }
   }, [updateEmbeddingCompletionTimestamps, isEn, shouldLoadLibrary]);
 
-  const refreshDocumentsRealtime = useCallback(async () => {
-    if (!shouldLoadLibrary) return;
-    try {
-      const filters = currentFiltersRef.current;
-      const params: ListDocumentsParams = {};
-      if (filters.searchKeyword.trim()) params.keyword = filters.searchKeyword.trim();
-      if (filters.filterCategoryId) params.categoryId = filters.filterCategoryId;
-      if (filters.filterTagIds.length > 0) params.tagIds = filters.filterTagIds;
-      if (filters.filterStatus) params.status = filters.filterStatus;
-      // Convert date to LocalDateTime format (ISO 8601 with time)
-      if (filters.filterFromDate) params.fromDate = `${filters.filterFromDate}T00:00:00`;
-      if (filters.filterToDate) params.toDate = `${filters.filterToDate}T23:59:59`;
-      
-      const docs = await listDocuments(params);
-      setDocuments(docs);
-      updateEmbeddingCompletionTimestamps(docs);
-    } catch {
-      // Ignore transient polling errors and keep current UI state.
-    }
-  }, [updateEmbeddingCompletionTimestamps, shouldLoadLibrary]);
-
   const isWarningError = !!error && isDocumentLimitWarning(error);
 
   useEffect(() => {
     void load();
   }, [load]);
-
-  useLivePolling(
-    () => refreshDocumentsRealtime(),
-    {
-      enabled: shouldLoadLibrary,
-      intervalMs: 1200,
-      hiddenIntervalMs: 3000,
-      runImmediately: false,
-    }
-  );
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -508,33 +487,6 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
     if (state === "in-progress") return 72;
     return 26;
   };
-
-  useLivePolling(
-    async () => {
-      if (!embeddingModalOpen || !embeddingTrackDocId) return;
-      const statusState = getEmbeddingState(embeddingTrackStatus);
-      if (statusState === "completed" || statusState === "failed") return;
-      try {
-        const docs = await listDocuments();
-        const matched = docs.find((d) => d.id === embeddingTrackDocId);
-        if (!matched) return;
-        setEmbeddingTrackStatus(matched.embeddingStatus || "PENDING");
-        const state = getEmbeddingState(matched.embeddingStatus);
-        if (state === "completed" || state === "failed") {
-          setEmbeddingProgress(100);
-          await load();
-        }
-      } catch {
-        // keep existing status UI on transient polling errors
-      }
-    },
-    {
-      enabled: embeddingModalOpen && !!embeddingTrackDocId,
-      intervalMs: 1200,
-      hiddenIntervalMs: 2500,
-      runImmediately: true,
-    }
-  );
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -956,15 +908,22 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
           </div>
           <input
             type="text"
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
+            value={searchKeywordInput}
+            onChange={(e) => setSearchKeywordInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') void load();
+              if (e.key === "Enter") applySearchKeyword();
             }}
             placeholder={isEn ? "Search documents by name or content..." : "Tìm kiếm tài liệu theo tên hoặc nội dung..."}
-            className="w-full rounded-xl border border-zinc-200 bg-white py-3.5 pl-11 pr-32 text-[15px] text-zinc-900 placeholder-zinc-400 shadow-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500 dark:focus:border-emerald-500"
+            className="w-full rounded-xl border border-zinc-200 bg-white py-3.5 pl-11 pr-52 text-[15px] text-zinc-900 placeholder-zinc-400 shadow-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500 dark:focus:border-emerald-500"
           />
           <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-2">
+            <button
+              type="button"
+              onClick={applySearchKeyword}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            >
+              {isEn ? "Search" : "Tìm"}
+            </button>
             <button
               type="button"
               onClick={() => setShowFilters(!showFilters)}
@@ -1101,6 +1060,7 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
               <button
                 type="button"
                 onClick={() => {
+                  setSearchKeywordInput("");
                   setSearchKeyword("");
                   setFilterCategoryId("");
                   setFilterTagIds([]);
@@ -1115,7 +1075,9 @@ export function DocumentsTab({ mode = "all", hideEditActions = false }: { mode?:
               </button>
               <button
                 type="button"
-                onClick={() => void load()}
+                onClick={() => {
+                  applySearchKeyword();
+                }}
                 className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
               >
                 {isEn ? "Apply Filters" : "Áp dụng"}
