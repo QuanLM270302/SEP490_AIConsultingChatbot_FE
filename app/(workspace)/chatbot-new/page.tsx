@@ -43,6 +43,9 @@ function decodePermissionsFromJwt(token: string | null): string[] {
   }
 }
 
+const UUID_RE =
+  /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
+
 function extractPermissionCodes(authorities: string[] | undefined): string[] {
   if (!authorities || authorities.length === 0) return [];
   return authorities
@@ -54,6 +57,9 @@ export default function ChatbotNewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlView = searchParams.get("view");
+  const docParam = searchParams.get("doc");
+  const contextDocumentId =
+    docParam && UUID_RE.test(docParam.trim()) ? docParam.trim() : null;
 
   const derivedView: "chat" | "search" | "analytics" =
     urlView === "analytics" ? "analytics" : urlView === "search" ? "search" : "chat";
@@ -139,6 +145,13 @@ export default function ChatbotNewPage() {
     [canViewDocuments, router, setChatHistoryOpen]
   );
 
+  const clearDocumentChatScope = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("doc");
+    const q = params.toString();
+    router.replace(q ? `/chatbot-new?${q}` : "/chatbot-new");
+  }, [router, searchParams]);
+
   const loadPermissions = useCallback(async () => {
     try {
       await tryRefreshAuth();
@@ -213,6 +226,10 @@ export default function ChatbotNewPage() {
             isHistoryOpen={isChatHistoryOpen}
             onToggleHistory={toggleChatHistory}
             onNavigateToSearch={(query) => goToSearch(query)}
+            contextDocumentId={contextDocumentId}
+            onClearDocumentContext={
+              contextDocumentId ? clearDocumentChatScope : undefined
+            }
           />
         )}
         {activeView === "search" && canViewDocuments && (
